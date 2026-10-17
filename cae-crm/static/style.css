@@ -1043,6 +1043,36 @@ body.landing { background: var(--surface); }
   .record-right { grid-column: 1 / -1; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); align-items: start; }
   .record-right { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
 }
+/* Integrations and VAT ------------------------------------------------------ */
+.integration-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.integration { display: grid; gap: 12px; align-content: start; }
+.integration-head { display: flex; gap: 12px; align-items: center; }
+.integration-head > div { flex: 1; min-width: 0; }
+.integration-head h2 { font-size: 17px; }
+.integration-mark { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; font-weight: 800; color: #fff; flex: none; }
+.mark-google { background: #ea4335; }
+.mark-microsoft { background: #0078d4; }
+.mark-xero { background: #13b5ea; }
+.mark-hmrc { background: #00703c; }
+.integration-blurb { font-size: 14px; color: var(--ink-2); }
+.integration-props { gap: 8px; }
+.bad-text { color: var(--bad); }
+.vat-form { max-width: 860px; display: grid; gap: 18px; }
+.vat-boxes { display: grid; gap: 0; border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; }
+.vat-box { display: grid; grid-template-columns: 64px minmax(0, 1fr) 180px; gap: 14px; align-items: center; padding: 12px 16px; border-top: 1px solid var(--line-soft); }
+.vat-box:first-child { border-top: 0; }
+.vat-box:nth-child(3), .vat-box:nth-child(5) { background: var(--surface-2); }
+.vat-box-n { font-weight: 800; font-size: 13px; color: var(--primary); }
+.vat-box label { font-weight: 700; font-size: 14.5px; display: grid; }
+.vat-box label small { font-weight: 400; color: var(--muted); font-size: 12.5px; }
+.vat-input { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+.vat-input input { text-align: right; font-variant-numeric: tabular-nums; }
+.vat-input input[readonly] { background: transparent; border-color: transparent; font-weight: 800; }
+.vat-declaration { align-items: flex-start; font-weight: 600; }
+@media (max-width: 640px) {
+  .vat-box { grid-template-columns: 1fr; gap: 6px; }
+}
+
 /* Billing ---------------------------------------------------------------- */
 .plan-banner { display: block; margin: 16px 36px 0; max-width: 1248px; padding: 10px 16px; border-radius: var(--r-md); background: var(--warn-soft); color: var(--warn-ink); font-size: 14px; text-decoration: none; }
 .plan-banner.bad { background: var(--bad-soft); color: var(--bad); }

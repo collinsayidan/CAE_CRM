@@ -691,4 +691,31 @@
       } catch (err) { /* the Save button still works */ }
     });
   }
+
+  /* HMRC Making Tax Digital ------------------------------------------------ */
+  // HMRC's fraud prevention headers need details only the browser knows: screen, window, time zone and a device id.
+  const hmrc = $("[data-hmrc-client]");
+  if (hmrc) {
+    let device = "";
+    try { device = localStorage.getItem("cae-device") || ""; if (!device) { device = crypto.randomUUID(); localStorage.setItem("cae-device", device); } }
+    catch (e) { device = crypto.randomUUID(); }
+    const offset = -new Date().getTimezoneOffset(), sign = offset >= 0 ? "+" : "-", abs = Math.abs(offset);
+    const client = {
+      screens: new URLSearchParams({ width: screen.width, height: screen.height, "scaling-factor": devicePixelRatio, "colour-depth": screen.colorDepth }).toString(),
+      window_size: new URLSearchParams({ width: innerWidth, height: innerHeight }).toString(),
+      timezone: `UTC${sign}${String(Math.floor(abs / 60)).padStart(2, "0")}:${String(abs % 60).padStart(2, "0")}`,
+      js_user_agent: navigator.userAgent, dnt: navigator.doNotTrack === "1" ? "1" : "0", device_id: device,
+    };
+    if (hmrc.tagName === "FORM") {
+      $$("[data-client]", hmrc).forEach(input => { input.value = client[input.dataset.client]; });
+      const num = name => parseFloat(hmrc.elements[name].value) || 0;
+      hmrc.addEventListener("input", () => {
+        const box3 = num("box1") + num("box2");
+        hmrc.elements.box3.value = box3.toFixed(2);
+        hmrc.elements.box5.value = Math.abs(box3 - num("box4")).toFixed(2);
+      });
+    } else if (!new URLSearchParams(location.search).has("screens")) {
+      location.replace(`${location.pathname}?${new URLSearchParams(client)}`);  // reload once with the details
+    }
+  }
 })();

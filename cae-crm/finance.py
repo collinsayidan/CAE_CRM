@@ -113,8 +113,9 @@ def register(app):
         for li in lines:
             net, vat = by_rate.get(li["vat_rate"], (0, 0))
             by_rate[li["vat_rate"]] = (net + li["net"], vat + li["vat"])
+        from integrations import connection
         return render_template("invoice.html", i=i, company=company, lines=lines, by_rate=sorted(by_rate.items(), reverse=True),
-                               business=workspace())
+                               business=workspace(), xero=connection("xero"))
 
     @app.post("/invoices/<int:invoice_id>/paid")
     def mark_paid(invoice_id):

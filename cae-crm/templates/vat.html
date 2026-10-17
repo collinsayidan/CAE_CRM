@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}VAT returns{% endblock %}
+{% block crumbs %}<nav class="crumbs" aria-label="Breadcrumb"><a href="{{ url_for('integrations') }}">Integrations</a> <span aria-hidden="true">/</span> <span>VAT returns</span></nav>{% endblock %}
+{% block heading %}VAT returns{% if sandbox %} <span class="chip warn heading-chip">HMRC test service</span>{% endif %}{% endblock %}
+{% block subtitle %}<p class="subtitle">Making Tax Digital for VAT{% if vrn %}, VAT number GB{{ vrn }}{% endif %}</p>{% endblock %}
+
+{% block content %}
+{% if not conn %}
+  <p class="notice">{{ icon('shield') }} <span>Connect HMRC under <a href="{{ url_for('integrations') }}">Integrations</a> first.</span></p>
+{% elif not vrn %}
+  <p class="notice">{{ icon('shield') }} <span>Add your 9-digit VAT registration number under <a href="{{ url_for('settings') }}">Settings</a>.</span></p>
+{% else %}
+  <div data-hmrc-client>
+  {% if error %}<p class="form-alert" role="alert">HMRC didn't return your VAT periods. {{ error }}</p>{% endif %}
+  <section class="panel flush">
+    <div class="table-wrap">
+      <table class="records">
+        <thead><tr><th>Period</th><th>Due</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          {% for o in obligations %}
+            {% set done = submitted.get(o.periodKey) %}
+            <tr>
+              <td><b>{{ o.start | uk_date }} to {{ o.end | uk_date }}</b></td>
+              <td>{{ o.due | uk_date }}</td>
+              <td>{% if o.status == 'F' or done %}<span class="chip ok">Submitted{% if done %} {{ done.submitted_at | uk_date }}{% endif %}</span>
+                  {% elif o.due < today.isoformat() %}<span class="chip bad">Overdue</span>{% else %}<span class="chip warn">Open</span>{% endif %}</td>
+              <td class="num">{% if o.status == 'O' and not done %}<a class="btn primary sm" href="{{ url_for('vat_return', period_key=o.periodKey, start=o.start, end=o.end) }}">Prepare return</a>{% endif %}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" class="empty-line">{% if error %}Nothing to show.{% else %}HMRC has no VAT periods for this business in the last year.{% endif %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  </div>
+{% endif %}
+{% endblock %}

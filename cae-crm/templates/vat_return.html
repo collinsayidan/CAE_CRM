@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}VAT return{% endblock %}
+{% block crumbs %}<nav class="crumbs" aria-label="Breadcrumb"><a href="{{ url_for('vat') }}">VAT returns</a> <span aria-hidden="true">/</span> <span>{{ start | uk_date }} to {{ end | uk_date }}</span></nav>{% endblock %}
+{% block heading %}VAT return, {{ start | uk_date }} to {{ end | uk_date }}{% endblock %}
+{% block subtitle %}<p class="subtitle">VAT number GB{{ vrn }}{% if sandbox %}. Sending to HMRC's test service.{% endif %}</p>{% endblock %}
+
+{% macro box(n, label, name, value, hint='', readonly=false, whole=false) -%}
+<div class="vat-box">
+  <span class="vat-box-n">Box {{ n }}</span>
+  <label for="{{ name }}">{{ label }}{% if hint %}<small>{{ hint }}</small>{% endif %}</label>
+  <span class="vat-input">£<input id="{{ name }}" name="{{ name }}" value="{{ value }}" inputmode="decimal" {{ 'readonly' if readonly }} {% if whole %}data-whole{% endif %}></span>
+</div>
+{%- endmacro %}
+
+{% block content %}
+<form method="post" class="panel vat-form" data-hmrc-client data-confirm="Submit this VAT return to HMRC? You can't change it afterwards." novalidate>
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <input type="hidden" name="start" value="{{ start }}"><input type="hidden" name="end" value="{{ end }}">
+  <p class="muted">Sales figures come from your {{ sales.count }} {{ 'invoice' if sales.count == 1 else 'invoices' }} dated in this period. Check them against your records. CAE CRM doesn't hold your purchases, so enter boxes 4 and 7 from your purchase records.</p>
+  {% if errors %}<p class="form-alert" role="alert">{{ errors.boxes or errors.declaration }}</p>{% endif %}
+  <div class="vat-boxes">
+    {{ box(1, 'VAT due on sales and other outputs', 'box1', boxes.box1, 'From your invoices.') }}
+    {{ box(2, 'VAT due on acquisitions from the EU', 'box2', boxes.box2, 'Northern Ireland goods only. Usually 0.') }}
+    {{ box(3, 'Total VAT due', 'box3', boxes.box3, 'Box 1 plus box 2.', readonly=true) }}
+    {{ box(4, 'VAT reclaimed on purchases and other inputs', 'box4', boxes.box4, 'From your purchase records.') }}
+    {{ box(5, 'Net VAT to pay to HMRC or reclaim', 'box5', boxes.box5, 'The difference between boxes 3 and 4.', readonly=true) }}
+    {{ box(6, 'Total value of sales, excluding VAT', 'box6', boxes.box6, 'Whole pounds. From your invoices.', whole=true) }}
+    {{ box(7, 'Total value of purchases, excluding VAT', 'box7', boxes.box7, 'Whole pounds. From your purchase records.', whole=true) }}
+    {{ box(8, 'Goods supplied to the EU, excluding VAT', 'box8', boxes.box8, 'Northern Ireland goods only. Whole pounds.', whole=true) }}
+    {{ box(9, 'Goods acquired from the EU, excluding VAT', 'box9', boxes.box9, 'Northern Ireland goods only. Whole pounds.', whole=true) }}
+  </div>
+  <label class="check vat-declaration"><input type="checkbox" name="declaration" required><span>{{ declaration }}</span></label>
+  {% for f in ['screens', 'window_size', 'timezone', 'js_user_agent', 'dnt', 'device_id'] %}<input type="hidden" name="{{ f }}" data-client="{{ f }}">{% endfor %}
+  <div class="form-footer-row"><button class="btn primary">Submit to HMRC</button></div>
+</form>
+{% endblock %}

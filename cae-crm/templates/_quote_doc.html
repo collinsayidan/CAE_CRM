@@ -1,0 +1,56 @@
+{# The quote as the customer sees it, shared by the staff page and the public link. #}
+{% macro quote_doc(q, state, lines, by_rate, company, business, money_fmt) -%}
+<article class="panel invoice quote-doc">
+  <header class="invoice-head">
+    <div>
+      <p class="invoice-brand"><span class="logo" style="--h: {{ business.name | hue }}" aria-hidden="true">{{ business.name | initials }}</span>{{ business.legal_name or business.name }}</p>
+      <p class="muted">
+        {% if business.address %}{{ business.address }}<br>{% endif %}
+        {% if business.city or business.postcode %}{{ business.city }} {{ business.postcode }}<br>{% endif %}
+        {% if business.company_no %}Company number {{ business.company_no }}<br>{% endif %}
+        {% if business.vat_registered and business.vat_no %}VAT number {{ business.vat_no }}{% endif %}
+      </p>
+    </div>
+    <dl class="facts tight">
+      <dt>Quote number</dt><dd>{{ q.number }}</dd>
+      <dt>Date</dt><dd>{{ q.issue_date | uk_date }}</dd>
+      <dt>Valid until</dt><dd>{{ q.expiry_date | uk_date }}</dd>
+    </dl>
+  </header>
+  <h2 class="quote-title">{{ q.title }}</h2>
+  <div class="bill-to">
+    <p class="muted">Prepared for</p>
+    <p><b>{{ company.name }}</b>{% if company.address %}<br>{{ company.address }}{% endif %}{% if company.city %}<br>{{ company.city }}{% endif %}{% if company.postcode %}<br>{{ company.postcode }}{% endif %}</p>
+  </div>
+  <div class="invoice-lines-wrap">
+  <table class="invoice-lines">
+    <thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">VAT rate</th><th class="num">Net</th></tr></thead>
+    <tbody>
+      {% for li in lines %}
+        <tr><td>{{ li.description }}{% if li.discount_pct %}<small>{{ li.discount_pct }}% discount</small>{% endif %}</td>
+          <td class="num" data-label="Qty">{{ li.quantity }}</td><td class="num" data-label="Unit price">{{ money_fmt(li.unit_price) }}</td>
+          <td class="num" data-label="VAT rate">{{ li.vat_rate }}%</td><td class="num" data-label="Net">{{ money_fmt(li.net) }}</td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr><td colspan="4" class="num">Subtotal excluding VAT</td><td class="num">{{ money_fmt(q.net) }}</td></tr>
+      {% if business.vat_registered or q.vat %}
+        {% for rate, (net, vat) in by_rate %}
+          <tr><td colspan="4" class="num">VAT at {{ rate }}% on {{ money_fmt(net) }}</td><td class="num">{{ money_fmt(vat) }}</td></tr>
+        {% endfor %}
+      {% endif %}
+      <tr class="total"><td colspan="4" class="num">Total in GBP</td><td class="num">{{ money_fmt(q.net + q.vat) }}</td></tr>
+    </tfoot>
+  </table>
+  </div>
+  {% if not business.vat_registered and not q.vat %}<p class="muted small">{{ business.legal_name or business.name }} is not registered for VAT, so no VAT is charged.</p>{% endif %}
+  {% if q.terms %}<div class="quote-terms"><h3>Terms</h3><p>{{ q.terms }}</p></div>{% endif %}
+  {% if state == 'Accepted' %}
+    <div class="quote-signed">
+      <p class="quote-signature">{{ q.signer_name }}</p>
+      <p class="muted small">Accepted online by {{ q.signer_name }}{% if q.signer_position %}, {{ q.signer_position }}{% endif %},
+        on {{ q.decided_at | uk_datetime }}.</p>
+    </div>
+  {% endif %}
+</article>
+{%- endmacro %}

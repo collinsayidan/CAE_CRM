@@ -642,4 +642,15 @@
       });
     }
   });
+
+  /* Copy a link or embed code -------------------------------------------- */
+  $$("[data-copy]").forEach(btn => btn.addEventListener("click", async () => {
+    const field = $(btn.dataset.copy);
+    if (!field) return;
+    try { await navigator.clipboard.writeText(field.value); }
+    catch (e) { field.select(); document.execCommand("copy"); }
+    const label = btn.textContent;
+    btn.textContent = "Copied";
+    setTimeout(() => { btn.textContent = label; }, 1600);
+  }));
 })();

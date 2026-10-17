@@ -16,10 +16,12 @@ import crm
 import dataio
 import finance
 import home
+import quotes
 import sales
 import service
 import settings
 import ukfmt
+import webforms
 from core import days_until, now, relative_time, scalar, today, workspace
 from db import close_db, init_db, is_postgres
 from ukfmt import money
@@ -29,7 +31,8 @@ NAV = [
     (None, [("overview", "Home", "home")]),
     ("CRM", [("contacts", "Contacts", "users"), ("companies", "Companies", "building"),
              ("pipeline", "Deals", "pipeline"), ("tickets", "Tickets", "lifebuoy")]),
-    ("Sales", [("tasks", "Tasks", "calendar"), ("products", "Products", "box")]),
+    ("Sales", [("tasks", "Tasks", "calendar"), ("quotes", "Quotes", "note"), ("products", "Products", "box")]),
+    ("Marketing", [("forms", "Forms", "mail")]),
     ("Finance", [("invoices", "Invoices", "pound")]),
     ("Delivery", [("projects", "Projects", "flag")]),
     ("Insight", [("reports", "Reports", "trend")]),
@@ -38,9 +41,12 @@ NAV = [
 # Which nav item lights up for pages that aren't in the nav themselves.
 NAV_PARENT = {"contact": "contacts", "company": "companies", "deal": "pipeline", "ticket": "tickets",
               "invoice": "invoices", "import_map": "imports",
-              "auth.member": "auth.team", "auth.edit_member": "auth.team"}
+              "auth.member": "auth.team", "auth.edit_member": "auth.team", "quote": "quotes", "web_form": "forms"}
 # Pages anyone can reach without signing in.
-PUBLIC_ENDPOINTS = {"landing", "auth.login", "auth.signup", "auth.setup", "static"}
+PUBLIC_ENDPOINTS = {"landing", "auth.login", "auth.signup", "auth.setup", "static",
+                    "public_form", "public_quote", "accept_quote", "decline_quote"}
+# Forms embedded on other websites can't carry our session's CSRF token; they have their own spam checks.
+CSRF_EXEMPT = {"public_form"}
 
 
 def create_app(config=None):
@@ -79,6 +85,7 @@ def create_app(config=None):
     app.add_template_filter(lambda n: sum(map(ord, n or "")) * 37 % 360, "hue")
     app.add_template_filter(lambda s: (s or "").lower().replace(" ", "-"), "slug")
     app.add_template_global(auth.team_photo, "team_photo")
+    app.add_template_global(lambda p: money(p, pennies=True), "gbp")  # for public pages, which have no sign-in context
     app.add_template_filter(days_until, "days_until")
     app.add_template_filter(relative_time, "relative_time")
     app.add_template_filter(lambda args, page: urlencode({**args, "page": page}), "pager_query")
@@ -117,7 +124,7 @@ def create_app(config=None):
         missing = app.config["MISSING_SETTINGS"]
         if missing and request.endpoint != "static":
             return render_template("auth/settings_needed.html", missing=missing), 503
-        if request.method == "POST":
+        if request.method == "POST" and request.endpoint not in CSRF_EXEMPT:
             token = request.form.get("csrf") or request.headers.get("X-CSRF-Token")
             if not token or token != session.get("csrf"):
                 abort(400, "Your session expired. Reload the page and try again.")
@@ -133,7 +140,7 @@ def create_app(config=None):
         return redirect(url_for("auth.login", next=request.full_path.rstrip("?")))
 
     app.register_blueprint(auth.bp)
-    for module in (home, crm, sales, service, finance, dataio, settings):
+    for module in (home, crm, sales, service, finance, quotes, webforms, dataio, settings):
         module.register(app)
     return app
 

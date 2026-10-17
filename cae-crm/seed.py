@@ -1,7 +1,9 @@
 """Sample data for a new workspace, so a business can explore CAE CRM before adding its own records.
 Every company, person and number here is fictional."""
 
+import json
 import random
+import secrets
 from datetime import date, datetime, timedelta
 
 from db import (ACTIVITY_KINDS, CALL_OUTCOMES, LAWFUL_BASES, OPEN_STAGES, SOURCES, STAGE_PROBABILITY,
@@ -226,3 +228,31 @@ def seed_workspace(db, ws, today, owner_name, monthly_target):
         db.insert("engagements", workspace_id=ws, kind="system", subject="Ticket opened", body=None, outcome=None,
                   author="CAE CRM", occurred_at=opened.isoformat(timespec="minutes"), company_id=cid, contact_id=None,
                   deal_id=None, ticket_id=tid)
+
+    # A website form and a couple of quotes, so the Marketing and Quotes pages have something to show.
+    db.insert("web_forms", workspace_id=ws, name="Website enquiries", token=secrets.token_urlsafe(16), heading="Get in touch",
+              intro="Tell us a little about what you need and we'll reply within one working day.",
+              fields=json.dumps({"phone": "optional", "company": "optional", "job_title": "off", "message": "required"}),
+              button_label="Send", thank_you="Thanks, we've got your message and will be in touch within one working day.",
+              lifecycle_stage="Lead", owner=owner_name, ask_consent=1,
+              consent_text="Keep me updated with news and offers by email. You can unsubscribe at any time.",
+              privacy_url="", follow_up_task=1, active=1, created_at=today.isoformat())
+    quoted = db.execute("SELECT d.* FROM deals d WHERE d.workspace_id=? AND d.stage IN ('Proposal', 'Negotiation') AND "
+                        "EXISTS (SELECT 1 FROM line_items li WHERE li.deal_id=d.id) ORDER BY d.id LIMIT 2", (ws,)).fetchall()
+    for n, deal in enumerate(quoted):
+        items = db.execute("SELECT * FROM line_items WHERE deal_id=? ORDER BY id", (deal["id"],)).fetchall()
+        priced = [(li["name"], li["quantity"], li["unit_price"], li["discount_pct"], li["vat_rate"],
+                   li["quantity"] * li["unit_price"] * (100 - li["discount_pct"]) // 100) for li in items]
+        issued = today - timedelta(days=4 + 3 * n)
+        qid = db.insert("quotes", workspace_id=ws, number=f"Q-{1001 + n:06d}", deal_id=deal["id"], company_id=deal["company_id"],
+                        contact_id=deal["contact_id"], title=deal["title"], status="Sent" if n == 0 else "Draft",
+                        terms="Prices are in pounds sterling and exclude VAT unless shown. This quote is valid until the date "
+                              "above. Work starts once the quote is accepted.",
+                        token=secrets.token_urlsafe(24), net=sum(p[5] for p in priced),
+                        vat=sum(vat_amount(p[5], p[4]) for p in priced), issue_date=issued.isoformat(),
+                        expiry_date=(issued + timedelta(days=30)).isoformat(), created_by=deal["owner"],
+                        created_at=f"{issued.isoformat()}T10:00", sent_at=f"{issued.isoformat()}T10:30" if n == 0 else None,
+                        viewed_at=f"{(issued + timedelta(days=1)).isoformat()}T09:12" if n == 0 else None)
+        for desc, qty, price, discount, rate, net in priced:
+            db.insert("quote_lines", workspace_id=ws, quote_id=qid, description=desc, quantity=qty, unit_price=price,
+                      discount_pct=discount, vat_rate=rate, net=net, vat=vat_amount(net, rate))

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en-GB" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>{% block title %}{% endblock %} – {{ business.name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400..800;1,400..800&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="public-page {{ 'is-embed' if embed }}">
+  {% if not embed %}
+  <header class="public-head">
+    <span class="public-brand"><span class="logo" style="--h: {{ business.name | hue }}" aria-hidden="true">{{ business.name | initials }}</span>{{ business.name }}</span>
+    {% block head_actions %}{% endblock %}
+  </header>
+  {% endif %}
+  <main class="public-main {% block main_class %}{% endblock %}">
+    {% block content %}{% endblock %}
+  </main>
+  {% if not embed %}<footer class="public-foot">{% block foot %}{{ business.legal_name or business.name }}{% if business.company_no %} · Company number {{ business.company_no }}{% endif %}{% endblock %}</footer>{% endif %}
+  <script>
+    document.querySelectorAll("[data-print]").forEach(b => b.addEventListener("click", () => window.print()));
+    // When embedded, tell the host page how tall the form is so its frame can fit it without scrollbars.
+    if (window.parent !== window) {
+      const report = () => window.parent.postMessage({ caeFormHeight: document.documentElement.scrollHeight }, "*");
+      new ResizeObserver(report).observe(document.body); report();
+    }
+  </script>
+</body>
+</html>

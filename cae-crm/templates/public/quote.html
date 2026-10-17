@@ -1,0 +1,52 @@
+{% extends "public/_layout.html" %}
+{% from "_quote_doc.html" import quote_doc with context %}
+{% block title %}Quote {{ q.number }}{% endblock %}
+{% block head_actions %}<button type="button" class="btn ghost sm" data-print>Print or save as PDF</button>{% endblock %}
+{% block main_class %}is-wide{% endblock %}
+
+{% block content %}
+{% if staff %}<p class="form-alert is-ok public-note">You're signed in to {{ business.name }}, so viewing this doesn't count as the customer opening it.</p>{% endif %}
+
+{% if state == 'Accepted' %}
+  <div class="public-banner ok" role="status"><b>Quote accepted.</b> Thank you{% if q.signer_name %}, {{ q.signer_name.split()[0] }}{% endif %}. {{ business.name }} has been told and will be in touch about next steps. You can print or save a copy for your records.</div>
+{% elif state == 'Declined' %}
+  <div class="public-banner" role="status"><b>Quote declined.</b> Thanks for letting {{ business.name }} know.</div>
+{% elif state == 'Expired' %}
+  <div class="public-banner warn" role="status"><b>This quote expired on {{ q.expiry_date | uk_date }}.</b> Contact {{ business.name }} if you'd still like to go ahead.</div>
+{% endif %}
+
+{{ quote_doc(q, state, lines, by_rate, company, business, gbp) }}
+
+{% if state == 'Sent' %}
+<section class="panel public-decide" aria-labelledby="decide-title">
+  <h2 id="decide-title">Accept this quote</h2>
+  <p class="muted">Type your name to sign. This is a legally binding acceptance of the quote and terms above, for {{ gbp(q.net + q.vat) }} including VAT.</p>
+  {% if errors %}<p class="form-alert" role="alert">Not accepted yet. Check the highlighted fields.</p>{% endif %}
+  <form method="post" action="{{ url_for('accept_quote', token=q.token) }}" class="public-sign" novalidate>
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <div class="form-grid">
+      <label class="field"><span class="field-label">Full name</span>
+        <input name="signer_name" value="{{ form.signer_name or '' }}" autocomplete="name" required maxlength="120" {% if errors.signer_name %}aria-invalid="true"{% endif %}>
+        {% if errors.signer_name %}<span class="field-error">{{ errors.signer_name }}</span>{% endif %}</label>
+      <label class="field"><span class="field-label">Position <span class="optional">(optional)</span></span>
+        <input name="signer_position" value="{{ form.signer_position or '' }}" autocomplete="organization-title" maxlength="120" placeholder="Operations director"></label>
+    </div>
+    <label class="check"><input type="checkbox" name="agree" {{ 'checked' if form.agree }} required>
+      <span>I accept this quote and its terms, and I'm authorised to do so for {{ company.name }}.</span></label>
+    {% if errors.agree %}<p class="field-error">{{ errors.agree }}</p>{% endif %}
+    <div class="public-actions"><button class="btn primary">Accept and sign</button></div>
+  </form>
+  <details class="public-decline">
+    <summary class="text-link sm">Decline this quote</summary>
+    <form method="post" action="{{ url_for('decline_quote', token=q.token) }}" class="auth-form">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <label class="field"><span class="field-label">Anything {{ business.name }} should know? <span class="optional">(optional)</span></span>
+        <textarea name="reason" rows="3" maxlength="1000" placeholder="For example, the timing or price doesn't work for us."></textarea></label>
+      <div><button class="btn ghost">Decline quote</button></div>
+    </form>
+  </details>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block foot %}{{ super() }} · Quote {{ q.number }} for {{ company.name }}{% endblock %}

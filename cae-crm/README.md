@@ -40,7 +40,11 @@ Vercel finds the app through `wsgi.py`, which `pyproject.toml` names in `[tool.v
 
 ## What's in it
 
-The sidebar groups pages the way a business works: **CRM** (Contacts, Companies, Deals, Tickets), **Sales** (Tasks, Products), **Finance** (Invoices), **Delivery** (Projects), **Insight** (Reports) and **Workspace** (Team). Admins also get **Settings** and **Import**.
+The sidebar groups pages the way a business works: **CRM** (Contacts, Companies, Deals, Tickets), **Sales** (Tasks, Quotes, Products), **Marketing** (Forms), **Finance** (Invoices), **Delivery** (Projects), **Insight** (Reports) and **Workspace** (Team). Admins also get **Settings** and **Import**.
+
+**Quotes.** Create a quote from a deal's line items, mark it as sent and share its private link. The customer reads it, then accepts by typing their name (the time, IP address and browser are recorded as evidence) or declines with a reason. Accepting wins the deal and sets a task to invoice it; one click turns the accepted quote into a VAT invoice. Typed-name e-signatures are valid for most UK commercial contracts under the Electronic Communications Act 2000.
+
+**Web forms.** Build a contact form, then share its link or paste the embed code into your website. Each submission becomes a contact (matched by email, so repeat visitors aren't duplicated), with the company, a timeline entry and a follow-up task for the owner. Marketing consent is an unticked box and its wording is saved with the date, as PECR requires. A hidden honeypot field, a minimum fill-in time and a limit of five submissions per address in ten minutes keep spam out without a CAPTCHA. Erasing a contact deletes their submissions too.
 
 **Team and profiles.** Everyone has a profile with a photo, job title, team, phone, location, LinkedIn and a short bio, edited under **Profile and password**. Photos are cropped to a 256px square WebP, stripped of location data and stored in the database. The Team page lists everyone; a profile shows that person's open deals, tickets and tasks. Admins can edit anyone's profile, change roles, reset passwords and remove people from the profile page.
 

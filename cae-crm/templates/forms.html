@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Forms{% endblock %}
+{% block heading %}Forms{% endblock %}
+{% block subtitle %}<p class="subtitle">Put a form on your website. Each submission becomes a contact with a follow-up task.</p>{% endblock %}
+{% block actions %}
+  {% if current_user.role == 'admin' %}
+    <form method="post" action="{{ url_for('create_form') }}" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <input type="hidden" name="name" value="{{ 'Website enquiries' if not forms else 'New form' }}">
+      <button class="btn primary">{{ icon('plus') }} New form</button>
+    </form>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<section class="panel flush">
+  <div class="table-wrap">
+    <table class="records">
+      <thead><tr><th>Form</th><th>Status</th><th>New contacts go to</th><th class="num">Submissions</th><th>Last one</th></tr></thead>
+      <tbody>
+        {% for f in forms %}
+          <tr>
+            <td><a class="row-link" href="{{ url_for('web_form', form_id=f.id) }}"><span class="product-mark">{{ icon('mail') }}</span><span><b>{{ f.name }}</b><small>{{ f.heading }}</small></span></a></td>
+            <td>{% if f.active %}<span class="chip ok">Live</span>{% else %}<span class="chip">Paused</span>{% endif %}</td>
+            <td>{{ f.owner }}<small>as {{ f.lifecycle_stage }}</small></td>
+            <td class="num"><b>{{ f.submissions }}</b></td>
+            <td>{{ (f.last_at | uk_datetime) if f.last_at else 'None yet' }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="empty-line">No forms yet.
+            {% if current_user.role == 'admin' %}Choose <b>New form</b> to make a contact form for your website. It takes a minute.
+            {% else %}Ask an admin to create one.{% endif %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

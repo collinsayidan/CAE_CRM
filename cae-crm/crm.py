@@ -272,6 +272,9 @@ def register(app):
                                                " WHERE workspace_id=? AND contact_id=? ORDER BY occurred_at", ws(), contact_id)],
             "tickets": [dict(t) for t in rows("SELECT subject, status, created_at, closed_at FROM tickets"
                                               " WHERE workspace_id=? AND contact_id=?", ws(), contact_id)],
+            "form_submissions": [dict(s, data=json.loads(s["data"])) for s in rows(
+                "SELECT f.name AS form, s.data, s.ip, s.created_at FROM form_submissions s JOIN web_forms f ON f.id=s.form_id"
+                " WHERE s.workspace_id=? AND s.contact_id=? ORDER BY s.id", ws(), contact_id)],
         }
         return Response(json.dumps(payload, indent=2, default=str), mimetype="application/json",
                         headers={"Content-Disposition": f"attachment; filename=sar-contact-{contact_id}.json"})
@@ -374,6 +377,7 @@ def register(app):
 
     @app.route("/deals/<int:deal_id>")
     def deal(deal_id):
+        from quotes import quote_state
         d = get_or_404("deals", deal_id)
         company = one("SELECT * FROM companies WHERE id=? AND workspace_id=?", d["company_id"], ws())
         contact = one("SELECT * FROM contacts WHERE id=? AND workspace_id=?", d["contact_id"], ws()) if d["contact_id"] else None
@@ -385,6 +389,8 @@ def register(app):
             upcoming=upcoming,
             products=rows("SELECT * FROM products WHERE workspace_id=? AND active=1 ORDER BY name", ws()),
             invoices=rows("SELECT * FROM invoices WHERE workspace_id=? AND deal_id=? ORDER BY id DESC", ws(), deal_id),
+            quotes=[(q, quote_state(q)) for q in rows("SELECT * FROM quotes WHERE workspace_id=? AND deal_id=? ORDER BY id DESC",
+                                                      ws(), deal_id)],
             company_contacts=rows("SELECT id, first_name, last_name FROM contacts WHERE workspace_id=? AND company_id=?"
                                   " ORDER BY first_name", ws(), d["company_id"]),
             record=dict(deal_id=deal_id, company_id=d["company_id"], contact_id=d["contact_id"]),

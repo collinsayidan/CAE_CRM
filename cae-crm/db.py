@@ -241,6 +241,74 @@ CREATE TABLE IF NOT EXISTS imports (
     content TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS quotes (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    number TEXT NOT NULL,
+    deal_id INTEGER REFERENCES deals(id) ON DELETE SET NULL,
+    company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    contact_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL,
+    title TEXT NOT NULL,
+    terms TEXT,
+    status TEXT NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    net BIGINT NOT NULL,
+    vat BIGINT NOT NULL,
+    issue_date TEXT NOT NULL,
+    expiry_date TEXT NOT NULL,
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    sent_at TEXT,
+    viewed_at TEXT,
+    decided_at TEXT,
+    signer_name TEXT,
+    signer_position TEXT,
+    signer_ip TEXT,
+    signer_agent TEXT,
+    decline_reason TEXT,
+    invoice_id INTEGER REFERENCES invoices(id) ON DELETE SET NULL,
+    UNIQUE (workspace_id, number)
+);
+CREATE TABLE IF NOT EXISTS quote_lines (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    quote_id INTEGER NOT NULL REFERENCES quotes(id) ON DELETE CASCADE,
+    description TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    unit_price BIGINT NOT NULL,
+    discount_pct INTEGER NOT NULL DEFAULT 0,
+    vat_rate INTEGER NOT NULL,
+    net BIGINT NOT NULL,
+    vat BIGINT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS web_forms (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    heading TEXT NOT NULL,
+    intro TEXT,
+    fields TEXT NOT NULL,
+    button_label TEXT NOT NULL,
+    thank_you TEXT NOT NULL,
+    lifecycle_stage TEXT NOT NULL,
+    owner TEXT NOT NULL,
+    ask_consent INTEGER NOT NULL DEFAULT 1,
+    consent_text TEXT,
+    privacy_url TEXT,
+    follow_up_task INTEGER NOT NULL DEFAULT 1,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS form_submissions (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    form_id INTEGER NOT NULL REFERENCES web_forms(id) ON DELETE CASCADE,
+    contact_id INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
+    data TEXT NOT NULL,
+    ip TEXT,
+    created_at TEXT NOT NULL
+);
 """
 
 # Columns added after the first release. Databases created by an earlier version gain them on start-up.
@@ -402,6 +470,9 @@ def migrate(db, today):
         "CREATE INDEX IF NOT EXISTS ix_engagements_deal ON engagements (deal_id)",
         "CREATE INDEX IF NOT EXISTS ix_tickets_ws ON tickets (workspace_id, status)",
         "CREATE UNIQUE INDEX IF NOT EXISTS ux_invoices_number ON invoices (workspace_id, number)",
+        "CREATE INDEX IF NOT EXISTS ix_quotes_ws ON quotes (workspace_id, status)",
+        "CREATE INDEX IF NOT EXISTS ix_quotes_deal ON quotes (deal_id)",
+        "CREATE INDEX IF NOT EXISTS ix_submissions_form ON form_submissions (form_id, created_at)",
     ):
         db.execute(sql)
     if db.postgres:
@@ -445,6 +516,11 @@ def init_db(target, today):
         db.commit()
     finally:
         db.close()
+
+
+def next_quote_number(db, workspace_id):
+    count = db.execute("SELECT COUNT(*) FROM quotes WHERE workspace_id=?", (workspace_id,)).fetchone()[0]
+    return f"Q-{count + 1001:06d}"
 
 
 def next_invoice_number(db, workspace_id, prefix):

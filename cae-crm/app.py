@@ -68,7 +68,7 @@ def create_app(config=None):
 
     for name in ("money", "money_short", "uk_date", "uk_date_short", "uk_datetime"):
         app.add_template_filter(getattr(ukfmt, name), name)
-    app.add_template_filter(lambda n: "".join(p[0] for p in n.split()[:2]).upper(), "initials")
+    app.add_template_filter(lambda n: "".join(w[0] for w in n.split() if w[0].isalnum())[:2].upper(), "initials")
     app.add_template_filter(lambda n: sum(map(ord, n)) * 37 % 360, "hue")
     app.add_template_filter(lambda s: s.lower().replace(" ", "-"), "slug")
     app.add_template_filter(days_until, "days_until")
@@ -226,7 +226,11 @@ def register_routes(app):
             f"SELECT stage, SUM(value) AS total, COUNT(*) AS n FROM deals WHERE {OPEN_SQL} GROUP BY stage")}
         mix = [dict(stage=s, total=mix_rows[s]["total"] if s in mix_rows else 0,
                     n=mix_rows[s]["n"] if s in mix_rows else 0) for s in OPEN_STAGES]
-        peak = max([m["total"] for m in mix] + [1])
+
+        # Weighted value of open deals by the month they're expected to close, for the next six months.
+        closing = dict(db.execute(
+            f"SELECT substr(close_date,1,7), SUM(value * probability / 100) FROM deals WHERE {OPEN_SQL} GROUP BY 1").fetchall())
+        forecast_trend = [closing.get(add_months(this_month, i).strftime("%Y-%m"), 0) for i in range(6)]
 
         fy_label, q, q_start, q_end = fy_quarter(t)
         quota = MONTHLY_TARGET * 3
@@ -245,8 +249,11 @@ def register_routes(app):
             won_n=won_n, closed_n=won_n + lost_n,
             spark_won=charts.sparkline([s["value"] for s in series]),
             spark_created=charts.sparkline([created.get(m.strftime("%Y-%m"), 0) for m in months]),
+            spark_forecast=charts.sparkline(forecast_trend),
+            mix_donut=charts.donut([(m["stage"], m["total"], STAGE_COLOURS[m["stage"]],
+                                     f'{m["stage"]}: {money(m["total"])} across {m["n"]} deals') for m in mix]),
             series_json=json.dumps({"series": series, "target": MONTHLY_TARGET / 100}),
-            closing_soon=closing_soon, soon_cutoff=(t + timedelta(days=7)).isoformat(), mix=mix, peak=peak,
+            closing_soon=closing_soon, soon_cutoff=(t + timedelta(days=7)).isoformat(), mix=mix,
             quota=quota, quota_won=quota_won, quota_pct=quota_pct,
             quota_ring=charts.ring(quota_pct, label=f"{quota_pct:.0f}% of quarterly quota"),
             fy_label=fy_label, fy_q=q, q_end=q_end - timedelta(days=1),

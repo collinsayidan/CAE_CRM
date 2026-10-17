@@ -51,9 +51,14 @@ Across every page:
 
 ## Design
 
-- **Colours:** racing green and brass on a sage-white background. Red is used only for overdue items.
-- **Pipeline stages:** shown in one green colour ramp, from pale (earliest) to deep (latest).
-- **Typeface:** Schibsted Grotesk throughout.
+- **Colours:** navy and teal on white cards and a light grey background. Amber marks things due soon, and red is used only for overdue items.
+- **Stat cards:** each key figure sits on a card with an icon, a change badge and a filled trend line.
+- **Charts:**
+  - **Revenue:** rounded bars. Months that met the £156,700 target are solid teal, months below it are pale, and the current month is hatched. The target line is labelled, and hovering a bar shows the month's figure.
+  - **Pipeline by stage:** a donut on one colour ramp, from light teal (earliest stage) to navy (latest).
+  - **Quota:** a teal ring.
+- **Typeface:** Plus Jakarta Sans throughout.
+- **Contrast:** text meets WCAG AA in both light and dark themes.
 - **Motion:** the month track fills once when the page loads. If your system asks for reduced motion, it doesn't animate.
 - **Without JavaScript:** every page still works. Forms post normally, and the pipeline menus stand in for drag and drop.
 

@@ -1048,10 +1048,10 @@ body.landing { background: var(--surface); }
   .record-mid { order: 2; }
 }
 /* Very wide screens (a 4K monitor, a 1440p ultrawide). Stretching to the edge makes pages hard to read, so content
-   stays in a centred 2000px block, boards keep card-sized columns, and on high-resolution screens everything is drawn
+   stays in a 2000px block beside the sidebar, boards keep card-sized columns, and on high-resolution screens everything is drawn
    a little larger, so a 4K display at 100% scaling isn't all tiny text. */
 @media (min-width: 2200px) {
-  main { max-width: 2000px; margin: 0 auto; padding-left: 48px; padding-right: 48px; }
+  main { max-width: 2000px; padding-left: 48px; padding-right: 48px; }  /* beside the sidebar, like most apps */
   .record { grid-template-columns: 340px minmax(0, 1fr) 380px; gap: 24px; }
   .board { grid-template-columns: repeat(5, minmax(196px, 360px)); }
   .ticket-board { grid-template-columns: repeat(4, minmax(220px, 420px)); }

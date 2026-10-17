@@ -19,14 +19,15 @@
       <button class="btn ghost">Send to Xero</button>
     </form>
   {% endif %}
-  <button class="btn primary" data-print>{{ icon('printer') }} Print or save as PDF</button>
+  <a class="btn ghost" href="{{ url_for('invoice_pdf_view', invoice_id=i.id, download=1) }}">{{ icon('download') }} PDF</a>
+  {% if not i.paid_date %}<button class="btn primary" data-open="dlg-email-invoice">{{ icon('mail') }} {{ 'Email again' if i.sent_at else 'Email invoice' }}</button>{% endif %}
 {% endblock %}
 
 {% block content %}
 <article class="panel invoice">
   <header class="invoice-head">
     <div>
-      <p class="invoice-brand"><span class="logo" style="--h: {{ business.name | hue }}" aria-hidden="true">{{ business.name | initials }}</span>{{ business.legal_name or business.name }}</p>
+      <p class="invoice-brand">{% if logo_url(business) %}<img class="doc-logo" src="{{ logo_url(business) }}" alt="">{% else %}<span class="logo" style="--h: {{ business.name | hue }}" aria-hidden="true">{{ business.name | initials }}</span>{% endif %}{{ business.legal_name or business.name }}</p>
       <p class="muted">
         {% if business.address %}{{ business.address }}<br>{% endif %}
         {% if business.city or business.postcode %}{{ business.city }} {{ business.postcode }}<br>{% endif %}
@@ -67,6 +68,47 @@
   </table>
   </div>
   {% if not business.vat_registered and not i.vat %}<p class="muted small">{{ business.legal_name or business.name }} is not registered for VAT, so no VAT is charged.</p>{% endif %}
-  <p class="muted small">Pay by bank transfer by {{ i.due_date | uk_date }}, quoting {{ i.number }}. Late payments may attract interest under the Late Payment of Commercial Debts (Interest) Act 1998.</p>
+  {% if business.bank_account_number %}
+    <p class="muted small"><b>How to pay:</b> bank transfer to {{ business.bank_account_name or business.legal_name or business.name }}, sort code {{ business.bank_sort_code }}, account {{ business.bank_account_number }}, reference {{ i.number }}.</p>
+  {% endif %}
+  {% if business.payment_link %}<p class="muted small"><b>Pay online:</b> <a class="text-link" href="{{ business.payment_link }}" target="_blank" rel="noopener">{{ business.payment_link }}</a></p>{% endif %}
+  <p class="muted small">Payment is due by {{ i.due_date | uk_date }}. Late payments may attract interest under the Late Payment of Commercial Debts (Interest) Act 1998.</p>
 </article>
+
+<section class="panel invoice-sending">
+  <header class="panel-head"><h2>Sending</h2></header>
+  {% if i.sent_at %}
+    <p>Emailed to <b>{{ i.sent_to }}</b> on {{ i.sent_at | uk_datetime }}, with the PDF attached.</p>
+  {% else %}
+    <p class="muted">Not emailed yet. {% if not mail_ready %}Email isn't switched on, so download the PDF and send it yourself.{% endif %}</p>
+  {% endif %}
+  {% if reminders %}
+    <ul class="plain-list">{% for r in reminders %}<li>{{ 'Reminder' if r.stage == 0 else 'Automatic reminder, ' ~ r.stage ~ ' days late' }}: {{ r.sent_at | uk_datetime }} to {{ r.sent_to }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if i.sent_at and not i.paid_date and mail_ready %}
+    <form method="post" action="{{ url_for('remind_invoice', invoice_id=i.id) }}" class="panel-gap" data-confirm="Send a payment reminder to {{ i.sent_to }} now?">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <button class="btn ghost sm">{{ icon('mail') }} Send a reminder now</button>
+    </form>
+  {% endif %}
+  {% if not business.reminders_on and current_user.role == 'admin' %}<p class="muted small panel-gap">Automatic reminders are off. <a class="text-link" href="{{ url_for('settings') }}">Switch them on in Settings</a>.</p>{% endif %}
+</section>
+
+<dialog class="sheet" id="dlg-email-invoice" aria-labelledby="dlg-email-invoice-title">
+  <form method="post" action="{{ url_for('email_invoice', invoice_id=i.id) }}">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <header><h2 id="dlg-email-invoice-title">Email invoice {{ i.number }}</h2><button type="button" class="icon-btn" data-close aria-label="Close">{{ icon('x') }}</button></header>
+    {% if not mail_ready %}<p class="form-alert" role="alert">Email isn't switched on yet, so this won't send. Download the PDF instead.</p>{% endif %}
+    <div class="form-grid">
+      <label class="field span-2"><span class="field-label">Send to</span>
+        <select name="contact_id"><option value="">Someone else (type below)</option>
+          {% for c in contacts %}<option value="{{ c.id }}" {{ 'selected' if loop.first }}>{{ c.first_name }} {{ c.last_name }} ({{ c.email }})</option>{% endfor %}
+        </select></label>
+      <label class="field span-2"><span class="field-label">Or this email address <span class="optional">(optional)</span></span>
+        <input type="email" name="email" placeholder="accounts@customer.co.uk"></label>
+    </div>
+    <p class="muted small">The PDF is attached. Replies go to {{ business.reply_to or current_user.email }}.</p>
+    <footer><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Send invoice</button></footer>
+  </form>
+</dialog>
 {% endblock %}

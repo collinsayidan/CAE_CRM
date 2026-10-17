@@ -114,8 +114,13 @@ def register(app):
             net, vat = by_rate.get(li["vat_rate"], (0, 0))
             by_rate[li["vat_rate"]] = (net + li["net"], vat + li["vat"])
         from integrations import connection
+        import mail
+        contacts = rows("SELECT id, first_name, last_name, email FROM contacts WHERE workspace_id=? AND company_id=? "
+                        "AND email IS NOT NULL AND email <> '' ORDER BY first_name", ws(), i["company_id"])
+        reminders = rows("SELECT * FROM invoice_reminders WHERE workspace_id=? AND invoice_id=? ORDER BY id", ws(), invoice_id)
         return render_template("invoice.html", i=i, company=company, lines=lines, by_rate=sorted(by_rate.items(), reverse=True),
-                               business=workspace(), xero=connection("xero"))
+                               business=workspace(), xero=connection("xero"), contacts=contacts, reminders=reminders,
+                               mail_ready=mail.configured())
 
     @app.post("/invoices/<int:invoice_id>/paid")
     def mark_paid(invoice_id):

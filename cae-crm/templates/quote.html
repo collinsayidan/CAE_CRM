@@ -20,7 +20,7 @@
   {% elif invoice %}
     <a class="btn ghost" href="{{ url_for('invoice', invoice_id=invoice.id) }}">{{ icon('pound') }} Invoice {{ invoice.number }}</a>
   {% endif %}
-  <button class="btn ghost" data-print>{{ icon('printer') }} Print or PDF</button>
+  <a class="btn ghost" href="{{ url_for('quote_pdf_view', quote_id=q.id, download=1) }}">{{ icon('download') }} PDF</a>
 {% endblock %}
 
 {% block content %}

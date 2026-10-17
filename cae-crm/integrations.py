@@ -309,4 +309,6 @@ def register(app):
             if time.monotonic() - started > 45:  # leave the rest for the next run
                 break
             results.append({"connection": conn["id"], "result": run_sync(conn)})
-        return jsonify(synced=len(results), results=results)
+        import documents
+        reminders = documents.send_due_reminders()
+        return jsonify(synced=len(results), results=results, reminders=reminders)

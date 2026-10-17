@@ -74,7 +74,9 @@ def render_email(c, business, first_name, unsubscribe_url):
     body = personalise(c["body"], first_name)
     sender_line = ", ".join(p for p in [business["legal_name"] or business["name"], business["address"], business["city"],
                                         business["postcode"]] if p)
+    from documents import logo_url
     html = render_template("emails/campaign.html", c=c, subject=personalise(c["subject"], first_name), business=business,
+                           logo=logo_url(business, external=True),
                            body=body_html(body),
                            preheader=personalise(c["preheader"] or "", first_name), sender_line=sender_line,
                            unsubscribe_url=unsubscribe_url)

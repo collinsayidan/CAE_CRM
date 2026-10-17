@@ -13,7 +13,7 @@
 <body class="public-page {{ 'is-embed' if embed }}">
   {% if not embed %}
   <header class="public-head">
-    <span class="public-brand"><span class="logo" style="--h: {{ business.name | hue }}" aria-hidden="true">{{ business.name | initials }}</span>{{ business.name }}</span>
+    <span class="public-brand">{% if logo_url(business) %}<img class="doc-logo" src="{{ logo_url(business) }}" alt="{{ business.name }}">{% else %}<span class="logo" style="--h: {{ business.name | hue }}" aria-hidden="true">{{ business.name | initials }}</span>{{ business.name }}{% endif %}</span>
     {% block head_actions %}{% endblock %}
   </header>
   {% endif %}

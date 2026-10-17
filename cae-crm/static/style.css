@@ -1061,6 +1061,18 @@ body.landing { background: var(--surface); }
 @media (min-width: 2600px) { html { zoom: 1.15; } }
 @media (min-width: 3400px) { html { zoom: 1.35; } }
 
+/* Documents: logo, sending ------------------------------------------------------ */
+.doc-logo { height: 40px; width: auto; max-width: 220px; object-fit: contain; display: block; }
+.invoice-brand .doc-logo { margin-right: 4px; }
+.public-brand .doc-logo { height: 34px; }
+.invoice-sending { max-width: 840px; margin-top: 16px; }
+.invoice-sending p { font-size: 14.5px; }
+.logo-field { margin-top: 16px; display: grid; gap: 6px; }
+.logo-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.logo-preview { height: 48px; width: auto; max-width: 240px; object-fit: contain; padding: 6px; border: 1px solid var(--line); border-radius: var(--r-md); background: #fff; }
+.logo-empty { color: var(--muted); font-size: 13.5px; }
+.logo-row label.btn { cursor: pointer; }
+
 /* Two-factor sign-in --------------------------------------------------------- */
 .code-input { font-size: 22px; letter-spacing: .25em; font-variant-numeric: tabular-nums; max-width: 220px; }
 .setup-steps { margin: 0 0 16px; padding-left: 22px; }

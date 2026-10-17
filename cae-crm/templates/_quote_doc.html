@@ -3,7 +3,7 @@
 <article class="panel invoice quote-doc">
   <header class="invoice-head">
     <div>
-      <p class="invoice-brand"><span class="logo" style="--h: {{ business.name | hue }}" aria-hidden="true">{{ business.name | initials }}</span>{{ business.legal_name or business.name }}</p>
+      <p class="invoice-brand">{% if logo_url(business) %}<img class="doc-logo" src="{{ logo_url(business) }}" alt="">{% else %}<span class="logo" style="--h: {{ business.name | hue }}" aria-hidden="true">{{ business.name | initials }}</span>{% endif %}{{ business.legal_name or business.name }}</p>
       <p class="muted">
         {% if business.address %}{{ business.address }}<br>{% endif %}
         {% if business.city or business.postcode %}{{ business.city }} {{ business.postcode }}<br>{% endif %}

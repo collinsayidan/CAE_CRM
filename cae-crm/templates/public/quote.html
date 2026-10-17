@@ -1,7 +1,7 @@
 {% extends "public/_layout.html" %}
 {% from "_quote_doc.html" import quote_doc with context %}
 {% block title %}Quote {{ q.number }}{% endblock %}
-{% block head_actions %}<button type="button" class="btn ghost sm" data-print>Print or save as PDF</button>{% endblock %}
+{% block head_actions %}<a class="btn ghost sm" href="{{ url_for('public_quote_pdf', token=q.token) }}">Download PDF</a>{% endblock %}
 {% block main_class %}is-wide{% endblock %}
 
 {% block content %}

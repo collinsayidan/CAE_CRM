@@ -171,7 +171,8 @@ def register(app):
         w = workspace()
         link = url_for("public_quote", token=q["token"], _external=True)
         gross = money(q["net"] + q["vat"], pennies=True)
-        html = render_template("emails/notice.html", business=w, heading=f"Quote {q['number']}", paragraphs=[
+        from documents import logo_url
+        html = render_template("emails/notice.html", business=w, heading=f"Quote {q['number']}", logo=logo_url(w, external=True), paragraphs=[
             f"Hi {contact['first_name']},",
             f"Here's our quote for {q['title']}: {gross} including VAT, valid until {uk_date(q['expiry_date'])}.",
             "You can read it, then accept or decline it online. It only takes a minute."],

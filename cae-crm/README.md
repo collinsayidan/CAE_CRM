@@ -33,6 +33,7 @@ Open http://127.0.0.1:5000 and choose **Create a workspace**. Leave the sample d
    - `RESEND_API_KEY`, `CAE_MAIL_FROM` and optionally `RESEND_WEBHOOK_SECRET`: to send email. See **Email** below.
    - The `STRIPE_…` settings and `CAE_BILLING_EXEMPT`: to charge for CAE CRM. See **Billing** below.
    - The integration settings and `CRON_SECRET`: for Gmail, Outlook, Xero and HMRC. See **Integrations** below.
+   - Optionally `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` and `CAE_STORAGE_BUCKET`: to keep attached files in a private Supabase Storage bucket rather than the database. See **Files and custom fields** below.
 4. **Redeploy.** Then open the site and create your workspace.
 5. **Previews.** Vercel builds a preview of every pull request. Previews never use `DATABASE_URL`, so new code can't touch live data before it's reviewed. Create a second (free) Supabase project for previews and add its Transaction pooler string as `PREVIEW_DATABASE_URL` for the **Preview** environment only, along with `CAE_SECRET_KEY`. Until then, previews show the "Finish setting up" page.
 
@@ -105,11 +106,16 @@ The sidebar groups pages the way a business works: **CRM** (Contacts, Companies,
 Contacts, companies, deals and tickets each open as a three-column record page:
 - **Left:** the record's key details, with quick actions for Note, Email, Call, Task and Meeting.
 - **Middle:** a box for logging notes, emails, calls (with an outcome) and meetings, or setting a task. Below it is one timeline of everything that happened, grouped by month, which you can filter by type. Changes such as a stage move or a new owner are logged on the timeline automatically.
-- **Right:** the linked records.
+- **Right:** the linked records, and the record's files.
 
 Deal pages add a **stage path** and **line items**. Add products from your list or a custom line with quantity, discount and VAT rate. The deal's amount is the total of its lines, and **Invoice this deal** raises an invoice from them with VAT summarised by rate.
 
 Ticket pages add the status path and the two service-level clocks.
+
+### Files and custom fields
+
+- **Files:** attach contracts, purchase orders and photos to any contact, company, deal or ticket (up to 4 MB each: PDFs, images, Office and OpenDocument files, text, CSV, zip and saved emails). Files always download rather than open in the page. Whoever attached a file, or an admin, can remove it. Erasing a contact or deleting a record removes its files too. With `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` set, files go to a private Supabase Storage bucket and download through links that expire after a minute; without them, they're kept in the database.
+- **Custom fields:** admins add up to 30 fields in **Settings → Custom fields**: text, number, date, dropdown or yes/no, on contacts, companies, deals or tickets. They show in the About panel, are filled in from the Edit window, and are included in CSV exports. Removing a field hides it but keeps what was entered.
 
 ### Lists, views and data
 

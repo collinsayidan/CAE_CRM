@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon, avatar, logo, field, select, stage_chip with context %}
-{% from "_record.html" import composer, timeline, upcoming_tasks, assoc, prop with context %}
+{% from "_record.html" import composer, timeline, upcoming_tasks, assoc, prop, custom_props, custom_inputs, files_panel with context %}
 {% block title %}{{ d.title }}{% endblock %}
 
 {% block page %}
@@ -31,6 +31,7 @@
         {{ prop('Owner', d.owner) }}
         {{ prop('Lead source', d.source) }}
         {{ prop('Created', d.created_at | uk_date) }}
+        {{ custom_props('deals', d) }}
       </dl>
       {% if current_user.role == 'admin' %}
         <form method="post" action="{{ url_for('delete_deal', deal_id=d.id) }}" class="danger-zone" data-confirm="Delete the deal {{ d.title }}?">
@@ -160,6 +161,7 @@
           <small>{{ pennies(i.net + i.vat) }}, {{ 'paid' if i.paid_date else 'due ' ~ (i.due_date | uk_date) }}</small></span></a>
       {% else %}<p class="muted small">Not invoiced yet.</p>{% endfor %}
     {% endcall %}
+    {{ files_panel('deal', d.id) }}
   </aside>
 </div>
 
@@ -182,6 +184,7 @@
       {{ select('Owner', 'owner', owners, d.owner) }}
       {{ select('Lead source', 'source', sources, d.source) }}
     </div>
+    {{ custom_inputs('deals', d) }}
     <footer><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Save changes</button></footer>
   </form>
 </dialog>

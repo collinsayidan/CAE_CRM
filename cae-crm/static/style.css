@@ -1424,3 +1424,22 @@ a.me > div { min-width: 0; }
   body { background: #fff; color: #000; }
   .panel { border: 0; padding: 0; }
 }
+
+/* Files and custom fields */
+.files-panel .file-row { display: flex; align-items: center; gap: 6px; margin: 0 -8px; }
+.file-link { display: flex; gap: 10px; align-items: center; padding: 8px; border-radius: var(--r-md); text-decoration: none; min-width: 0; flex: 1; }
+.file-link:hover { background: var(--surface-2); }
+.file-link .icon { flex: none; width: 18px; height: 18px; color: var(--muted); }
+.file-link > span { min-width: 0; }
+.file-link b { display: block; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-link small { display: block; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-upload { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 10px; }
+.file-upload small { font-size: 12px; }
+.file-upload label { cursor: pointer; }
+.custom-inputs { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.field-list { list-style: none; margin: 0; padding: 0; }
+.field-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 24px; border-top: 1px solid var(--line); }
+.field-list li span b { display: block; font-size: 14px; }
+.field-list li span small { color: var(--muted); font-size: 12.5px; }
+.custom-field-form .btn { margin-top: 12px; }
+.panel.flush > .panel-title.pad { padding-top: 18px; padding-bottom: 6px; margin: 0; }

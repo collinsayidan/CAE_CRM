@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon, avatar, logo, field, select, stage_chip with context %}
-{% from "_record.html" import composer, timeline, upcoming_tasks, assoc, prop with context %}
+{% from "_record.html" import composer, timeline, upcoming_tasks, assoc, prop, custom_props, custom_inputs, files_panel with context %}
 {% set name = c.first_name ~ ' ' ~ c.last_name %}
 {% block title %}{{ name }}{% endblock %}
 
@@ -33,6 +33,7 @@
         {{ prop('Lifecycle stage', c.lifecycle_stage) }}
         {{ prop('Lead status', c.lead_status) }}
         {{ prop('Added', c.created_at | uk_date) }}
+        {{ custom_props('contacts', c) }}
       </dl>
     </section>
 
@@ -79,6 +80,7 @@
           <small>#{{ t.id }}, {{ t.status }}, {{ t.priority }} priority</small></span></a>
       {% else %}<p class="muted small">No tickets.</p>{% endfor %}
     {% endcall %}
+    {{ files_panel('contact', c.id) }}
   </aside>
 </div>
 
@@ -101,6 +103,7 @@
       {{ select('Lawful basis for holding their data', 'lawful_basis', lawful_bases, c.lawful_basis) }}
     </div>
     <label class="check"><input type="checkbox" name="marketing_consent" {{ 'checked' if c.marketing_consent }}><span>They've agreed to receive marketing emails</span></label>
+    {{ custom_inputs('contacts', c) }}
     <footer><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Save changes</button></footer>
   </form>
 </dialog>

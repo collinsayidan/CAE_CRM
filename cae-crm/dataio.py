@@ -185,7 +185,10 @@ def register(app):
         data, _, _, _ = list_records(obj, request.args, paginate=False)
         out = io.StringIO()
         writer = csv.writer(out)
-        writer.writerow([label for label, _ in EXPORT_COLUMNS[obj]])
+        from fields import definitions, display
+        extra = definitions(obj) if obj in ("contacts", "companies", "deals", "tickets") else []
+        custom = {r["id"]: r["custom"] for r in rows(f"SELECT id, custom FROM {obj} WHERE workspace_id=?", ws())} if extra else {}
+        writer.writerow([label for label, _ in EXPORT_COLUMNS[obj]] + [f["label"] for f in extra])
         for r in data:
             line = []
             for _, key in EXPORT_COLUMNS[obj]:
@@ -195,6 +198,10 @@ def register(app):
                 elif key == "marketing_consent":
                     value = "Yes" if value else "No"
                 line.append(csv_safe(value))
+            if extra:
+                import json
+                saved = json.loads(custom.get(r["id"]) or "{}")
+                line += [csv_safe(display(f, saved.get(str(f["id"]))) or "") for f in extra]
             writer.writerow(line)
         filename = f"cae-{obj}-{today().isoformat()}.csv"
         return Response("﻿" + out.getvalue(), mimetype="text/csv",  # BOM so Excel reads £ and accents

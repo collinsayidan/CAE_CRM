@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon, avatar, logo, field, select with context %}
-{% from "_record.html" import composer, timeline, upcoming_tasks, assoc, prop with context %}
+{% from "_record.html" import composer, timeline, upcoming_tasks, assoc, prop, custom_props, custom_inputs, files_panel with context %}
 {% block title %}Ticket #{{ t.id }}{% endblock %}
 
 {% block page %}
@@ -28,6 +28,7 @@
         {{ prop('Source', t.source) }}
         {{ prop('Owner', t.owner, 'Unassigned') }}
         {{ prop('Closed', t.closed_at | uk_datetime if t.closed_at else None, 'Still open') }}
+        {{ custom_props('tickets', t) }}
       </dl>
       {% if t.description %}<p class="ticket-desc">{{ t.description }}</p>{% endif %}
     </section>
@@ -78,6 +79,7 @@
           <span><b>{{ company.name }}</b><small>{{ company.city or company.industry or '' }}</small></span></a>
       {% else %}<p class="muted small">No company linked.</p>{% endif %}
     {% endcall %}
+    {{ files_panel('ticket', t.id) }}
   </aside>
 </div>
 
@@ -100,6 +102,7 @@
     </div>
     <label class="field"><span class="field-label">Description</span><textarea name="description" rows="4">{{ t.description or '' }}</textarea></label>
     <p class="form-hint">Changing the priority recalculates the service levels from when the ticket was opened.</p>
+    {{ custom_inputs('tickets', t) }}
     <footer><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Save changes</button></footer>
   </form>
 </dialog>

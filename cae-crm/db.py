@@ -104,7 +104,8 @@ CREATE TABLE IF NOT EXISTS companies (
     website TEXT,
     phone TEXT,
     owner TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    custom TEXT
 );
 CREATE TABLE IF NOT EXISTS contacts (
     id {pk},
@@ -123,7 +124,8 @@ CREATE TABLE IF NOT EXISTS contacts (
     owner TEXT,
     created_at TEXT NOT NULL,
     unsubscribed_at TEXT,
-    email_bounced_at TEXT
+    email_bounced_at TEXT,
+    custom TEXT
 );
 CREATE TABLE IF NOT EXISTS deals (
     id {pk},
@@ -138,7 +140,8 @@ CREATE TABLE IF NOT EXISTS deals (
     source TEXT NOT NULL,
     close_date TEXT NOT NULL,
     closed_at TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    custom TEXT
 );
 CREATE TABLE IF NOT EXISTS activities (
     id {pk},
@@ -233,7 +236,8 @@ CREATE TABLE IF NOT EXISTS tickets (
     first_response_due TEXT NOT NULL,
     resolution_due TEXT NOT NULL,
     first_responded_at TEXT,
-    closed_at TEXT
+    closed_at TEXT,
+    custom TEXT
 );
 CREATE TABLE IF NOT EXISTS engagements (
     id {pk},
@@ -437,6 +441,29 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at TEXT NOT NULL,
     read_at TEXT
 );
+CREATE TABLE IF NOT EXISTS attachments (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    record_type TEXT NOT NULL,
+    record_id INTEGER NOT NULL,
+    filename TEXT NOT NULL,
+    content_type TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    storage_key TEXT,
+    content TEXT,
+    uploaded_by TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS custom_fields (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    object TEXT NOT NULL,
+    label TEXT NOT NULL,
+    field_type TEXT NOT NULL,
+    options TEXT,
+    position INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
 """
 
 # Columns added after the first release. Databases created by an earlier version gain them on start-up.
@@ -444,15 +471,16 @@ ADDED_COLUMNS = {
     "users": ["workspace_id INTEGER", "job_title TEXT", "department TEXT", "phone TEXT", "location TEXT",
               "linkedin TEXT", "bio TEXT", "photo TEXT", "photo_updated TEXT", "totp_secret TEXT", "totp_enabled_at TEXT",
               "totp_last_step INTEGER", "recovery_codes TEXT"],
-    "companies": ["workspace_id INTEGER", "website TEXT", "phone TEXT", "owner TEXT"],
+    "companies": ["workspace_id INTEGER", "website TEXT", "phone TEXT", "owner TEXT", "custom TEXT"],
     "contacts": ["workspace_id INTEGER", "lifecycle_stage TEXT", "lead_status TEXT", "owner TEXT", "unsubscribed_at TEXT",
-                 "email_bounced_at TEXT"],
+                 "email_bounced_at TEXT", "custom TEXT"],
     "workspaces": ["reply_to TEXT", "plan_status TEXT", "trial_ends TEXT", "stripe_customer_id TEXT",
                    "stripe_subscription_id TEXT", "seats INTEGER", "period_end TEXT",
                    "cancel_at_period_end INTEGER NOT NULL DEFAULT 0", "logo TEXT", "logo_updated TEXT",
                    "bank_account_name TEXT", "bank_sort_code TEXT", "bank_account_number TEXT", "payment_link TEXT",
                    "reminders_on INTEGER NOT NULL DEFAULT 0", "onboarding_done INTEGER NOT NULL DEFAULT 0"],
-    "deals": ["workspace_id INTEGER", "contact_id INTEGER"],
+    "deals": ["workspace_id INTEGER", "contact_id INTEGER", "custom TEXT"],
+    "tickets": ["custom TEXT"],
     "activities": ["workspace_id INTEGER", "contact_id INTEGER", "ticket_id INTEGER"],
     "invoices": ["workspace_id INTEGER", "deal_id INTEGER", "xero_invoice_id TEXT", "sent_at TEXT", "sent_to TEXT"],
     "projects": ["workspace_id INTEGER"],
@@ -613,6 +641,7 @@ def migrate(db, today):
         "CREATE INDEX IF NOT EXISTS ix_connections_ws ON connections (workspace_id, provider)",
         "CREATE INDEX IF NOT EXISTS ix_audit_ws ON audit_events (workspace_id, id)",
         "CREATE INDEX IF NOT EXISTS ix_notifications_user ON notifications (user_id, id)",
+        "CREATE INDEX IF NOT EXISTS ix_attachments_record ON attachments (workspace_id, record_type, record_id)",
     ):
         db.execute(sql)
     if db.postgres:

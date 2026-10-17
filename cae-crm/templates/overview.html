@@ -1,116 +1,159 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, avatar, kpi %}
-{% block title %}Sales overview{% endblock %}
-{% block heading %}Sales<br>Overview{% endblock %}
-{% block actions %}
-  <div class="kpis">
-    {{ kpi('trophy', won_this | money, 'Won this month',
-           ('%+d%% vs last month' % change) if change is not none else None,
-           'up' if change is not none and change >= 0 else 'down') }}
-    {{ kpi('bars', pipeline_value | money, 'Open pipeline') }}
-    {{ kpi('pie', win_rate ~ '%', 'Win rate, closed deals') }}
-  </div>
-{% endblock %}
+{% from "_macros.html" import icon, avatar, logo, stage_chip with context %}
+{% block title %}Overview{% endblock %}
+{% block heading %}{{ greeting }}{% endblock %}
+{% block subtitle %}<p class="subtitle">{{ today.strftime('%A %-d %B %Y') }}</p>{% endblock %}
 
 {% block content %}
-<section class="card">
-  <div class="card-head">
-    <h2>Revenue</h2>
-    <div class="card-tools">
-      <div class="seg" role="group" aria-label="Range">
-        <a href="{{ url_for('overview', span='6m') }}" class="{{ 'on' if span == 6 }}">6M</a>
-        <a href="{{ url_for('overview') }}" class="{{ 'on' if span == 12 }}">12M</a>
+{% set ahead = track.gap >= 0 %}
+<section class="track" aria-label="{{ track.month }} revenue against target"
+         style="--won: {{ '%.2f' | format(track.won_pct) }}%; --expected: {{ '%.2f' | format(track.expected_pct) }}%">
+  <div class="track-head">
+    <div>
+      <p class="track-label">Won in {{ track.month }}</p>
+      <p class="track-figure">
+        <span data-countup="{{ track.won // 100 }}">{{ track.won | money }}</span>
+        <span class="track-of">of {{ track.target | money }}</span>
+      </p>
+    </div>
+    <div class="track-verdict {{ 'ahead' if ahead else 'behind' }}">
+      <p class="verdict-main">{{ (track.gap | abs) | money }} {{ 'ahead of' if ahead else 'behind' }} pace</p>
+      {% if track.left %}
+        <p>Win {{ track.per_day | money }} each working day to hit target. {{ track.left }} working days left.</p>
+      {% else %}
+        <p>Last working day of the month.</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="rail" role="img" aria-label="{{ (track.won_pct) | round | int }}% of target won, {{ track.elapsed }} of {{ track.days | length }} working days gone">
+    <div class="rail-fill"></div>
+    <div class="rail-pace" title="Where you'd be at an even pace"><span>Pace</span></div>
+    <div class="rail-ticks">
+      {% for d in track.days %}<i class="{{ 'gone' if d < today }}{{ ' now' if d == today }}" title="{{ d.strftime('%a %-d %b') }}"></i>{% endfor %}
+    </div>
+  </div>
+  <div class="rail-scale">
+    <span>{{ track.days[0].strftime('%a %-d %b') }}</span>
+    <span>{{ track.elapsed }} of {{ track.days | length }} working days gone</span>
+    <span>{{ track.days[-1].strftime('%a %-d %b') }}</span>
+  </div>
+</section>
+
+<section class="stats" aria-label="Key figures">
+  <div class="stat">
+    <p class="stat-label">Won this month</p>
+    <p class="stat-value">{{ won_this | money }}</p>
+    <p class="stat-note">
+      {% if change is not none %}<span class="delta {{ 'up' if change >= 0 else 'down' }}">{{ '%+d' | format(change) }}%</span> on last month to date{% else %}Nothing was won by this point last month{% endif %}
+    </p>
+    {{ spark_won }}
+  </div>
+  <div class="stat">
+    <p class="stat-label">Open pipeline</p>
+    <p class="stat-value">{{ pipeline_value | money }}</p>
+    <p class="stat-note">{{ open_count }} open deals</p>
+    {{ spark_created }}
+  </div>
+  <div class="stat">
+    <p class="stat-label">Weighted forecast</p>
+    <p class="stat-value">{{ forecast | money }}</p>
+    <p class="stat-note">Each deal's value multiplied by its stage probability</p>
+  </div>
+  <div class="stat">
+    <p class="stat-label">Win rate</p>
+    <p class="stat-value">{{ win_rate }}%</p>
+    <p class="stat-note">{{ won_n }} won of {{ closed_n }} closed in the last 12 months</p>
+  </div>
+</section>
+
+<div class="layout-main">
+  <section class="panel chart-panel">
+    <header class="panel-head">
+      <div>
+        <h2>Revenue won</h2>
+        <p class="panel-note" data-chart-summary></p>
       </div>
-      <a class="round" href="{{ url_for('finance') }}" title="Open finance">{{ icon('arrow') }}</a>
+      <div class="segmented" role="group" aria-label="Range">
+        <button type="button" data-range="6">6 months</button>
+        <button type="button" data-range="12" aria-pressed="true">12 months</button>
+      </div>
+    </header>
+    <div class="chart" id="revenue-chart" aria-label="Revenue won each month against the monthly target"></div>
+    <div class="chart-legend">
+      <span><i class="key-line"></i>Won revenue</span>
+      <span><i class="key-target"></i>Monthly target, {{ (track.target) | money_short }}</span>
     </div>
-  </div>
-  <div class="headline">
-    <strong>{{ revenue_total | money }}</strong>
-    <span>won in {{ span }} months · <b>{{ at_target }}</b> of {{ span - 1 }} complete months at target</span>
-  </div>
-  <div class="legend">
-    <span><i class="dot accent"></i>Won revenue</span>
-    <span><i class="dash"></i>Monthly target · {{ target | money_short }}</span>
-  </div>
-  {{ chart }}
-</section>
-
-<section class="card">
-  <div class="card-head">
-    <h2>Hot deals</h2>
-    <div class="card-tools">
-      <span class="muted">by weighted value</span>
-      <a class="round" href="{{ url_for('pipeline') }}" title="Open pipeline">{{ icon('arrow') }}</a>
-    </div>
-  </div>
-  <div class="deal-grid">
-    {% for d in hot %}
-      <article class="deal-card {{ d.stage | lower }}">
-        <div class="deal-top">
-          <span>Closes {{ d.close_date | uk_date_short }}</span>
-          <form method="post" action="{{ url_for('move_deal', deal_id=d.id) }}">
-            <input type="hidden" name="csrf" value="{{ csrf_token }}">
-            <input type="hidden" name="next" value="{{ url_for('overview') }}">
-            <button class="chip-btn" name="stage" value="Won" title="Mark as won">{{ icon('check') }}</button>
-          </form>
-        </div>
-        <h3>{{ d.title }}</h3>
-        <a class="deal-co" href="{{ url_for('company', company_id=d.company_id) }}">{{ d.company }}</a>
-        <div class="deal-foot">
-          <div>
-            <div class="deal-value">{{ d.value | money }}</div>
-            <div class="deal-stage">{{ d.stage }} · {{ d.probability }}%</div>
-          </div>
-          {{ avatar(d.owner) }}
-        </div>
-      </article>
-    {% else %}
-      <p class="empty">No open deals yet.</p>
-    {% endfor %}
-  </div>
-</section>
-
-<div class="split">
-  <section class="card quota">
-    <div class="card-head"><h2>Quarter quota</h2><span class="muted">{{ fy_label }} Q{{ fy_q }}</span></div>
-    {{ gauge }}
-    <div class="quota-num">{{ quota_pct | round | int }}%</div>
-    <p class="muted center">{{ quota_won | money }} of {{ quota | money }} · quarter ends {{ q_end | uk_date }}</p>
+    <script type="application/json" id="revenue-data">{{ series_json | safe }}</script>
   </section>
 
-  <section class="card">
-    <div class="card-head">
-      <h2>Stage mix</h2>
-      <a class="round" href="{{ url_for('pipeline') }}" title="Open pipeline">{{ icon('arrow') }}</a>
-    </div>
-    <div class="headline"><strong>{{ pipeline_value | money }}</strong><span>open across {{ open_count }} deals</span></div>
-    <div class="stack" role="img" aria-label="Pipeline value by stage">
-      {% for stage, total, n in mix if total %}
-        <span style="flex: {{ total }}; background: {{ stage_colours[stage] }}" title="{{ stage }}: {{ total | money }}"></span>
-      {% endfor %}
-    </div>
-    <ul class="stack-legend">
-      {% for stage, total, n in mix %}
-        <li><i style="background: {{ stage_colours[stage] }}"></i>{{ stage }}<span>{{ n }} · {{ total | money }}</span></li>
-      {% endfor %}
-    </ul>
-  </section>
-
-  <section class="card">
-    <div class="card-head">
+  <section class="panel agenda-panel">
+    <header class="panel-head">
       <h2>Up next</h2>
-      <a class="round" href="{{ url_for('schedule') }}" title="Open schedule">{{ icon('arrow') }}</a>
-    </div>
-    <ul class="agenda">
-      {% for a in upcoming %}
-        <li>
-          <span class="when">{{ a.due_at | uk_date_short }}<b>{{ a.due_at[11:16] }}</b></span>
-          <span><b>{{ a.kind }}</b> · {{ a.subject }}<br><span class="muted">{{ a.company or '—' }}</span></span>
+      <a class="text-link" href="{{ url_for('schedule') }}">Schedule</a>
+    </header>
+    <ol class="timeline">
+      {% for a in agenda %}
+        <li class="{{ 'done' if a.done }}">
+          <time>{{ a.due_at[11:16] }}<small>{{ 'Today' if a.due_at[:10] == today.isoformat() else a.due_at | uk_date_short }}</small></time>
+          <div>
+            <p class="tl-title">{{ a.subject }}</p>
+            <p class="tl-meta">{{ a.kind }}{% if a.company %}, {{ a.company }}{% endif %}</p>
+          </div>
         </li>
       {% else %}
-        <li class="empty">Nothing scheduled.</li>
+        <li class="empty-line">Nothing booked. <button class="text-link" data-open="dlg-activity">Schedule a call</button></li>
+      {% endfor %}
+    </ol>
+  </section>
+</div>
+
+<div class="layout-main">
+  <section class="panel">
+    <header class="panel-head">
+      <div>
+        <h2>Closing in the next 30 days</h2>
+        <p class="panel-note">Earliest close date first</p>
+      </div>
+      <a class="text-link" href="{{ url_for('pipeline') }}">Pipeline</a>
+    </header>
+    <ul class="deal-list">
+      {% for d in closing_soon %}
+        <li>
+          {{ logo(d.company) }}
+          <div class="deal-main">
+            <a class="deal-title" href="{{ url_for('company', company_id=d.company_id) }}">{{ d.title }}</a>
+            <span class="deal-company">{{ d.company }}</span>
+          </div>
+          {{ stage_chip(d.stage) }}
+          <span class="deal-when {{ 'soon' if d.close_date <= soon_cutoff }}">Closes {{ d.close_date | days_until }}</span>
+          <span class="deal-value">{{ d.value | money }}</span>
+          {{ avatar(d.owner, 'sm') }}
+        </li>
+      {% else %}
+        <li class="empty-line">No deals are due to close in the next 30 days.</li>
       {% endfor %}
     </ul>
+  </section>
+
+  <section class="panel">
+    <header class="panel-head"><h2>Pipeline by stage</h2></header>
+    <ul class="stage-bars">
+      {% for m in mix %}
+        <li>
+          <span class="sb-name">{{ m.stage }}</span>
+          <span class="sb-bar"><i style="width: {{ '%.1f' | format(m.total / peak * 100) }}%; background: {{ stage_colours[m.stage] }}"></i></span>
+          <span class="sb-value">{{ m.total | money_short }}</span>
+          <span class="sb-n">{{ m.n }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+    <div class="quota">
+      <div class="quota-ring">{{ quota_ring }}<span>{{ quota_pct | round | int }}%</span></div>
+      <div>
+        <p class="quota-title">Quarterly quota, {{ fy_label }} Q{{ fy_q }}</p>
+        <p class="panel-note">{{ quota_won | money }} of {{ quota | money }}. Quarter ends {{ q_end | uk_date }}.</p>
+      </div>
+    </div>
   </section>
 </div>
 {% endblock %}

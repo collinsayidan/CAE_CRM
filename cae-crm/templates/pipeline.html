@@ -2,71 +2,58 @@
 {% from "_macros.html" import icon, avatar %}
 {% block title %}Pipeline{% endblock %}
 {% block heading %}Pipeline{% endblock %}
+{% block subtitle %}<p class="subtitle">Drag a deal to another stage, or drop it on Won or Lost.</p>{% endblock %}
 {% block actions %}
-  <form class="filter" method="get">
-    <select name="owner" onchange="this.form.submit()" aria-label="Filter by owner">
-      <option value="">All owners</option>
-      {% for o in owners %}<option {{ 'selected' if o == owner }}>{{ o }}</option>{% endfor %}
-    </select>
-  </form>
+  <nav class="filter-chips" aria-label="Filter by owner">
+    <a href="{{ url_for('pipeline') }}" {% if not owner %}aria-current="true"{% endif %}>Everyone</a>
+    {% for o in owners %}
+      <a href="{{ url_for('pipeline', owner=o) }}" {% if owner == o %}aria-current="true"{% endif %}>{{ o.split()[0] }}</a>
+    {% endfor %}
+  </nav>
 {% endblock %}
 
 {% block content %}
-<details class="card form-card" id="new-deal">
-  <summary>{{ icon('plus') }} New deal</summary>
-  <form method="post" action="{{ url_for('create_deal') }}" class="grid-form">
-    <input type="hidden" name="csrf" value="{{ csrf_token }}">
-    <label>Title<input name="title" required maxlength="120" placeholder="e.g. Multi-site rollout"></label>
-    <label>Company
-      <select name="company_id" required>
-        {% for c in companies %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
-      </select>
-    </label>
-    <label>Value (£, ex. VAT)<input name="value" required inputmode="decimal" placeholder="25,000"></label>
-    <label>Expected close<input type="date" name="close_date" required></label>
-    <label>Stage
-      <select name="stage">{% for s, p in stages %}<option>{{ s }}</option>{% endfor %}</select>
-    </label>
-    <label>Owner<select name="owner">{% for o in owners %}<option>{{ o }}</option>{% endfor %}</select></label>
-    <label>Source<select name="source">{% for s in sources %}<option>{{ s }}</option>{% endfor %}</select></label>
-    <div class="form-end"><button class="btn">Add deal</button></div>
-  </form>
-</details>
-
-<div class="board">
+<div class="board" data-board>
   {% for stage, prob in stages %}
     {% set deals = columns[stage] %}
-    {% set prev_stage = stages[loop.index0 - 1][0] if not loop.first else None %}
-    {% set next_stage = stages[loop.index0 + 1][0] if not loop.last else None %}
-    <section class="column">
+    <section class="column" data-stage="{{ stage }}" style="--c: {{ stage_colours[stage] }}">
       <header>
-        <i style="background: {{ stage_colours[stage] }}"></i>
-        <h2>{{ stage }}</h2><span class="muted">{{ prob }}%</span>
-        <span class="col-total">{{ deals | sum(attribute='value') | money }}</span>
+        <div class="col-title"><i></i><h2>{{ stage }}</h2><span class="col-prob">{{ prob }}%</span></div>
+        <p class="col-total"><span data-col-total>{{ deals | sum(attribute='value') | money }}</span>
+           <span class="col-count" data-col-count>{{ deals | length }}</span></p>
       </header>
-      {% for d in deals %}
-        <article class="mini-deal">
-          <div class="row-between">
-            <b>{{ d.title }}</b>{{ avatar(d.owner) }}
-          </div>
-          <a class="muted" href="{{ url_for('company', company_id=d.company_id) }}">{{ d.company }}</a>
-          <div class="row-between">
-            <span class="amount">{{ d.value | money }}</span>
-            <span class="muted small">Close {{ d.close_date | uk_date }}</span>
-          </div>
-          <form method="post" action="{{ url_for('move_deal', deal_id=d.id) }}" class="moves">
-            <input type="hidden" name="csrf" value="{{ csrf_token }}">
-            <input type="hidden" name="next" value="{{ request.full_path }}">
-            {% if prev_stage %}<button name="stage" value="{{ prev_stage }}" title="Back to {{ prev_stage }}">←</button>{% endif %}
-            {% if next_stage %}<button name="stage" value="{{ next_stage }}" title="Advance to {{ next_stage }}">→</button>{% endif %}
-            <button name="stage" value="Won" class="won">Won</button>
-            <button name="stage" value="Lost" class="lost">Lost</button>
-          </form>
-        </article>
-      {% else %}
-        <p class="empty">No deals</p>
-      {% endfor %}
+      <div class="col-body" data-dropzone>
+        {% for d in deals %}
+          <article class="card" draggable="true" data-deal="{{ d.id }}" data-value="{{ d.value }}">
+            <div class="card-top">
+              <a class="card-title" href="{{ url_for('company', company_id=d.company_id) }}">{{ d.title }}</a>
+              <details class="card-menu">
+                <summary class="icon-btn sm" aria-label="Move {{ d.title }}">{{ icon('more') }}</summary>
+                <form method="post" action="{{ url_for('move_deal', deal_id=d.id) }}" class="menu">
+                  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+                  <input type="hidden" name="next" value="{{ request.full_path }}">
+                  {% for s, _ in stages if s != stage %}<button name="stage" value="{{ s }}">Move to {{ s }}</button>{% endfor %}
+                  <button name="stage" value="Won" class="won">Mark as won</button>
+                  <button name="stage" value="Lost" class="lost">Mark as lost</button>
+                </form>
+              </details>
+            </div>
+            <p class="card-company">{{ d.company }}</p>
+            <div class="card-foot">
+              <span class="card-value">{{ d.value | money }}</span>
+              <span class="card-date" title="Expected close {{ d.close_date | uk_date }}">{{ d.close_date | uk_date_short }}</span>
+              {{ avatar(d.owner, 'sm') }}
+            </div>
+          </article>
+        {% endfor %}
+        <p class="col-empty">No deals in {{ stage | lower }}</p>
+      </div>
     </section>
   {% endfor %}
+</div>
+
+<div class="dock" data-dock aria-hidden="true">
+  <div class="dock-zone won" data-stage="Won" data-dropzone>{{ icon('check') }} Won</div>
+  <div class="dock-zone lost" data-stage="Lost" data-dropzone>{{ icon('x') }} Lost</div>
 </div>
 {% endblock %}

@@ -1,0 +1,12 @@
+[project]
+name = "cae-crm"
+version = "1.0.0"
+description = "UK-standard sales CRM built with Flask"
+requires-python = ">=3.12"
+dependencies = [
+    "Flask>=3.0",
+    "tzdata",  # Europe/London time zone data on hosts without a system zoneinfo
+]
+
+[tool.vercel]
+entrypoint = "wsgi:app"

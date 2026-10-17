@@ -2,29 +2,32 @@
 {% from "_macros.html" import avatar %}
 {% block title %}Projects{% endblock %}
 {% block heading %}Projects{% endblock %}
+{% block subtitle %}<p class="subtitle">Winning a deal starts its delivery project here. Changes save as you make them.</p>{% endblock %}
 
 {% block content %}
-<p class="muted">Delivery projects are created automatically when a deal is marked as won.</p>
-<div class="project-grid">
-  {% for p in projects %}
-    <article class="card project {{ p.status | lower | replace(' ', '-') }}">
-      <div class="row-between">
-        <span class="pill {{ p.status | lower | replace(' ', '-') }}">{{ p.status }}</span>
-        {{ avatar(p.owner) }}
-      </div>
-      <h3>{{ p.name }}</h3>
-      <a class="muted" href="{{ url_for('company', company_id=p.company_id) }}">{{ p.company }}</a>
-      <div class="bar"><span style="width: {{ p.progress }}%"></span></div>
-      <div class="row-between small"><span>{{ p.progress }}% complete</span><span class="muted">Due {{ p.due_date | uk_date }}</span></div>
-      <form method="post" action="{{ url_for('update_project', project_id=p.id) }}" class="project-form">
-        <input type="hidden" name="csrf" value="{{ csrf_token }}">
-        <input type="range" name="progress" min="0" max="100" step="5" value="{{ p.progress }}" aria-label="Progress">
-        <select name="status" aria-label="Status">{% for s in statuses %}<option {{ 'selected' if s == p.status }}>{{ s }}</option>{% endfor %}</select>
-        <button class="btn small">Save</button>
-      </form>
-    </article>
-  {% else %}
-    <p class="empty card">No projects yet — win a deal to start one.</p>
+<div class="project-board">
+  {% for status in statuses %}
+    {% set items = projects | selectattr('status', 'equalto', status) | list %}
+    <section class="project-col status-{{ status | slug }}">
+      <h2>{{ status }} <span>{{ items | length }}</span></h2>
+      {% for p in items %}
+        <article class="project">
+          <p class="project-name">{{ p.name }}</p>
+          <a class="project-co" href="{{ url_for('company', company_id=p.company_id) }}">{{ p.company }}</a>
+          <div class="progress"><i style="width: {{ p.progress }}%"></i></div>
+          <form method="post" action="{{ url_for('update_project', project_id=p.id) }}" class="project-form js-autosave">
+            <input type="hidden" name="csrf" value="{{ csrf_token }}">
+            <label class="range"><span data-progress-label>{{ p.progress }}%</span>
+              <input type="range" name="progress" min="0" max="100" step="5" value="{{ p.progress }}" aria-label="Progress for {{ p.name }}"></label>
+            <select name="status" aria-label="Status for {{ p.name }}">{% for s in statuses %}<option {{ 'selected' if s == p.status }}>{{ s }}</option>{% endfor %}</select>
+            <noscript><button class="btn sm">Save</button></noscript>
+          </form>
+          <p class="project-foot"><span>Due {{ p.due_date | uk_date }}</span>{{ avatar(p.owner, 'sm') }}</p>
+        </article>
+      {% else %}
+        <p class="col-empty">None</p>
+      {% endfor %}
+    </section>
   {% endfor %}
 </div>
 {% endblock %}

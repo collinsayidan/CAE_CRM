@@ -2,53 +2,71 @@
 {% from "_macros.html" import icon, avatar %}
 {% block title %}Schedule{% endblock %}
 {% block heading %}Schedule{% endblock %}
-{% block actions %}
-  {% if overdue %}<span class="badge down">{{ overdue }} overdue</span>{% endif %}
+{% block subtitle %}
+  <p class="subtitle">{% if overdue %}<span class="delta down">{{ overdue }} overdue</span> Tick them off or reschedule.{% else %}Everything is up to date.{% endif %}</p>
 {% endblock %}
+{% block actions %}<button class="btn primary" data-open="dlg-activity">{{ icon('plus') }} Schedule activity</button>{% endblock %}
 
 {% block content %}
-<details class="card form-card">
-  <summary>{{ icon('plus') }} New activity</summary>
-  <form method="post" action="{{ url_for('create_activity') }}" class="grid-form">
-    <input type="hidden" name="csrf" value="{{ csrf_token }}">
-    <label>Type<select name="kind">{% for k in kinds %}<option>{{ k }}</option>{% endfor %}</select></label>
-    <label>Subject<input name="subject" required maxlength="140"></label>
-    <label>Date<input type="date" name="date" value="{{ today.isoformat() }}" required></label>
-    <label>Time<input type="time" name="time" value="09:00"></label>
-    <label>Customer
-      <select name="company_id"><option value="">—</option>
-        {% for c in companies %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
-      </select>
-    </label>
-    <label>Owner<select name="owner">{% for o in owners %}<option>{{ o }}</option>{% endfor %}</select></label>
-    <div class="form-end"><button class="btn">Schedule</button></div>
-  </form>
-</details>
+<div class="layout-aside">
+  <aside class="panel calendar">
+    <header class="cal-head">
+      <a class="icon-btn sm" href="{{ url_for('schedule', month=prev_month.strftime('%Y-%m')) }}" aria-label="Previous month">{{ icon('chevron-left') }}</a>
+      <h2>{{ month.strftime('%B %Y') }}</h2>
+      <a class="icon-btn sm" href="{{ url_for('schedule', month=next_month.strftime('%Y-%m')) }}" aria-label="Next month">{{ icon('chevron-right') }}</a>
+    </header>
+    <table class="cal-grid">
+      <thead><tr>{% for d in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}<th scope="col" abbr="{{ d }}">{{ d[0] }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for week in weeks %}
+          <tr>
+            {% for d in week %}
+              {% set key = d.isoformat() %}
+              {% set n = day_counts.get(key, 0) %}
+              <td class="{{ 'out' if d.month != month.month }} {{ 'today' if d == today }} {{ 'weekend' if d.weekday() > 4 }} {{ 'holiday' if d in bank_holidays }}">
+                {% if n and d.month == month.month %}
+                  <a href="#day-{{ key }}" title="{{ n }} {{ 'activity' if n == 1 else 'activities' }}">{{ d.day }}<i></i></a>
+                {% else %}
+                  <span {% if d in bank_holidays %}title="Bank holiday"{% endif %}>{{ d.day }}</span>
+                {% endif %}
+              </td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="cal-key"><span><i class="k-dot"></i>Has activities</span><span><i class="k-hol"></i>Bank holiday</span></p>
+  </aside>
 
-{% for day, items in days %}
-  <section class="card day {{ 'is-today' if day == today.isoformat() }}">
-    <div class="card-head">
-      <h2>{{ day | uk_date }}{% if day == today.isoformat() %} · Today{% endif %}</h2>
-      <span class="muted">{{ items | length }} item{{ 's' if items | length != 1 }}</span>
-    </div>
-    <ul class="activities">
-      {% for a in items %}
-        <li class="{{ 'done' if a.done }} {{ 'late' if not a.done and day < today.isoformat() }}">
-          <form method="post" action="{{ url_for('toggle_activity', activity_id=a.id) }}">
-            <input type="hidden" name="csrf" value="{{ csrf_token }}">
-            <button class="tick" title="{{ 'Mark not done' if a.done else 'Mark done' }}">{{ icon('check') if a.done }}</button>
-          </form>
-          <span class="time">{{ a.due_at[11:16] }}</span>
-          <span class="pill">{{ a.kind }}</span>
-          <span class="grow"><b>{{ a.subject }}</b>
-            {% if a.company %}<span class="muted"> · <a href="{{ url_for('company', company_id=a.company_id) }}">{{ a.company }}</a></span>{% endif %}
-            {% if a.deal %}<span class="muted small"> · {{ a.deal }}</span>{% endif %}</span>
-          {{ avatar(a.owner) }}
-        </li>
-      {% endfor %}
-    </ul>
+  <section class="agenda">
+    {% for day, items in days %}
+      {% set late = day < today.isoformat() %}
+      <section class="agenda-day" id="day-{{ day }}">
+        <h2 class="day-head {{ 'is-today' if day == today.isoformat() }}">
+          {{ day | uk_date_short }}{% if day == today.isoformat() %}, today{% endif %}
+          <small>{{ day | uk_date }}</small>
+        </h2>
+        <ul class="tasks">
+          {% for a in items %}
+            <li class="{{ 'done' if a.done }} {{ 'late' if late and not a.done }}">
+              <form method="post" action="{{ url_for('toggle_activity', activity_id=a.id) }}" class="js-toggle">
+                <input type="hidden" name="csrf" value="{{ csrf_token }}">
+                <input type="hidden" name="next" value="{{ request.full_path }}">
+                <button class="tick" aria-pressed="{{ 'true' if a.done else 'false' }}" aria-label="Done: {{ a.subject }}">{{ icon('check') }}</button>
+              </form>
+              <time>{{ a.due_at[11:16] }}</time>
+              <div class="task-main">
+                <p class="tl-title">{{ a.subject }}</p>
+                <p class="tl-meta">{{ a.kind }}{% if a.company %} with <a href="{{ url_for('company', company_id=a.company_id) }}">{{ a.company }}</a>{% endif %}{% if a.deal %}, for {{ a.deal }}{% endif %}</p>
+              </div>
+              {{ avatar(a.owner, 'sm') }}
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% else %}
+      <p class="panel empty-line">Nothing scheduled in {{ month.strftime('%B') }}. <button class="text-link" data-open="dlg-activity">Schedule an activity</button></p>
+    {% endfor %}
   </section>
-{% else %}
-  <p class="empty card">Nothing scheduled.</p>
-{% endfor %}
+</div>
 {% endblock %}

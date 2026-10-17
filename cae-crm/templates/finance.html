@@ -1,72 +1,75 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, kpi %}
+{% from "_macros.html" import icon %}
 {% block title %}Finance{% endblock %}
 {% block heading %}Finance{% endblock %}
-{% block actions %}
-  <div class="kpis">
-    {{ kpi('pound', pennies(totals.outstanding), 'Outstanding (inc. VAT)') }}
-    {{ kpi('clock', pennies(totals.overdue), totals.overdue_n ~ ' overdue invoices') }}
-    {{ kpi('trophy', pennies(totals.paid_fy), 'Received ' ~ fy_label) }}
-    {{ kpi('bars', pennies(totals.vat_quarter), 'Output VAT ' ~ (vq_start | uk_date_short) ~ '–' ~ (vq_end | uk_date_short)) }}
-  </div>
-{% endblock %}
+{% block subtitle %}<p class="subtitle">Invoices, aged debt and VAT for {{ fy_label }}</p>{% endblock %}
+{% block actions %}<button class="btn primary" data-open="dlg-invoice">{{ icon('plus') }} Raise invoice</button>{% endblock %}
 
 {% block content %}
-<details class="card form-card">
-  <summary>{{ icon('plus') }} Raise invoice</summary>
-  <form method="post" action="{{ url_for('create_invoice') }}" class="grid-form">
-    <input type="hidden" name="csrf" value="{{ csrf_token }}">
-    <label>Customer
-      <select name="company_id" required>{% for c in companies %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select>
-    </label>
-    <label>Description<input name="description" required maxlength="140"></label>
-    <label>Net amount (£)<input name="net" required inputmode="decimal" placeholder="12,500.00"></label>
-    <label>VAT rate
-      <select name="vat_rate">
-        {% for r in vat_rates %}<option value="{{ r }}">{{ r }}% {{ {20: 'standard', 5: 'reduced', 0: 'zero-rated'}[r] }}</option>{% endfor %}
-      </select>
-    </label>
-    <div class="form-end"><span class="muted small">Payment terms: 30 days</span><button class="btn">Raise invoice</button></div>
-  </form>
-</details>
+<section class="stats" aria-label="Finance figures">
+  <div class="stat"><p class="stat-label">Unpaid, including VAT</p><p class="stat-value">{{ pennies(totals.outstanding) }}</p></div>
+  <div class="stat"><p class="stat-label">Overdue</p><p class="stat-value {{ 'is-bad' if totals.overdue }}">{{ pennies(totals.overdue) }}</p>
+    <p class="stat-note">{{ totals.overdue_n }} {{ 'invoice' if totals.overdue_n == 1 else 'invoices' }}</p></div>
+  <div class="stat"><p class="stat-label">Received in {{ fy_label }}</p><p class="stat-value">{{ pennies(totals.paid_fy) }}</p></div>
+  <div class="stat"><p class="stat-label">Output VAT this quarter</p><p class="stat-value">{{ pennies(totals.vat_quarter) }}</p>
+    <p class="stat-note">{{ vq_start | uk_date }} to {{ vq_end | uk_date }}</p></div>
+</section>
 
-<section class="card flush">
-  <div class="card-head pad">
-    <h2>Invoices</h2>
-    <div class="seg">
-      {% for s in ['', 'Due', 'Overdue', 'Paid'] %}
-        <a href="{{ url_for('finance', status=s) if s else url_for('finance') }}" class="{{ 'on' if status == s }}">{{ s or 'All' }}</a>
-      {% endfor %}
-    </div>
+<section class="panel">
+  <header class="panel-head"><div><h2>Aged debt</h2><p class="panel-note">Unpaid invoices by how late they are</p></div></header>
+  {% set total = totals.outstanding or 1 %}
+  <div class="aging-bar" role="img" aria-label="Aged debt breakdown">
+    {% for label, value in aging.items() if value %}
+      <span class="age-{{ loop.index }}" style="flex: {{ value }}" title="{{ label }}: {{ pennies(value) }}"></span>
+    {% endfor %}
   </div>
+  <ul class="aging-key">
+    {% for label, value in aging.items() %}
+      <li><i class="age-{{ loop.index }}"></i><span>{{ label }}</span><b>{{ pennies(value) }}</b></li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="panel flush">
+  <header class="panel-head pad">
+    <h2>Invoices</h2>
+    <div class="segmented" role="group" aria-label="Show invoices" data-filter-group="invoices">
+      <button type="button" data-filter="" aria-pressed="true">All</button>
+      <button type="button" data-filter="Due">Due</button>
+      <button type="button" data-filter="Overdue">Overdue</button>
+      <button type="button" data-filter="Paid">Paid</button>
+    </div>
+  </header>
   <div class="table-wrap">
-    <table>
-      <thead><tr><th>No.</th><th>Customer</th><th>Issued</th><th>Due</th><th class="num">Net</th>
-                 <th class="num">VAT</th><th class="num">Gross</th><th>Status</th></tr></thead>
+    <table id="invoices" data-sortable>
+      <thead><tr>
+        <th data-sort="text">Invoice</th><th data-sort="text">Customer</th><th data-sort="text">Issued</th><th data-sort="text">Due</th>
+        <th data-sort="num" class="num">Net</th><th data-sort="num" class="num">VAT</th><th data-sort="num" class="num">Total</th><th>Status</th>
+      </tr></thead>
       <tbody>
         {% for i, state in rows %}
-          <tr>
-            <td><a href="{{ url_for('invoice', invoice_id=i.id) }}"><b>{{ i.number }}</b></a></td>
-            <td>{{ i.company }}<div class="muted small">{{ i.description }}</div></td>
-            <td>{{ i.issue_date | uk_date }}</td>
-            <td>{{ i.due_date | uk_date }}</td>
-            <td class="num">{{ pennies(i.net) }}</td>
-            <td class="num">{{ pennies(i.vat) }}<div class="muted small">{{ i.vat_rate }}%</div></td>
-            <td class="num"><b>{{ pennies(i.net + i.vat) }}</b></td>
+          <tr data-state="{{ state }}">
+            <td data-v="{{ i.number }}"><a class="text-link" href="{{ url_for('invoice', invoice_id=i.id) }}"><b>{{ i.number }}</b></a></td>
+            <td data-v="{{ i.company }}">{{ i.company }}<small>{{ i.description }}</small></td>
+            <td data-v="{{ i.issue_date }}">{{ i.issue_date | uk_date }}</td>
+            <td data-v="{{ i.due_date }}">{{ i.due_date | uk_date }}</td>
+            <td class="num" data-v="{{ i.net }}">{{ pennies(i.net) }}</td>
+            <td class="num" data-v="{{ i.vat }}">{{ pennies(i.vat) }}<small>{{ i.vat_rate }}%</small></td>
+            <td class="num" data-v="{{ i.net + i.vat }}"><b>{{ pennies(i.net + i.vat) }}</b></td>
             <td>
-              {% if state == 'Paid' %}<span class="pill won">Paid {{ i.paid_date | uk_date_short }}</span>
+              {% if state == 'Paid' %}<span class="chip ok">Paid {{ i.paid_date | uk_date_short }}</span>
               {% else %}
                 <form method="post" action="{{ url_for('mark_paid', invoice_id=i.id) }}" class="inline">
                   <input type="hidden" name="csrf" value="{{ csrf_token }}">
                   <input type="hidden" name="next" value="{{ request.full_path }}">
-                  <span class="pill {{ 'lost' if state == 'Overdue' }}">{{ state }}</span>
-                  <button class="link small">Mark paid</button>
+                  <span class="chip {{ 'bad' if state == 'Overdue' }}">{{ state }}</span>
+                  <button class="text-link sm">Mark paid</button>
                 </form>
               {% endif %}
             </td>
           </tr>
         {% else %}
-          <tr><td colspan="8" class="empty">No invoices.</td></tr>
+          <tr><td colspan="8" class="empty-line">No invoices yet. <button class="text-link" data-open="dlg-invoice">Raise the first one</button></td></tr>
         {% endfor %}
       </tbody>
     </table>

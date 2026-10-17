@@ -10,13 +10,14 @@
     <input type="hidden" name="csrf" value="{{ csrf_token }}">
     <input type="hidden" name="next" value="{{ request.full_path }}">
     <header><h2 id="dlg-deal-title">New deal</h2><button type="button" class="icon-btn" data-close aria-label="Close">{{ icon('x') }}</button></header>
+    {% if not companies %}<p class="form-alert" role="alert">Add a customer first. <button type="button" class="text-link" data-open="dlg-customer">Add customer</button></p>{% endif %}
     <div class="form-grid">
       {{ field('What are you selling?', 'title', required=true, placeholder='Multi-site rollout', extra='maxlength=120 autofocus') }}
       {{ select('Customer', 'company_id', company_names, values=company_ids) }}
       {{ field('Value, excluding VAT', 'value', required=true, placeholder='£25,000', extra='inputmode=decimal') }}
       {{ field('Expected close date', 'close_date', type='date', required=true) }}
       {{ select('Stage', 'stage', stages | map('first') | list) }}
-      {{ select('Owner', 'owner', owners) }}
+      {{ select('Owner', 'owner', owners, current_user.name) }}
       {{ select('Lead source', 'source', sources) }}
     </div>
     <footer><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Add deal</button></footer>
@@ -53,7 +54,7 @@
       {{ field('Date', 'date', today.isoformat(), type='date', required=true) }}
       {{ field('Time', 'time', '09:00', type='time', required=true) }}
       {{ select('Customer', 'company_id', company_names, values=company_ids, blank='No customer') }}
-      {{ select('Owner', 'owner', owners) }}
+      {{ select('Owner', 'owner', owners, current_user.name) }}
     </div>
     <footer><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Schedule</button></footer>
   </form>
@@ -64,6 +65,7 @@
     <input type="hidden" name="csrf" value="{{ csrf_token }}">
     <input type="hidden" name="next" value="{{ request.full_path }}">
     <header><h2 id="dlg-invoice-title">Raise an invoice</h2><button type="button" class="icon-btn" data-close aria-label="Close">{{ icon('x') }}</button></header>
+    {% if not companies %}<p class="form-alert" role="alert">Add a customer first. <button type="button" class="text-link" data-open="dlg-customer">Add customer</button></p>{% endif %}
     <div class="form-grid">
       {{ select('Customer', 'company_id', company_names, values=company_ids) }}
       {{ field('Description', 'description', required=true, placeholder='Onboarding package', extra='maxlength=140') }}

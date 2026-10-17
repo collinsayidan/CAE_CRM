@@ -11,9 +11,10 @@ def ring(pct, size=132, stroke=12, label=None):
         f'<svg class="ring" viewBox="0 0 {size} {size}" width="{size}" height="{size}" role="img" '
         f'aria-label="{label or f"{pct:.0f}%"}">'
         f'<circle cx="{size / 2}" cy="{size / 2}" r="{r}" class="ring-track" stroke-width="{stroke}"/>'
-        f'<circle cx="{size / 2}" cy="{size / 2}" r="{r}" class="ring-fill" stroke-width="{stroke}" '
-        f'pathLength="100" stroke-dasharray="{shown:.1f} 100" transform="rotate(-90 {size / 2} {size / 2})"/>'
-        f'</svg>'
+        + (f'<circle cx="{size / 2}" cy="{size / 2}" r="{r}" class="ring-fill" stroke-width="{stroke}" '
+           f'pathLength="100" stroke-dasharray="{shown:.1f} 100" transform="rotate(-90 {size / 2} {size / 2})"/>'
+           if shown > 0 else "")  # a zero-length round-capped arc would still draw a dot
+        + '</svg>'
     )
 
 

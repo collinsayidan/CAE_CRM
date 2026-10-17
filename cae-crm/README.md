@@ -1,6 +1,6 @@
 # CAE CRM
 
-A UK-standard sales CRM built in Python with **Flask** and **SQLite**, with plain JavaScript for the interactive parts. It doesn't use a front-end framework or a build step.
+A UK-standard sales CRM built in Python with **Flask**. It uses SQLite locally and PostgreSQL in production, with plain JavaScript for the interactive parts. It doesn't use a front-end framework or a build step.
 
 ## Run it
 
@@ -10,19 +10,27 @@ pip install -r requirements.txt
 python app.py            # or: flask --app app run
 ```
 
-Open http://127.0.0.1:5000. On first run the app creates `instance/cae_crm.sqlite3` and fills it with fictional UK demo data. To reset the data, delete that file.
+Open http://127.0.0.1:5000. The first time you open it, the app asks you to create an admin account. Locally it uses an SQLite file at `instance/cae_crm.sqlite3`, filled with fictional UK demo data. To start again, delete that file.
 
-For anything beyond local use, set a fixed secret key: `export CAE_SECRET_KEY=<random string>`.
+## Accounts
+
+- Every page needs you to sign in. The first account is an **admin**, created on the setup page, which closes once that account exists.
+- Admins add team members from **Team**, with a temporary password, and can reset passwords or remove people. Only admins can erase a contact's personal data.
+- Passwords need at least 10 characters and are stored as scrypt hashes. After 5 wrong attempts an account locks for 15 minutes. An admin resetting the password unlocks it.
+- Sign-ins last 12 hours. Session cookies are HTTP-only and SameSite=Lax, and are marked Secure when the app is hosted.
 
 ## Deploy to Vercel
 
-1. In the Vercel project, open **Settings → General** and set **Root Directory** to `cae-crm`.
-2. In **Settings → Environment Variables**, add `CAE_SECRET_KEY`. Use a long random value, for example the output of `python -c "import secrets; print(secrets.token_hex(32))"`.
-3. Redeploy.
+1. **Root directory.** In the Vercel project, open **Settings → General** and set **Root Directory** to `cae-crm`.
+2. **Database.** Open **Storage**, create a **Neon Postgres** database and connect it to the project. This adds `DATABASE_URL` for you. Any PostgreSQL connection string works.
+3. **Environment variables.** In **Settings → Environment Variables**, add:
+   - `CAE_SECRET_KEY`: a long random value. `python -c "import secrets; print(secrets.token_hex(32))"` makes one.
+   - `CAE_SETUP_CODE`: any phrase you choose. The setup page asks for it, so nobody else can claim the admin account before you.
+4. **Redeploy.** Then open the site and create your admin account.
 
-Vercel picks up the app from `wsgi.py`, which `pyproject.toml` points to with `[tool.vercel] entrypoint = "wsgi:app"`.
+The app creates its tables on first start. A Postgres database starts empty. Set `CAE_DEMO_DATA=1` if you want the demo companies and deals in it. If a required setting is missing, the site shows a "Finish setting up" page naming it, rather than running without it.
 
-On Vercel the SQLite file lives in `/tmp`, because that's the only place a Vercel function can write. That folder is cleared whenever an instance restarts, so the site falls back to the demo data. Separate instances can also show different data. That's fine for a demo. To keep real data, point the app at a hosted database such as Vercel Postgres or Neon.
+Vercel finds the app through `wsgi.py`, which `pyproject.toml` names in `[tool.vercel] entrypoint = "wsgi:app"`.
 
 ## Pages
 
@@ -58,7 +66,7 @@ Across every page:
 - **Working days:** the month track and calendar skip weekends and England and Wales bank holidays from 2025 to 2027.
 - **Validation:** UK postcodes (normalised, e.g. `eh22an` → `EH2 2AN`), Companies House numbers (including the SC, NI and OC prefixes, with a link to the Companies House register), GB VAT numbers and UK phone numbers (normalised to +44).
 - **UK GDPR / DPA 2018:** every contact records a lawful basis. Marketing opt-in is recorded separately with a date, as PECR requires. Each contact has a one-click subject access request export (JSON) and a right-to-erasure action.
-- **Security:** forms are CSRF-protected and redirects are checked so they cannot be used as open redirects.
+- **Security:** every page needs a sign-in, forms are CSRF-protected, and redirects are checked so they cannot be used as open redirects.
 
 ## Tests
 
@@ -67,12 +75,15 @@ pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
+To run every test against PostgreSQL as well, point `CAE_TEST_POSTGRES_URL` at a throwaway database. The tests wipe it.
+
 ## Project layout
 
 ```
 app.py        Flask app factory and routes
+auth.py       sign-in, first-run setup, team and password management
 wsgi.py       hosting entrypoint (module-level `app`)
-db.py         schema, connection handling, demo seed data
+db.py         schema, SQLite/PostgreSQL connection wrapper, demo seed data
 ukfmt.py      GBP/date/VAT/postcode/phone helpers and the UK financial year
 charts.py     server-side SVG quota ring and sparklines
 templates/    Jinja templates (shared dialogs in _dialogs.html)

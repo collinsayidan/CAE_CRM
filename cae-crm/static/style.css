@@ -94,20 +94,29 @@ kbd { font-family: var(--body); font-size: 11.5px; padding: 2px 6px; border: 1px
   background: var(--brass); color: #1c1506; font-family: var(--display); font-weight: 800; font-size: 18px;
 }
 .brand-name { font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: -.01em; }
-.sidebar nav { display: grid; gap: 2px; }
-.sidebar nav a {
+.sidebar > nav { display: grid; gap: 2px; }
+.sidebar > nav a {
   display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--r-md);
   text-decoration: none; color: var(--on-green-muted); font-weight: 700; font-size: 14.5px;
   transition: background .15s, color .15s;
 }
-.sidebar nav a:hover { background: rgba(255, 255, 255, .06); color: var(--on-green); }
-.sidebar nav a[aria-current="page"] { background: rgba(255, 255, 255, .1); color: #fff; box-shadow: inset 3px 0 0 var(--brass); }
+.sidebar > nav a:hover { background: rgba(255, 255, 255, .06); color: var(--on-green); }
+.sidebar > nav a[aria-current="page"] { background: rgba(255, 255, 255, .1); color: #fff; box-shadow: inset 3px 0 0 var(--brass); }
 .count {
   margin-left: auto; min-width: 22px; padding: 1px 7px; border-radius: 999px; text-align: center;
   font-size: 12px; background: rgba(255, 255, 255, .1); color: var(--on-green);
 }
 .count.alert { background: var(--bad); color: #fff; }
-.sidebar-foot { margin-top: auto; padding: 12px; font-size: 12.5px; color: var(--on-green-muted); line-height: 1.45; }
+.sidebar-foot { margin-top: auto; padding: 14px 10px 4px; border-top: 1px solid rgba(255, 255, 255, .08); }
+.me { display: flex; align-items: center; gap: 10px; }
+.me .avatar { width: 32px; height: 32px; font-size: 11.5px; }
+.me-name { font-weight: 700; font-size: 14px; color: var(--on-green); }
+.me-role { font-size: 12.5px; color: var(--on-green-muted); }
+.me-links { display: flex; gap: 4px 14px; flex-wrap: wrap; margin-top: 10px; font-size: 13px; }
+.me-links a, .me-links button {
+  color: var(--on-green-muted); text-decoration: none; background: none; border: 0; padding: 0; font: inherit; cursor: pointer;
+}
+.me-links a:hover, .me-links button:hover, .me-links a[aria-current] { color: var(--on-green); text-decoration: underline; }
 
 /* Main column ---------------------------------------------------------- */
 .main { margin-left: var(--sidebar); min-height: 100vh; }
@@ -593,6 +602,25 @@ dialog.sheet footer { display: flex; justify-content: flex-end; gap: 10px; margi
 dialog[open] { animation: rise .18s ease-out; }
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
 .invoice-preview { margin-top: 14px; padding: 10px 14px; border-radius: var(--r-md); background: var(--surface-2); color: var(--ink-2); font-size: 14px; }
+
+/* Sign-in pages ---------------------------------------------------------- */
+.auth-page { background: var(--green-deep); min-height: 100vh; }
+.auth-shell { min-height: 100vh; display: grid; place-items: center; align-content: center; gap: 22px; padding: 32px 16px; }
+.auth-brand { display: flex; align-items: center; gap: 10px; color: var(--on-green); text-decoration: none; font-weight: 700; font-size: 20px; }
+.auth-card { width: min(440px, 100%); background: var(--surface); border-radius: var(--r-xl); padding: 32px 30px; box-shadow: 0 30px 80px rgba(0, 0, 0, .3); }
+.auth-card h1 { font-size: 28px; font-weight: 700; letter-spacing: -.02em; }
+.auth-lede { color: var(--muted); margin: 6px 0 20px; }
+.auth-form { display: grid; gap: 16px; }
+.auth-note { color: var(--muted); font-size: 13.5px; margin-top: 18px; }
+.auth-foot { color: var(--on-green-muted); font-size: 13px; }
+.btn.wide { width: 100%; justify-content: center; padding: 11px 16px; margin-top: 4px; }
+.form-alert.is-ok { background: var(--ok-soft); color: var(--ok); }
+.settings-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.settings-list li { display: grid; gap: 4px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-lg); }
+.settings-list span { color: var(--ink-2); font-size: 14px; }
+.settings-list code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; word-break: break-all; }
+.panel.narrow { max-width: 520px; }
+td form.inline input { width: 220px; padding: 6px 10px; font-size: 13.5px; }
 
 /* Command palette ------------------------------------------------------ */
 dialog.palette {

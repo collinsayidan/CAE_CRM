@@ -56,11 +56,13 @@
             </div>
             <div class="person-actions">
               <a class="btn ghost sm" href="{{ url_for('export_contact', contact_id=p.id) }}" title="Download everything held about this person">{{ icon('download') }} Export data</a>
+              {% if current_user.role == 'admin' %}
               <form method="post" action="{{ url_for('erase_contact', contact_id=p.id) }}"
                     data-confirm="Erase {{ p.first_name }} {{ p.last_name }}? This permanently deletes their personal data.">
                 <input type="hidden" name="csrf" value="{{ csrf_token }}">
                 <button class="btn ghost sm danger">Erase</button>
               </form>
+              {% endif %}
             </div>
           </li>
         {% else %}

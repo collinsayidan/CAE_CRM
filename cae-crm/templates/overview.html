@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon, avatar, logo, stage_chip with context %}
 {% block title %}Overview{% endblock %}
-{% block heading %}{{ greeting }}{% endblock %}
+{% block heading %}{{ greeting }}, {{ first_name }}{% endblock %}
 {% block subtitle %}<p class="subtitle">{{ today.strftime('%A %-d %B %Y') }}</p>{% endblock %}
 
 {% block content %}

@@ -1,0 +1,21 @@
+{% extends "auth/_layout.html" %}
+{% from "_macros.html" import field %}
+{% block title %}Set up CAE CRM{% endblock %}
+{% block content %}
+<h1>Create the admin account</h1>
+<p class="auth-lede">This is the first account, so it can add and remove everyone else. This page closes once it's created.</p>
+{% if code_required and not code_configured %}
+  <p class="form-alert" role="alert">Add a <b>CAE_SETUP_CODE</b> environment variable in your hosting settings and redeploy. It stops anyone else who finds the site from creating this account first.</p>
+{% endif %}
+<form method="post" action="{{ url_for('auth.setup') }}" class="auth-form" novalidate>
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  {% if code_required %}
+    {{ field('Setup code', 'setup_code', errors=errors, required=true, hint='The CAE_SETUP_CODE value from your hosting settings.', extra='autocomplete=off') }}
+  {% endif %}
+  {{ field('Your name', 'name', form.name, errors=errors, required=true, extra='autocomplete=name') }}
+  {{ field('Email', 'email', form.email, type='email', errors=errors, required=true, extra='autocomplete=username') }}
+  {{ field('Password', 'password', type='password', errors=errors, required=true, hint='At least 10 characters. A few unrelated words works well.', extra='autocomplete=new-password') }}
+  {{ field('Confirm password', 'confirm', type='password', required=true, extra='autocomplete=new-password') }}
+  <button class="btn primary wide">Create admin account</button>
+</form>
+{% endblock %}

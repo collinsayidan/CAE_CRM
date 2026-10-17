@@ -33,7 +33,15 @@
       {% endfor %}
     </nav>
     <div class="sidebar-foot">
-      <p>Amounts in pounds sterling. Dates are day, month, year.</p>
+      <div class="me">
+        <span class="avatar" style="--h: {{ current_user.name | hue }}" aria-hidden="true">{{ current_user.name | initials }}</span>
+        <div><p class="me-name">{{ current_user.name }}</p><p class="me-role">{{ current_user.role | capitalize }}</p></div>
+      </div>
+      <nav class="me-links" aria-label="Your account">
+        <a href="{{ url_for('auth.account') }}" {% if request.endpoint == 'auth.account' %}aria-current="page"{% endif %}>Account</a>
+        {% if current_user.role == 'admin' %}<a href="{{ url_for('auth.team') }}" {% if request.endpoint == 'auth.team' %}aria-current="page"{% endif %}>Team</a>{% endif %}
+        <form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button>Sign out</button></form>
+      </nav>
     </div>
   </aside>
   <div class="scrim" data-close-sidebar></div>

@@ -1,4 +1,4 @@
-"""CAE CRM - a UK-standard sales CRM built with Flask and SQLite.
+"""CAE CRM - a UK-standard sales CRM built with Flask (SQLite locally, PostgreSQL in production).
 
 Run:  python app.py   (then open http://127.0.0.1:5000)
       or: flask --app app run
@@ -10,15 +10,17 @@ import os
 import secrets
 from collections import defaultdict
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 from zoneinfo import ZoneInfo
 
-from flask import (Flask, Response, abort, current_app, flash, jsonify, redirect, render_template,
+from flask import (Flask, Response, abort, current_app, flash, g, jsonify, redirect, render_template,
                    request, session, url_for)
 
+import auth
 import charts
 import ukfmt
-from db import (ACTIVITY_KINDS, LAWFUL_BASES, MONTHLY_TARGET, OPEN_STAGES, OWNERS, SOURCES,
-                STAGE_PROBABILITY, STAGES, close_db, get_db, init_db, next_invoice_number)
+from db import (ACTIVITY_KINDS, LAWFUL_BASES, MONTHLY_TARGET, OPEN_STAGES, SOURCES, STAGE_PROBABILITY,
+                STAGES, close_db, get_db, init_db, is_postgres, next_invoice_number)
 from ukfmt import add_months, fy_quarter, money, vat_amount, vat_quarter, working_days
 
 NAV = [("overview", "Overview", "home"), ("pipeline", "Pipeline", "pipeline"), ("customers", "Customers", "building"),
@@ -31,25 +33,38 @@ PROJECT_STATUSES = ["On track", "At risk", "Blocked", "Complete"]
 REGIONS = ["London", "South East", "South West", "East of England", "East Midlands", "West Midlands",
            "Yorkshire", "North West", "North East", "Scotland", "Wales", "Northern Ireland"]
 UK_TZ = ZoneInfo("Europe/London")
+# Pages anyone can reach without signing in.
+PUBLIC_ENDPOINTS = {"auth.login", "auth.setup", "static"}
 
 
 def create_app(config=None):
     app = Flask(__name__, instance_relative_config=True)
-    # Serverless hosts such as Vercel only allow writes under /tmp, which is wiped on cold starts.
-    data_dir = "/tmp" if os.environ.get("VERCEL") else app.instance_path
+    hosted = bool(os.environ.get("VERCEL"))
+    database = (os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL")
+                or os.environ.get("CAE_DATABASE"))
+    if not database and not hosted:
+        database = os.path.join(app.instance_path, "cae_crm.sqlite3")
     secret = os.environ.get("CAE_SECRET_KEY")
-    if not secret and os.environ.get("VERCEL"):
-        app.logger.warning("CAE_SECRET_KEY is not set; sessions will reset whenever a new instance starts.")
+    demo = os.environ.get("CAE_DEMO_DATA")
     app.config.update(
         SECRET_KEY=secret or secrets.token_hex(32),
-        DATABASE=os.environ.get("CAE_DATABASE") or os.path.join(data_dir, "cae_crm.sqlite3"),
+        DATABASE=database,
+        # Demo data fills a new local database; a production database starts empty unless asked.
+        DEMO_DATA=demo == "1" if demo is not None else not is_postgres(database or ""),
+        # On a host, a missing key or database must stop the app rather than lose accounts and data.
+        MISSING_SETTINGS=[name for name, ok in (("CAE_SECRET_KEY", secret), ("DATABASE_URL", database)) if hosted and not ok],
+        SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=hosted,
+        PERMANENT_SESSION_LIFETIME=timedelta(hours=12),
         TODAY=None,  # tests pin the date; otherwise the real date is used
     )
     app.config.update(config or {})
-    os.makedirs(os.path.dirname(app.config["DATABASE"]), exist_ok=True)
-    if not os.path.exists(app.config["DATABASE"]):
-        init_db(app.config["DATABASE"], app.config["TODAY"] or date.today())
+    if not app.config["MISSING_SETTINGS"]:
+        if not is_postgres(app.config["DATABASE"]):
+            os.makedirs(os.path.dirname(os.path.abspath(app.config["DATABASE"])), exist_ok=True)
+        init_db(app.config["DATABASE"], app.config["TODAY"] or date.today(), demo=app.config["DEMO_DATA"])
     app.teardown_appcontext(close_db)
+    app.register_blueprint(auth.bp)
 
     for name in ("money", "money_short", "uk_date", "uk_date_short", "uk_datetime"):
         app.add_template_filter(getattr(ukfmt, name), name)
@@ -64,26 +79,42 @@ def create_app(config=None):
             session["csrf"] = secrets.token_urlsafe(24)
         t = today()
         hour = datetime.now(UK_TZ).hour
-        return dict(
-            nav=NAV, csrf_token=session["csrf"], today=t, stage_colours=STAGE_COLOURS,
-            pennies=lambda p: money(p, pennies=True),
+        base = dict(csrf_token=session["csrf"], today=t, current_user=g.get("user"))
+        if not g.get("user"):
+            return base  # sign-in pages need no CRM data
+        return base | dict(
+            nav=NAV, stage_colours=STAGE_COLOURS, pennies=lambda p: money(p, pennies=True),
             greeting="Good morning" if hour < 12 else "Good afternoon" if hour < 18 else "Good evening",
+            first_name=g.user["name"].split()[0],
             counts=dict(
                 pipeline=scalar(f"SELECT COUNT(*) FROM deals WHERE {OPEN_SQL}"),
                 schedule=scalar("SELECT COUNT(*) FROM activities WHERE done=0 AND substr(due_at,1,10)=?", t.isoformat()),
                 finance=scalar("SELECT COUNT(*) FROM invoices WHERE paid_date IS NULL AND due_date < ?", t.isoformat()),
             ),
             # Choices for the quick-create dialogs available on every page.
-            all_companies=company_options, stages=STAGES, owners=OWNERS, sources=SOURCES, kinds=ACTIVITY_KINDS,
+            all_companies=company_options, stages=STAGES, owners=owner_names(), sources=SOURCES, kinds=ACTIVITY_KINDS,
             vat_rates=ukfmt.VAT_RATES, regions=REGIONS, lawful_bases=LAWFUL_BASES,
         )
 
     @app.before_request
-    def check_csrf():
+    def guard():
+        missing = app.config["MISSING_SETTINGS"]
+        if missing and request.endpoint != "static":
+            return render_template("auth/settings_needed.html", missing=missing), 503
         if request.method == "POST":
             token = request.form.get("csrf") or request.headers.get("X-CSRF-Token")
-            if token != session.get("csrf"):
+            if not token or token != session.get("csrf"):
                 abort(400, "Your session expired. Reload the page and try again.")
+        if request.endpoint == "static":
+            return None
+        g.user = auth.load_user()
+        if g.user or request.endpoint in PUBLIC_ENDPOINTS:
+            return None
+        if wants_json() or request.path.startswith("/api/"):
+            return jsonify(error="Sign in to continue."), 401
+        if not auth.user_count():
+            return redirect(url_for("auth.setup"))
+        return redirect(url_for("auth.login", next=request.full_path.rstrip("?")))
 
     register_routes(app)
     return app
@@ -105,7 +136,23 @@ def days_until(value):
 
 
 def scalar(sql, *args):
-    return get_db().execute(sql, args).fetchone()[0] or 0
+    value = get_db().execute(sql, args).fetchone()[0] or 0
+    # PostgreSQL returns AVG and SUMs of BIGINT as Decimal.
+    if isinstance(value, Decimal):
+        return int(value) if value == value.to_integral_value() else float(value)
+    return value
+
+
+def owner_names():
+    """People who can own deals: the team, plus anyone already named on a deal."""
+    db = get_db()
+    names = {r[0] for r in db.execute("SELECT name FROM users")}
+    names |= {r[0] for r in db.execute("SELECT DISTINCT owner FROM deals")}
+    return sorted(names)
+
+
+def chosen_owner(value):
+    return value if value in owner_names() else g.user["name"]
 
 
 def company_options():
@@ -158,7 +205,7 @@ def register_routes(app):
             "SELECT substr(closed_at,1,7), SUM(value) FROM deals WHERE stage='Won' AND closed_at >= ? GROUP BY 1",
             (months[0].isoformat(),)).fetchall())
         series = [{"label": m.strftime("%b"), "full": m.strftime("%B %Y"),
-                   "value": by_month.get(m.strftime("%Y-%m"), 0) / 100, "partial": m == this_month} for m in months]
+                   "value": float(by_month.get(m.strftime("%Y-%m"), 0)) / 100, "partial": m == this_month} for m in months]
 
         pipeline_value = scalar(f"SELECT SUM(value) FROM deals WHERE {OPEN_SQL}")
         open_count = scalar(f"SELECT COUNT(*) FROM deals WHERE {OPEN_SQL}")
@@ -212,20 +259,20 @@ def register_routes(app):
         q = request.args.get("q", "").strip()
         if len(q) < 2:
             return jsonify([])
-        like, db = f"%{q}%", get_db()
+        like, db = f"%{q.lower()}%", get_db()
         results = [dict(kind="Customer", title=r["name"], detail=f"{r['city']}, {r['postcode']}",
                         url=url_for("company", company_id=r["id"]))
-                   for r in db.execute("SELECT * FROM companies WHERE name LIKE ? OR city LIKE ? OR postcode LIKE ?"
+                   for r in db.execute("SELECT * FROM companies WHERE LOWER(name) LIKE ? OR LOWER(city) LIKE ? OR LOWER(postcode) LIKE ?"
                                        " ORDER BY name LIMIT 5", (like, like, like))]
         results += [dict(kind="Deal", title=r["title"], detail=f"{r['company']}, {money(r['value'])}, {r['stage']}",
                          url=url_for("company", company_id=r["company_id"]))
                     for r in db.execute("SELECT d.*, c.name AS company FROM deals d JOIN companies c ON c.id=d.company_id"
-                                        f" WHERE {OPEN_SQL} AND (d.title LIKE ? OR c.name LIKE ?)"
+                                        f" WHERE {OPEN_SQL} AND (LOWER(d.title) LIKE ? OR LOWER(c.name) LIKE ?)"
                                         " ORDER BY d.value DESC LIMIT 5", (like, like))]
         results += [dict(kind="Contact", title=f"{r['first_name']} {r['last_name']}", detail=f"{r['role']}, {r['company']}",
                          url=url_for("company", company_id=r["company_id"]))
                     for r in db.execute("SELECT ct.*, c.name AS company FROM contacts ct JOIN companies c ON c.id=ct.company_id"
-                                        " WHERE ct.first_name || ' ' || ct.last_name LIKE ? OR ct.email LIKE ? LIMIT 5",
+                                        " WHERE LOWER(ct.first_name || ' ' || ct.last_name) LIKE ? OR LOWER(ct.email) LIKE ? LIMIT 5",
                                         (like, like))]
         return jsonify(results)
 
@@ -237,7 +284,7 @@ def register_routes(app):
         sql = (f"SELECT d.*, c.name AS company FROM deals d JOIN companies c ON c.id=d.company_id"
                f" WHERE {OPEN_SQL}")
         args = []
-        if owner in OWNERS:
+        if owner in owner_names():
             sql += " AND d.owner=?"
             args.append(owner)
         columns = defaultdict(list)
@@ -261,7 +308,7 @@ def register_routes(app):
             "INSERT INTO deals (company_id, title, value, stage, probability, owner, source, close_date, created_at)"
             " VALUES (?,?,?,?,?,?,?,?,?)",
             (int(f["company_id"]), f["title"].strip(), value, stage, STAGE_PROBABILITY[stage],
-             f.get("owner") if f.get("owner") in OWNERS else OWNERS[0],
+             chosen_owner(f.get("owner")),
              f.get("source") if f.get("source") in SOURCES else SOURCES[0],
              close_date.isoformat(), today().isoformat()))
         get_db().commit()
@@ -305,9 +352,10 @@ def register_routes(app):
                f" FROM companies c")
         args = []
         if q:
-            sql += " WHERE c.name LIKE ? OR c.city LIKE ? OR c.postcode LIKE ? OR c.industry LIKE ?"
-            args = [f"%{q}%"] * 4
-        return get_db().execute(sql + " ORDER BY lifetime DESC", args).fetchall()
+            sql += (" WHERE LOWER(c.name) LIKE ? OR LOWER(c.city) LIKE ? OR LOWER(c.postcode) LIKE ?"
+                    " OR LOWER(c.industry) LIKE ?")
+            args = [f"%{q.lower()}%"] * 4
+        return get_db().execute(sql + " ORDER BY lifetime DESC NULLS LAST, c.name", args).fetchall()
 
     @app.route("/customers")
     def customers():
@@ -339,13 +387,14 @@ def register_routes(app):
             return render_template("customers.html", companies=company_list(), q="",
                                    customer_form=request.form, customer_errors=errors), 422
         db = get_db()
-        cur = db.execute(
+        new_id = db.execute(
             "INSERT INTO companies (name, company_no, vat_no, industry, address, city, postcode, region, created_at)"
-            " VALUES (:name,:company_no,:vat_no,:industry,:address,:city,:postcode,:region,:created)",
-            data | {"created": today().isoformat()})
+            " VALUES (?,?,?,?,?,?,?,?,?) RETURNING id",
+            (data["name"], data["company_no"], data["vat_no"], data["industry"], data["address"], data["city"],
+             data["postcode"], data["region"], today().isoformat())).fetchone()[0]
         db.commit()
         flash(f"Customer added: {data['name']}.", "ok")
-        return redirect(url_for("company", company_id=cur.lastrowid))
+        return redirect(url_for("company", company_id=new_id))
 
     @app.route("/customers/<int:company_id>")
     def company(company_id, contact_errors=None, contact_form=None):
@@ -407,7 +456,8 @@ def register_routes(app):
 
     @app.post("/contacts/<int:contact_id>/erase")
     def erase_contact(contact_id):
-        """Right to erasure (UK GDPR Art. 17)."""
+        """Right to erasure (UK GDPR Art. 17). Admins only, as it can't be undone."""
+        auth.admin_required()
         db = get_db()
         row = db.execute("SELECT * FROM contacts WHERE id=?", (contact_id,)).fetchone() or abort(404)
         db.execute("DELETE FROM contacts WHERE id=?", (contact_id,))
@@ -454,7 +504,7 @@ def register_routes(app):
         company_id = int(f["company_id"]) if f.get("company_id", "").isdigit() else None
         get_db().execute(
             "INSERT INTO activities (company_id, kind, subject, owner, due_at) VALUES (?,?,?,?,?)",
-            (company_id, f["kind"], f["subject"].strip(), f.get("owner") if f.get("owner") in OWNERS else OWNERS[0],
+            (company_id, f["kind"], f["subject"].strip(), chosen_owner(f.get("owner")),
              due.isoformat(timespec="minutes")))
         get_db().commit()
         flash(f"Scheduled for {ukfmt.uk_datetime(due.isoformat())}: {f['subject'].strip()}.", "ok")
@@ -551,16 +601,17 @@ def register_routes(app):
         def breakdown(column):
             rows = db.execute(
                 f"SELECT {column} AS k,"
-                f" SUM(stage='Won') AS won_n, SUM(stage='Lost') AS lost_n,"
+                f" SUM(CASE WHEN stage='Won' THEN 1 ELSE 0 END) AS won_n,"
+                f" SUM(CASE WHEN stage='Lost' THEN 1 ELSE 0 END) AS lost_n,"
                 f" SUM(CASE WHEN stage='Won' THEN value END) AS won_value,"
                 f" SUM(CASE WHEN {OPEN_SQL} THEN value END) AS pipeline"
-                f" FROM deals GROUP BY {column} ORDER BY won_value DESC").fetchall()
+                f" FROM deals GROUP BY {column} ORDER BY won_value DESC NULLS LAST").fetchall()
             peak = max([r["won_value"] or 0 for r in rows] + [1])
             return [dict(r) | {"rate": round(r["won_n"] / (r["won_n"] + r["lost_n"]) * 100) if r["won_n"] + r["lost_n"] else 0,
                                "share": (r["won_value"] or 0) / peak * 100} for r in rows]
 
         avg_deal = scalar("SELECT AVG(value) FROM deals WHERE stage='Won'")
-        cycle = scalar("SELECT AVG(julianday(closed_at) - julianday(created_at)) FROM deals WHERE stage='Won'")
+        cycle = scalar(f"SELECT AVG({db.days_between('closed_at', 'created_at')}) FROM deals WHERE stage='Won'")
         new_customers = scalar("SELECT COUNT(*) FROM companies WHERE created_at >= ?",
                                (today() - timedelta(days=90)).isoformat())
         return render_template("growth.html", by_source=breakdown("source"), by_owner=breakdown("owner"),

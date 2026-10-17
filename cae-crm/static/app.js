@@ -718,4 +718,58 @@
       location.replace(`${location.pathname}?${new URLSearchParams(client)}`);  // reload once with the details
     }
   }
+
+  /* @mentions: suggest team members while typing in notes ------------------ */
+  let team = [];
+  try { team = JSON.parse(document.body.dataset.team || "[]"); } catch (e) { team = []; }
+  if (team.length) {
+    const pick = document.createElement("ul");
+    pick.className = "mention-pick";
+    pick.setAttribute("role", "listbox");
+    pick.hidden = true;
+    document.body.append(pick);
+    let field = null, start = -1, active = 0;
+    const close = () => { pick.hidden = true; field = null; };
+    const choose = name => {
+      const v = field.value, caret = field.selectionStart;
+      field.value = `${v.slice(0, start)}@${name} ${v.slice(caret)}`;
+      const at = start + name.length + 2;
+      field.focus(); field.setSelectionRange(at, at);
+      close();
+    };
+    document.addEventListener("input", e => {
+      const t = e.target;
+      if (!t.matches("textarea[name=body]")) return;
+      const before = t.value.slice(0, t.selectionStart);
+      const m = before.match(/(^|\s)@([\w'-]*(?: [\w'-]*)?)$/);
+      if (!m) { close(); return; }
+      const q = m[2].toLowerCase();
+      const found = team.filter(n => n.toLowerCase().startsWith(q) || n.toLowerCase().split(" ").some(w => w.startsWith(q))).slice(0, 6);
+      if (!found.length) { close(); return; }
+      field = t; start = before.length - m[2].length - 1; active = 0;
+      pick.replaceChildren(...found.map((n, i) => {
+        const li = document.createElement("li");
+        li.textContent = n; li.setAttribute("role", "option");
+        if (i === 0) li.setAttribute("aria-selected", "true");
+        li.addEventListener("mousedown", ev => { ev.preventDefault(); choose(n); });
+        return li;
+      }));
+      const r = t.getBoundingClientRect();
+      pick.style.left = `${r.left + window.scrollX + 12}px`;
+      pick.style.top = `${r.bottom + window.scrollY + 4}px`;
+      pick.hidden = false;
+    });
+    document.addEventListener("keydown", e => {
+      if (pick.hidden || e.target !== field) return;
+      const items = [...pick.children];
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        active = (active + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length;
+        items.forEach((li, i) => li.setAttribute("aria-selected", i === active));
+      } else if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault(); choose(items[active].textContent);
+      } else if (e.key === "Escape") { close(); }
+    });
+    document.addEventListener("click", e => { if (!pick.contains(e.target)) close(); });
+  }
 })();

@@ -116,8 +116,10 @@ def register(app):
                                if sla_state(r["resolution_due"])[0] == "overdue"
                                or sla_state(r["first_response_due"], r["first_responded_at"])[0] in ("overdue", "breached"))
 
+        from notifications import checklist
+        steps = checklist(workspace(), g.user) if g.user["role"] == "admin" and not workspace()["onboarding_done"] else []
         return render_template(
-            "overview.html", track=track, change=change, won_this=won_this,
+            "overview.html", steps=steps, steps_done=sum(1 for s in steps if s[1]), track=track, change=change, won_this=won_this,
             pipeline_value=pipeline_value, open_count=open_count, forecast=forecast, win_rate=win_rate,
             won_n=won_n, closed_n=won_n + lost_n,
             spark_won=charts.sparkline([s["value"] for s in series]),

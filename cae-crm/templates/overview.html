@@ -5,6 +5,21 @@
 {% block subtitle %}<p class="subtitle">{{ today.strftime('%A') ~ ' ' ~ today.day ~ today.strftime(' %B %Y') }}</p>{% endblock %}
 
 {% block content %}
+{% if steps and steps_done < steps | length %}
+<section class="panel getting-started" aria-labelledby="gs-title">
+  <header class="panel-head">
+    <div><h2 id="gs-title">Getting started</h2><p class="panel-note">{{ steps_done }} of {{ steps | length }} done. A few minutes now saves time later.</p></div>
+    <form method="post" action="{{ url_for('dismiss_checklist') }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="text-link sm">Hide this</button></form>
+  </header>
+  <div class="gs-bar"><span style="width: {{ (100 * steps_done / steps | length) | round | int }}%"></span></div>
+  <ol class="gs-steps">
+    {% for label, done, link in steps %}
+      <li class="{{ 'done' if done }}">{% if done %}<span class="gs-tick" aria-hidden="true">{{ icon('check') }}</span>{{ label }}<span class="sr-only"> (done)</span>
+          {% else %}<a href="{{ link }}"><span class="gs-tick" aria-hidden="true"></span>{{ label }}</a>{% endif %}</li>
+    {% endfor %}
+  </ol>
+</section>
+{% endif %}
 {% if empty %}
 <section class="panel welcome">
   <div>

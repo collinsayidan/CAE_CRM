@@ -22,6 +22,7 @@ import finance
 import home
 import integrations
 import monitoring
+import notifications
 import mtd
 import quotes
 import sales
@@ -204,7 +205,7 @@ def create_app(config=None):
 
     app.register_blueprint(auth.bp)
     for module in (home, crm, sales, service, finance, quotes, webforms, campaigns, billing, integrations, xero, mtd,
-                   documents, dataio, settings, audit):
+                   documents, notifications, dataio, settings, audit):
         module.register(app)
     return app
 

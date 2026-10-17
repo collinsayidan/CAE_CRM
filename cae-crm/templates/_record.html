@@ -63,7 +63,7 @@
             {% if e.kind == 'call' and e.outcome %}<span class="chip">{{ e.outcome }}</span>{% endif %}
             {% if e.kind == 'task' %}<span class="chip ok">Done</span>{% endif %}
           </p>
-          {% if e.body %}<p class="feed-body">{{ e.body }}</p>{% endif %}
+          {% if e.body %}<p class="feed-body">{{ e.body | mentions }}</p>{% endif %}
           <p class="feed-meta">{{ KIND_LABEL[e.kind] }}{% if e.kind != 'system' %} by {{ e.author }}{% endif %}, {{ e.when | uk_datetime }}</p>
         </div>
         {% if e.kind in ('note', 'email', 'call', 'meeting') and (e.author == current_user.name or current_user.role == 'admin') %}

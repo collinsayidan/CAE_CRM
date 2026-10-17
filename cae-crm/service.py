@@ -76,14 +76,18 @@ def register(app):
         opened = now()
         first_due, resolve_due = sla_due(opened, priority)
         db = get_db()
+        owner = chosen_owner(f.get("owner"))
         ticket_id = db.insert("tickets", workspace_id=ws(), company_id=company_id, contact_id=contact_id, subject=subject,
                               description=f.get("description", "").strip(), status="New", priority=priority,
                               category=f.get("category") if f.get("category") in TICKET_CATEGORIES else "Other",
                               source=f.get("source") if f.get("source") in TICKET_SOURCES else "Email",
-                              owner=chosen_owner(f.get("owner")), created_at=opened.isoformat(timespec="minutes"),
+                              owner=owner, created_at=opened.isoformat(timespec="minutes"),
                               first_response_due=first_due, resolution_due=resolve_due)
         log_event("Ticket opened", f"{priority} priority. {f.get('description', '').strip()}".strip(), ticket_id=ticket_id,
                   company_id=company_id, contact_id=contact_id)
+        from crm import notify_owner
+        notify_owner(owner, f"{g.user['name']} gave you ticket #{ticket_id}: {subject}", f"{priority} priority",
+                     url_for("ticket", ticket_id=ticket_id))
         db.commit()
         flash(f"Ticket #{ticket_id} opened. First response due {datetime.fromisoformat(first_due):%a %d %b %H:%M}.", "ok")
         return redirect(url_for("ticket", ticket_id=ticket_id))

@@ -16,7 +16,7 @@
     try { const t = localStorage.getItem("cae-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
   </script>
 </head>
-<body>
+<body {% if team_names %}data-team='{{ team_names | tojson | forceescape }}'{% endif %}>
   <aside class="sidebar" id="sidebar">
     <a class="brand" href="{{ url_for('overview') }}">
       <img class="mark" src="{{ url_for('static', filename='brand/icon.svg') }}" alt="" width="32" height="32">
@@ -59,6 +59,19 @@
         {{ icon('search') }}<span>Search contacts, companies, deals and tickets</span><kbd>Ctrl K</kbd>
       </button>
       <div class="top-actions">
+        {% if bell %}
+        <details class="bell">
+          <summary class="icon-btn" aria-label="Notifications{{ ', ' ~ bell.unread ~ ' unread' if bell.unread }}">{{ icon('bell') }}{% if bell.unread %}<span class="bell-count">{{ bell.unread if bell.unread < 10 else '9+' }}</span>{% endif %}</summary>
+          <div class="menu bell-menu" role="menu">
+            {% for n in bell.latest %}
+              <a role="menuitem" class="{{ 'unread' if not n.read_at }}" href="{{ url_for('open_notification', notification_id=n.id) }}"><b>{{ n.title }}</b><small>{{ n.created_at | relative_time }}</small></a>
+            {% else %}
+              <p class="muted small bell-empty">No notifications yet.</p>
+            {% endfor %}
+            <a class="bell-all" href="{{ url_for('notifications') }}">See all notifications</a>
+          </div>
+        </details>
+        {% endif %}
         <details class="new-menu">
           <summary class="btn primary">{{ icon('plus') }}<span>New</span></summary>
           <div class="menu" role="menu">

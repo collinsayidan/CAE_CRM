@@ -1061,6 +1061,42 @@ body.landing { background: var(--surface); }
 @media (min-width: 2600px) { html { zoom: 1.15; } }
 @media (min-width: 3400px) { html { zoom: 1.35; } }
 
+/* Notifications, mentions and getting started ----------------------------------- */
+.bell { position: relative; }
+.bell > summary { list-style: none; position: relative; cursor: pointer; }
+.bell > summary::-webkit-details-marker { display: none; }
+.bell-count { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--bad); color: #fff; font-size: 11px; font-weight: 800; display: grid; place-items: center; }
+.bell-menu { right: 0; left: auto; width: min(340px, calc(100vw - 32px)); display: grid; gap: 2px; padding: 6px; }
+.bell-menu a { display: grid; gap: 2px; padding: 9px 10px; border-radius: var(--r-md); text-decoration: none; color: var(--ink); font-size: 13.5px; }
+.bell-menu a:hover { background: var(--surface-2); }
+.bell-menu a.unread b::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-right: 7px; vertical-align: 1px; }
+.bell-menu small { color: var(--muted); font-size: 12px; }
+.bell-menu .bell-all { text-align: center; color: var(--primary); font-weight: 700; border-top: 1px solid var(--line-soft); border-radius: 0; margin-top: 2px; }
+.bell-empty { padding: 10px; }
+.notice-list { list-style: none; margin: 0; padding: 0; }
+.notice-list li { border-top: 1px solid var(--line-soft); }
+.notice-list li:first-child { border-top: 0; }
+.notice-list a { display: grid; gap: 3px; padding: 14px 22px; text-decoration: none; color: var(--ink); }
+.notice-list a:hover { background: var(--surface-2); }
+.notice-list li.unread a { background: color-mix(in srgb, var(--accent-soft) 45%, transparent); }
+.notice-list span { color: var(--ink-2); font-size: 14px; }
+.notice-list small { color: var(--muted); font-size: 12.5px; }
+mark.mention { background: var(--accent-soft); color: var(--primary); font-weight: 700; padding: 0 3px; border-radius: 4px; }
+.mention-pick { position: absolute; z-index: 70; list-style: none; margin: 0; padding: 4px; min-width: 200px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: 0 12px 32px rgba(15, 31, 61, .16); }
+.mention-pick li { padding: 7px 10px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.mention-pick li[aria-selected="true"], .mention-pick li:hover { background: var(--accent-soft); color: var(--primary); }
+.getting-started { margin-bottom: 20px; }
+.gs-bar { height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin: -4px 0 14px; }
+.gs-bar span { display: block; height: 100%; background: var(--accent); }
+.gs-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 8px; }
+.gs-steps li { font-size: 14px; font-weight: 700; }
+.gs-steps a, .gs-steps li.done { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-md); text-decoration: none; color: var(--ink); }
+.gs-steps a:hover { border-color: var(--accent); }
+.gs-steps li.done { color: var(--muted); text-decoration: line-through; background: var(--surface-2); }
+.gs-tick { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--line); flex: none; display: grid; place-items: center; }
+.gs-steps li.done .gs-tick { background: var(--ok); border-color: var(--ok); color: #fff; }
+.gs-tick .icon { width: 12px; height: 12px; }
+
 /* Documents: logo, sending ------------------------------------------------------ */
 .doc-logo { height: 40px; width: auto; max-width: 220px; object-fit: contain; display: block; }
 .invoice-brand .doc-logo { margin-right: 4px; }

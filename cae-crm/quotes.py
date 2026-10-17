@@ -52,6 +52,13 @@ def links(q):
     return dict(deal_id=q["deal_id"], company_id=q["company_id"], contact_id=q["contact_id"])
 
 
+def tell_owner(q, title, body):
+    """Notify the person who owns the quote's deal, or whoever drafted it."""
+    from notifications import notify, user_named
+    owner = one("SELECT owner FROM deals WHERE id=?", q["deal_id"])["owner"] if q["deal_id"] else q["created_by"]
+    notify([user_named(owner, q["workspace_id"])], title, body, url_for("quote", quote_id=q["id"]), q["workspace_id"])
+
+
 def client_ip():
     # Vercel puts the visitor's address in X-Real-IP and overwrites any value the visitor sends.
     return (request.headers.get("X-Real-IP") or (request.access_route[0] if request.access_route else "")
@@ -268,6 +275,7 @@ def register(app):
                     request.headers.get("User-Agent", "")[:300], q["id"]))
         log_event(f"Quote {q['number']} accepted", f"Signed online by {name} on {stamp[:16].replace('T', ' at ')}. "
                   f"{money(q['net'] + q['vat'], pennies=True)} including VAT.", **links(q))
+        tell_owner(q, f"Quote {q['number']} accepted by {name}", f"{money(q['net'] + q['vat'], pennies=True)} including VAT")
         deal = one("SELECT * FROM deals WHERE id=? AND workspace_id=?", q["deal_id"], q["workspace_id"]) if q["deal_id"] else None
         if deal and deal["stage"] not in ("Won", "Lost"):
             from sales import set_stage
@@ -289,5 +297,6 @@ def register(app):
         db.execute("UPDATE quotes SET status='Declined', decided_at=?, decline_reason=? WHERE id=? AND status='Sent'",
                    (now().isoformat(timespec="seconds"), reason, q["id"]))
         log_event(f"Quote {q['number']} declined by the customer", reason or "No reason given.", **links(q))
+        tell_owner(q, f"Quote {q['number']} was declined", reason or "No reason given.")
         db.commit()
         return redirect(url_for("public_quote", token=token))

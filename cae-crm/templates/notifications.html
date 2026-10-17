@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Notifications{% endblock %}
+{% block heading %}Notifications{% endblock %}
+{% block subtitle %}<p class="subtitle">Mentions, tasks and tickets given to you, quote decisions and new enquiries.</p>{% endblock %}
+{% block actions %}
+  {% if bell.unread %}
+    <form method="post" action="{{ url_for('read_notifications') }}" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <button class="btn ghost">{{ icon('check') }} Mark all as read</button>
+    </form>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<section class="panel flush">
+  <ul class="notice-list">
+    {% for n in items %}
+      <li class="{{ 'unread' if not n.read_at }}">
+        <a href="{{ url_for('open_notification', notification_id=n.id) }}">
+          <b>{{ n.title }}</b>
+          {% if n.body %}<span>{{ n.body }}</span>{% endif %}
+          <small>{{ n.created_at | relative_time }}</small>
+        </a>
+      </li>
+    {% else %}
+      <li class="empty-line">Nothing yet. You'll see things here when someone mentions you or gives you work.</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

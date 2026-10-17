@@ -14,8 +14,10 @@ The logo is **Stages**: two nested "C"s closing on a point, a sales pipeline nar
 | `favicon.ico` | Browser tab icon (16, 32 and 48px). |
 | `png/cae-crm-icon-*.png` | The app icon as PNG at 16 to 1024px, for anywhere SVG isn't accepted. |
 | `png/cae-crm-mark-512.png` | The mark alone as PNG, transparent background. |
+| `png/cae-crm-logo-484.png`, `-968.png` | Full logo as PNG for light backgrounds (transparent). |
+| `png/cae-crm-logo-on-dark-484.png`, `-968.png` | Full logo as PNG for dark backgrounds (transparent). |
 
-The full logos use the Plus Jakarta Sans font (ExtraBold for "CAE", Medium for "CRM"). They show correctly wherever that font is available, including the app and websites that load it from Google Fonts. For print, or for tools that don't have the font, use outlined copies, which turn the letters into shapes.
+The full logos are drawn in Plus Jakarta Sans (ExtraBold for "CAE", Medium for "CRM") with the letters turned into shapes, so they look right everywhere, including print and tools that don't have the font.
 
 ## Colours
 

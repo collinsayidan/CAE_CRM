@@ -6,10 +6,11 @@ from datetime import timedelta
 
 from flask import abort, flash, g, redirect, render_template, request, url_for
 
+import mail
 from core import back, get_or_404, log_event, now, one, owned, rows, today, workspace, ws
 from db import get_db, next_quote_number
 from finance import raise_invoice
-from ukfmt import money, vat_amount
+from ukfmt import money, uk_date, vat_amount
 
 QUOTE_STATUSES = ["Draft", "Sent", "Accepted", "Declined"]
 VALID_DAYS = 30
@@ -119,6 +120,7 @@ def register(app):
         invoice = one("SELECT id, number FROM invoices WHERE id=? AND workspace_id=?", q["invoice_id"], ws()) if q["invoice_id"] else None
         deal = one("SELECT id, title, stage FROM deals WHERE id=? AND workspace_id=?", q["deal_id"], ws()) if q["deal_id"] else None
         return render_template("quote.html", q=q, state=quote_state(q), lines=lines, by_rate=vat_summary(lines),
+                               mail_ready=mail.configured(),
                                company=company, contact=contact, contacts=contacts, invoice=invoice, deal=deal,
                                business=workspace(), public_url=url_for("public_quote", token=q["token"], _external=True))
 
@@ -153,6 +155,46 @@ def register(app):
         db.commit()
         flash(f"Quote {q['number']} is live. Copy the link and send it to your customer.", "ok")
         return redirect(url_for("quote", quote_id=quote_id))
+
+    @app.post("/quotes/<int:quote_id>/email")
+    def email_quote(quote_id):
+        """Email the customer a link to the quote, and mark a draft as sent."""
+        q = get_or_404("quotes", quote_id)
+        back_to = redirect(url_for("quote", quote_id=quote_id))
+        if quote_state(q) not in ("Draft", "Sent"):
+            flash("Only a draft or an open quote can be emailed.", "error")
+            return back_to
+        contact = one("SELECT * FROM contacts WHERE id=? AND workspace_id=?", q["contact_id"], ws()) if q["contact_id"] else None
+        if not contact or not contact["email"]:
+            flash("Choose a contact with an email address under Details first.", "error")
+            return back_to
+        w = workspace()
+        link = url_for("public_quote", token=q["token"], _external=True)
+        gross = money(q["net"] + q["vat"], pennies=True)
+        html = render_template("emails/notice.html", business=w, heading=f"Quote {q['number']}", paragraphs=[
+            f"Hi {contact['first_name']},",
+            f"Here's our quote for {q['title']}: {gross} including VAT, valid until {uk_date(q['expiry_date'])}.",
+            "You can read it, then accept or decline it online. It only takes a minute."],
+            button_url=link, button_label="View your quote",
+            footer=f"Sent by {g.user['name']} at {w['legal_name'] or w['name']}. Reply to this email with any questions.")
+        text = (f"Hi {contact['first_name']},\n\nHere's our quote for {q['title']}: {gross} including VAT, valid until "
+                f"{uk_date(q['expiry_date'])}.\n\nRead it and accept or decline online: {link}\n\n"
+                f"{g.user['name']}, {w['name']}\n")
+        try:
+            mail.send(mail.message(contact["email"], f"Quote {q['number']} from {w['name']}: {q['title']}", html, text,
+                                   w["name"], w["reply_to"] or g.user["email"]))
+        except mail.MailError as e:
+            flash(f"Quote not emailed. {e}", "error")
+            return back_to
+        db = get_db()
+        if q["status"] == "Draft":
+            db.execute("UPDATE quotes SET status='Sent', sent_at=? WHERE id=? AND workspace_id=?",
+                       (now().isoformat(timespec="minutes"), quote_id, ws()))
+        log_event(f"Quote {q['number']} emailed", f"Sent to {contact['email']} by {g.user['name']}.", kind="email",
+                  author=g.user["name"], **links(q))
+        db.commit()
+        flash(f"Quote {q['number']} emailed to {contact['first_name']} {contact['last_name']}.", "ok")
+        return back_to
 
     @app.post("/quotes/<int:quote_id>/invoice")
     def invoice_quote(quote_id):

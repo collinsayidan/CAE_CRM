@@ -9,6 +9,7 @@ from flask import abort, current_app, flash, g, redirect, render_template, reque
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 import auth
+import mail
 import ukfmt
 from core import (advance_lifecycle, get_or_404, log_event, now, one, owner_names, rows, today, workspace, ws)
 from db import LIFECYCLE_STAGES, get_db
@@ -232,3 +233,24 @@ def register(app):
                       subject=f"Reply to {first} {last} ({form['name']})", owner=form["owner"],
                       due_at=next_working_morning(t).isoformat(timespec="minutes"), done=0)
         db.commit()
+        alert_owner(form, contact_id, f"{first} {last}", email, company_name, message)
+
+    def alert_owner(form, contact_id, name, email, company, message):
+        """Tell the form's owner about a new enquiry. A failed alert never loses the submission."""
+        owner = one("SELECT email FROM users WHERE workspace_id=? AND name=?", ws(), form["owner"])
+        if not owner or not mail.configured():
+            return
+        w = workspace()
+        link = url_for("contact", contact_id=contact_id, _external=True)
+        paragraphs = [f"{name} ({email}{', ' + company if company else ''}) filled in {form['name']}."]
+        if message:
+            paragraphs.append(f"“{message[:1500]}”")
+        paragraphs.append("A follow-up task is on your list." if form["follow_up_task"] else "Reply when you can.")
+        html = render_template("emails/notice.html", business=w, heading="New enquiry", paragraphs=paragraphs,
+                               button_url=link, button_label="Open the contact",
+                               footer=f"CAE CRM alert for {w['name']}. You get these because you own the form {form['name']}.")
+        try:
+            mail.send(mail.message(owner["email"], f"New enquiry from {name}", html,
+                                   "\n\n".join(paragraphs) + f"\n\n{link}\n", "CAE CRM", reply_to=email))
+        except mail.MailError:
+            current_app.logger.warning("Form alert not sent for submission from %s", email)

@@ -1043,6 +1043,23 @@ body.landing { background: var(--surface); }
   .record-right { grid-column: 1 / -1; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); align-items: start; }
   .record-right { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
 }
+/* Email campaigns -------------------------------------------------------- */
+.notice { display: flex; gap: 10px; align-items: flex-start; padding: 12px 16px; margin-bottom: 18px; border-radius: var(--r-lg); background: var(--warn-soft); color: var(--warn-ink); font-size: 14px; }
+.notice .icon { width: 18px; height: 18px; flex: none; margin-top: 1px; }
+.campaign-body { font-family: inherit; line-height: 1.55; resize: vertical; }
+.stage-picks { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 14px; }
+.pick-chip { position: relative; cursor: pointer; }
+.pick-chip input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.pick-chip span { display: block; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font-size: 13px; font-weight: 700; color: var(--ink-2); }
+.pick-chip input:checked + span { background: var(--accent-soft); border-color: var(--accent); color: var(--primary); }
+.pick-chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.audience-count { margin-top: 14px; padding: 10px 14px; border-radius: var(--r-md); background: var(--surface-2); font-size: 14px; }
+.email-preview { width: 100%; height: 460px; border: 1px solid var(--line); border-radius: var(--r-md); background: #f1f4f8; }
+.sending-panel { margin-bottom: 20px; display: grid; gap: 10px; justify-items: start; }
+.sending-panel h2 { font-size: 18px; }
+.send-progress { width: 100%; height: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.send-progress span { display: block; height: 100%; background: var(--primary); transition: width .3s; }
+
 /* Quotes and forms ------------------------------------------------------- */
 .chip.warn { background: var(--warn-soft); color: var(--warn-ink); border-color: transparent; }
 .chip.sm { font-size: 11px; padding: 0 7px; vertical-align: 1px; }

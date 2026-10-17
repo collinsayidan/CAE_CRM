@@ -1,0 +1,9 @@
+{% extends "emails/_frame.html" %}
+{% block title %}{{ subject }}{% endblock %}
+{% block preheader %}{% if preheader %}<div style="display:none;max-height:0;overflow:hidden;opacity:0">{{ preheader }}</div>{% endif %}{% endblock %}
+{% block body %}{{ body }}{% endblock %}
+{% block footer %}
+  {{ sender_line }}<br>
+  You're receiving this because you agreed to hear from {{ business.name }} by email.<br>
+  <a href="{{ unsubscribe_url }}" style="color:#0f766e">Unsubscribe</a> and you won't get any more marketing emails from us.
+{% endblock %}

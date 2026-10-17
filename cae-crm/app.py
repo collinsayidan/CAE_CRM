@@ -12,6 +12,7 @@ from urllib.parse import urlencode
 from flask import Flask, abort, g, jsonify, redirect, render_template, request, session, url_for
 
 import auth
+import campaigns
 import crm
 import dataio
 import finance
@@ -32,7 +33,7 @@ NAV = [
     ("CRM", [("contacts", "Contacts", "users"), ("companies", "Companies", "building"),
              ("pipeline", "Deals", "pipeline"), ("tickets", "Tickets", "lifebuoy")]),
     ("Sales", [("tasks", "Tasks", "calendar"), ("quotes", "Quotes", "note"), ("products", "Products", "box")]),
-    ("Marketing", [("forms", "Forms", "mail")]),
+    ("Marketing", [("campaigns", "Email", "mail"), ("forms", "Forms", "list")]),
     ("Finance", [("invoices", "Invoices", "pound")]),
     ("Delivery", [("projects", "Projects", "flag")]),
     ("Insight", [("reports", "Reports", "trend")]),
@@ -41,12 +42,14 @@ NAV = [
 # Which nav item lights up for pages that aren't in the nav themselves.
 NAV_PARENT = {"contact": "contacts", "company": "companies", "deal": "pipeline", "ticket": "tickets",
               "invoice": "invoices", "import_map": "imports",
-              "auth.member": "auth.team", "auth.edit_member": "auth.team", "quote": "quotes", "web_form": "forms"}
+              "auth.member": "auth.team", "auth.edit_member": "auth.team", "quote": "quotes", "web_form": "forms",
+              "campaign": "campaigns"}
 # Pages anyone can reach without signing in.
 PUBLIC_ENDPOINTS = {"landing", "auth.login", "auth.signup", "auth.setup", "static",
-                    "public_form", "public_quote", "accept_quote", "decline_quote"}
+                    "public_form", "public_quote", "accept_quote", "decline_quote", "unsubscribe", "resend_webhook"}
 # Forms embedded on other websites can't carry our session's CSRF token; they have their own spam checks.
-CSRF_EXEMPT = {"public_form"}
+# Mail apps' one-click unsubscribe and Resend's webhooks post from elsewhere too; the webhook is signed.
+CSRF_EXEMPT = {"public_form", "unsubscribe", "resend_webhook"}
 
 
 def create_app(config=None):
@@ -68,6 +71,10 @@ def create_app(config=None):
         SESSION_COOKIE_SECURE=hosted,
         PERMANENT_SESSION_LIFETIME=timedelta(hours=12),
         MAX_CONTENT_LENGTH=6 * 1024 * 1024,  # CSV imports
+        # Email through Resend: the API key, the platform's sending address, and the webhook signing secret.
+        RESEND_API_KEY=os.environ.get("RESEND_API_KEY", ""),
+        MAIL_FROM=os.environ.get("CAE_MAIL_FROM", ""),
+        RESEND_WEBHOOK_SECRET=os.environ.get("RESEND_WEBHOOK_SECRET", ""),
         TODAY=None,  # tests pin the date and time; otherwise the real ones are used
         NOW=None,
     )
@@ -140,7 +147,7 @@ def create_app(config=None):
         return redirect(url_for("auth.login", next=request.full_path.rstrip("?")))
 
     app.register_blueprint(auth.bp)
-    for module in (home, crm, sales, service, finance, quotes, webforms, dataio, settings):
+    for module in (home, crm, sales, service, finance, quotes, webforms, campaigns, dataio, settings):
         module.register(app)
     return app
 

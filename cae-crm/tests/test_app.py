@@ -11,8 +11,28 @@ def test_pages_render(client, path):
 
 def test_overview_has_dashboard_sections(client):
     html = client.get("/").get_data(as_text=True)
-    for text in ("Won this month", "Open pipeline", "Hot deals", "Stage mix", "FY2026/27 Q3", "<svg"):
+    for text in ("Won in October", "Open pipeline", "Closing in the next 30 days", "Pipeline by stage",
+                 "FY2026/27 Q3", "<svg", "revenue-data"):
         assert text in html
+    # 17/10/2026 is a Saturday: 12 of October's 22 working days have gone.
+    assert "12 of 22 working days gone" in html
+
+
+def test_search_api(client):
+    assert client.get("/api/search?q=a").json == []
+    kinds = {r["kind"] for r in client.get("/api/search?q=Mersey").json}
+    assert "Customer" in kinds
+
+
+def test_drag_and_drop_move_returns_json(client):
+    resp = client.post("/deals/40/stage", data={"stage": "Closing"},
+                       headers={"X-Requested-With": "fetch", "X-CSRF-Token": client.csrf})
+    assert resp.json["ok"] and resp.json["probability"] == 90
+
+
+def test_schedule_month_navigation(client):
+    html = client.get("/schedule?month=2026-12").get_data(as_text=True)
+    assert "December 2026" in html and 'title="Bank holiday"' in html
 
 
 def test_post_without_csrf_is_rejected(client):

@@ -2,7 +2,7 @@
 Companies House numbers, phone numbers and the April-March financial year."""
 
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
 POSTCODE_RE = re.compile(
@@ -133,3 +133,27 @@ def normalise_phone(raw):
         return None
     national = "0" + compact[3:] if compact.startswith("+44") else compact
     return f"+44 {national[1:5]} {national[5:]}"
+
+
+# --- Working days -------------------------------------------------------------
+
+# England & Wales bank holidays (gov.uk). Scotland and Northern Ireland add their own.
+BANK_HOLIDAYS = {date.fromisoformat(d) for d in (
+    "2025-01-01", "2025-04-18", "2025-04-21", "2025-05-05", "2025-05-26", "2025-08-25", "2025-12-25", "2025-12-26",
+    "2026-01-01", "2026-04-03", "2026-04-06", "2026-05-04", "2026-05-25", "2026-08-31", "2026-12-25", "2026-12-28",
+    "2027-01-01", "2027-03-26", "2027-03-29", "2027-05-03", "2027-05-31", "2027-08-30", "2027-12-27", "2027-12-28",
+)}
+
+
+def is_working_day(d):
+    return d.weekday() < 5 and d not in BANK_HOLIDAYS
+
+
+def working_days(start, end):
+    """Working days in [start, end)."""
+    days, d = [], start
+    while d < end:
+        if is_working_day(d):
+            days.append(d)
+        d += timedelta(days=1)
+    return days

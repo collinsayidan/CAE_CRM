@@ -4,66 +4,92 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}{% endblock %} · CAE CRM</title>
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{% block title %}{% endblock %} – CAE CRM</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:ital,wght@0,400..900;1,400..900&display=swap">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script>
+    document.documentElement.classList.add("js");
     try { const t = localStorage.getItem("cae-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
   </script>
 </head>
 <body>
-  <aside class="rail" aria-label="Quick actions">
-    <a class="brand" href="{{ url_for('overview') }}" title="CAE CRM">CAE</a>
-    <a href="{{ url_for('customers') }}#search" title="Search customers">{{ icon('search') }}</a>
-    <a href="{{ url_for('pipeline') }}#new-deal" title="New deal">{{ icon('plus') }}</a>
-    <a href="{{ url_for('growth') }}" title="Growth">{{ icon('star') }}</a>
-    <a href="{{ url_for('schedule') }}" title="Schedule">{{ icon('calendar') }}</a>
-    <a href="{{ url_for('finance') }}" title="Finance">{{ icon('pound') }}</a>
-    <span class="rail-gap"></span>
-    <button type="button" id="theme-toggle" title="Toggle dark mode">{{ icon('moon') }}</button>
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="{{ url_for('overview') }}">
+      <span class="mark" aria-hidden="true">C</span>
+      <span class="brand-name">CAE CRM</span>
+    </a>
+    <nav aria-label="Main">
+      {% for endpoint, label, icon_name in nav %}
+        {% set active = request.endpoint == endpoint or (endpoint == 'customers' and request.endpoint == 'company') or (endpoint == 'finance' and request.endpoint == 'invoice') %}
+        <a href="{{ url_for(endpoint) }}" {% if active %}aria-current="page"{% endif %}>
+          {{ icon(icon_name) }}<span>{{ label }}</span>
+          {% if counts.get(endpoint) %}
+            <span class="count {{ 'alert' if endpoint == 'finance' }}" title="{{ {'pipeline': 'Open deals', 'schedule': 'Still to do today', 'finance': 'Overdue invoices'}[endpoint] }}">{{ counts[endpoint] }}</span>
+          {% endif %}
+        </a>
+      {% endfor %}
+    </nav>
+    <div class="sidebar-foot">
+      <p>Amounts in pounds sterling. Dates are day, month, year.</p>
+    </div>
   </aside>
+  <div class="scrim" data-close-sidebar></div>
 
-  <div class="shell">
+  <div class="main">
     <header class="topbar">
-      <nav class="tabs" aria-label="Main">
-        {% for endpoint, label in nav %}
-          <a href="{{ url_for(endpoint) }}" class="{{ 'active' if request.endpoint == endpoint or (endpoint == 'customers' and request.endpoint == 'company') }}">{{ label }}</a>
-        {% endfor %}
-      </nav>
-      <div class="today" title="Today">{{ today | uk_date }}</div>
+      <button class="icon-btn only-mobile" data-open-sidebar aria-label="Open menu">{{ icon('menu') }}</button>
+      <button class="search-trigger" data-palette>
+        {{ icon('search') }}<span>Search customers, deals and people</span><kbd>Ctrl K</kbd>
+      </button>
+      <div class="top-actions">
+        <details class="new-menu">
+          <summary class="btn primary">{{ icon('plus') }}<span>New</span></summary>
+          <div class="menu" role="menu">
+            <button type="button" role="menuitem" data-open="dlg-deal">Deal</button>
+            <button type="button" role="menuitem" data-open="dlg-customer">Customer</button>
+            <button type="button" role="menuitem" data-open="dlg-activity">Activity</button>
+            <button type="button" role="menuitem" data-open="dlg-invoice">Invoice</button>
+          </div>
+        </details>
+        <button class="icon-btn" id="theme-toggle" aria-label="Switch light or dark theme">{{ icon('moon') }}</button>
+      </div>
     </header>
 
-    <main>
+    <main id="content">
       <div class="page-head">
-        <h1>{% block heading %}{% endblock %}</h1>
+        <div>
+          <h1>{% block heading %}{% endblock %}</h1>
+          {% block subtitle %}{% endblock %}
+        </div>
         <div class="page-actions">{% block actions %}{% endblock %}</div>
       </div>
-
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% for category, message in messages %}
-          <div class="flash {{ category }}" role="status">{{ message }}</div>
-        {% endfor %}
-      {% endwith %}
-
       {% block content %}{% endblock %}
     </main>
-
-    <footer class="foot">
-      CAE CRM · Amounts in GBP (£) · VAT at UK rates · Dates DD/MM/YYYY · Personal data handled under UK GDPR &amp; DPA 2018
-    </footer>
   </div>
 
-  <script>
-    document.getElementById("theme-toggle").addEventListener("click", () => {
-      const root = document.documentElement;
-      const dark = root.dataset.theme ? root.dataset.theme === "dark"
-                                      : matchMedia("(prefers-color-scheme: dark)").matches;
-      root.dataset.theme = dark ? "light" : "dark";
-      try { localStorage.setItem("cae-theme", root.dataset.theme); } catch (e) {}
-    });
-    document.querySelectorAll("form[data-confirm]").forEach(f =>
-      f.addEventListener("submit", e => { if (!confirm(f.dataset.confirm)) e.preventDefault(); }));
-  </script>
+  {% include "_dialogs.html" %}
+
+  <dialog class="palette" id="palette" aria-label="Search">
+    <div class="palette-input">
+      {{ icon('search') }}
+      <input type="search" placeholder="Search or jump to…" autocomplete="off" aria-controls="palette-results">
+      <kbd>Esc</kbd>
+    </div>
+    <ul id="palette-results" role="listbox"></ul>
+  </dialog>
+
+  <div class="toasts" aria-live="polite">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="toast {{ category }}" role="status">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

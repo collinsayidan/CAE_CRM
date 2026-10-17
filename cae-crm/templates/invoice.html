@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Invoice {{ i.number }}{% endblock %}
+{% block heading %}Invoice {{ i.number }}{% endblock %}
+{% block actions %}
+  <a class="btn ghost" href="{{ url_for('finance') }}">← Finance</a>
+  <button class="btn" onclick="window.print()">Print / PDF</button>
+{% endblock %}
+
+{% block content %}
+<section class="card invoice">
+  <div class="invoice-head">
+    <div>
+      <div class="brand big">CAE</div>
+      <p class="muted small">CAE CRM Ltd<br>Registered in Scotland · VAT no. GB000000000</p>
+    </div>
+    <dl class="facts compact">
+      <dt>Invoice no.</dt><dd>{{ i.number }}</dd>
+      <dt>Tax point / issue date</dt><dd>{{ i.issue_date | uk_date }}</dd>
+      <dt>Payment due</dt><dd>{{ i.due_date | uk_date }}</dd>
+      <dt>Status</dt><dd>{{ 'Paid ' ~ (i.paid_date | uk_date) if i.paid_date else 'Awaiting payment' }}</dd>
+    </dl>
+  </div>
+  <div class="bill-to">
+    <span class="muted small">Bill to</span>
+    <b>{{ i.company }}</b><br>{{ i.address }}<br>{{ i.city }}<br>{{ i.postcode }}
+    {% if i.customer_vat %}<br><span class="muted small">VAT no. {{ i.customer_vat }}</span>{% endif %}
+  </div>
+  <table>
+    <thead><tr><th>Description</th><th class="num">Net</th><th class="num">VAT rate</th><th class="num">VAT</th><th class="num">Total</th></tr></thead>
+    <tbody><tr><td>{{ i.description }}</td><td class="num">{{ pennies(i.net) }}</td><td class="num">{{ i.vat_rate }}%</td>
+               <td class="num">{{ pennies(i.vat) }}</td><td class="num">{{ pennies(i.net + i.vat) }}</td></tr></tbody>
+    <tfoot>
+      <tr><td colspan="4" class="num">Subtotal (ex. VAT)</td><td class="num">{{ pennies(i.net) }}</td></tr>
+      <tr><td colspan="4" class="num">VAT @ {{ i.vat_rate }}%</td><td class="num">{{ pennies(i.vat) }}</td></tr>
+      <tr class="total"><td colspan="4" class="num">Amount due (GBP)</td><td class="num">{{ pennies(i.net + i.vat) }}</td></tr>
+    </tfoot>
+  </table>
+  <p class="muted small">Please pay by BACS within 30 days quoting {{ i.number }}. Late payments may attract interest under the Late Payment of Commercial Debts (Interest) Act 1998.</p>
+</section>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, error %}
+{% block title %}Customers{% endblock %}
+{% block heading %}Customers{% endblock %}
+{% block actions %}
+  <form class="filter" method="get" id="search" role="search">
+    <input type="search" name="q" value="{{ q }}" placeholder="Search name, city, postcode…" aria-label="Search customers">
+  </form>
+{% endblock %}
+
+{% block content %}
+<details class="card form-card" {{ 'open' if open_form }}>
+  <summary>{{ icon('plus') }} New customer</summary>
+  <form method="post" action="{{ url_for('create_company') }}" class="grid-form" novalidate>
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <label>Company name<input name="name" value="{{ form.name }}" required>{{ error(errors, 'name') }}</label>
+    <label>Companies House no.<input name="company_no" value="{{ form.company_no }}" placeholder="08451236">{{ error(errors, 'company_no') }}</label>
+    <label>VAT registration no.<input name="vat_no" value="{{ form.vat_no }}" placeholder="GB123456789">{{ error(errors, 'vat_no') }}</label>
+    <label>Industry<input name="industry" value="{{ form.industry }}"></label>
+    <label>Address line<input name="address" value="{{ form.address }}" autocomplete="address-line1"></label>
+    <label>Town / city<input name="city" value="{{ form.city }}" autocomplete="address-level2"></label>
+    <label>Postcode<input name="postcode" value="{{ form.postcode }}" required autocomplete="postal-code" placeholder="EH2 2AN">{{ error(errors, 'postcode') }}</label>
+    <label>Region
+      <select name="region">
+        {% for r in ['London','South East','South West','East of England','East Midlands','West Midlands','Yorkshire','North West','North East','Scotland','Wales','Northern Ireland'] %}
+          <option {{ 'selected' if form.region == r }}>{{ r }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <div class="form-end"><button class="btn">Add customer</button></div>
+  </form>
+</details>
+
+<section class="card flush">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Company</th><th>Location</th><th>Industry</th><th class="num">Contacts</th>
+            <th class="num">Open pipeline</th><th class="num">Lifetime revenue</th></tr>
+      </thead>
+      <tbody>
+        {% for c in companies %}
+          <tr>
+            <td><a href="{{ url_for('company', company_id=c.id) }}"><b>{{ c.name }}</b></a>
+                <div class="muted small">{{ c.company_no or 'No company no.' }}</div></td>
+            <td>{{ c.city }}<div class="muted small">{{ c.postcode }} · {{ c.region }}</div></td>
+            <td>{{ c.industry or '—' }}</td>
+            <td class="num">{{ c.contacts }}</td>
+            <td class="num">{{ c.pipeline | money }}</td>
+            <td class="num"><b>{{ c.lifetime | money }}</b></td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6" class="empty">No customers match “{{ q }}”.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

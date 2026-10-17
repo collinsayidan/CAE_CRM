@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, avatar %}
+{% block title %}Schedule{% endblock %}
+{% block heading %}Schedule{% endblock %}
+{% block actions %}
+  {% if overdue %}<span class="badge down">{{ overdue }} overdue</span>{% endif %}
+{% endblock %}
+
+{% block content %}
+<details class="card form-card">
+  <summary>{{ icon('plus') }} New activity</summary>
+  <form method="post" action="{{ url_for('create_activity') }}" class="grid-form">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <label>Type<select name="kind">{% for k in kinds %}<option>{{ k }}</option>{% endfor %}</select></label>
+    <label>Subject<input name="subject" required maxlength="140"></label>
+    <label>Date<input type="date" name="date" value="{{ today.isoformat() }}" required></label>
+    <label>Time<input type="time" name="time" value="09:00"></label>
+    <label>Customer
+      <select name="company_id"><option value="">—</option>
+        {% for c in companies %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Owner<select name="owner">{% for o in owners %}<option>{{ o }}</option>{% endfor %}</select></label>
+    <div class="form-end"><button class="btn">Schedule</button></div>
+  </form>
+</details>
+
+{% for day, items in days %}
+  <section class="card day {{ 'is-today' if day == today.isoformat() }}">
+    <div class="card-head">
+      <h2>{{ day | uk_date }}{% if day == today.isoformat() %} · Today{% endif %}</h2>
+      <span class="muted">{{ items | length }} item{{ 's' if items | length != 1 }}</span>
+    </div>
+    <ul class="activities">
+      {% for a in items %}
+        <li class="{{ 'done' if a.done }} {{ 'late' if not a.done and day < today.isoformat() }}">
+          <form method="post" action="{{ url_for('toggle_activity', activity_id=a.id) }}">
+            <input type="hidden" name="csrf" value="{{ csrf_token }}">
+            <button class="tick" title="{{ 'Mark not done' if a.done else 'Mark done' }}">{{ icon('check') if a.done }}</button>
+          </form>
+          <span class="time">{{ a.due_at[11:16] }}</span>
+          <span class="pill">{{ a.kind }}</span>
+          <span class="grow"><b>{{ a.subject }}</b>
+            {% if a.company %}<span class="muted"> · <a href="{{ url_for('company', company_id=a.company_id) }}">{{ a.company }}</a></span>{% endif %}
+            {% if a.deal %}<span class="muted small"> · {{ a.deal }}</span>{% endif %}</span>
+          {{ avatar(a.owner) }}
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% else %}
+  <p class="empty card">Nothing scheduled.</p>
+{% endfor %}
+{% endblock %}

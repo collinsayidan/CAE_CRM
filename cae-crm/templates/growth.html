@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_macros.html" import kpi, avatar %}
+{% block title %}Growth{% endblock %}
+{% block heading %}Growth{% endblock %}
+{% block actions %}
+  <div class="kpis">
+    {{ kpi('pound', avg_deal | money, 'Average won deal') }}
+    {{ kpi('clock', cycle ~ ' days', 'Average sales cycle') }}
+    {{ kpi('users', new_customers, 'New customers, last 90 days') }}
+  </div>
+{% endblock %}
+
+{% macro breakdown_table(rows, label, show_avatar=false) %}
+  <ul class="bars">
+    {% for r in rows %}
+      <li>
+        <div class="row-between">
+          <span>{% if show_avatar %}{{ avatar(r.k) }} {% endif %}<b>{{ r.k }}</b></span>
+          <span><b>{{ r.won_value | money }}</b> <span class="muted small">· win rate {{ r.rate }}% · {{ r.pipeline | money }} open</span></span>
+        </div>
+        <div class="bar"><span style="width: {{ r.share }}%"></span></div>
+      </li>
+    {% endfor %}
+  </ul>
+{% endmacro %}
+
+{% block content %}
+<div class="split two">
+  <section class="card">
+    <div class="card-head"><h2>Won revenue by lead source</h2></div>
+    {{ breakdown_table(by_source, 'Source') }}
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>Leaderboard</h2><span class="muted">all time</span></div>
+    {{ breakdown_table(by_owner, 'Owner', true) }}
+  </section>
+</div>
+{% endblock %}

@@ -49,7 +49,8 @@ CREATE TABLE IF NOT EXISTS workspaces (
     monthly_target BIGINT NOT NULL DEFAULT 15670000,
     invoice_prefix TEXT NOT NULL DEFAULT 'INV',
     payment_terms INTEGER NOT NULL DEFAULT 30,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    reply_to TEXT
 );
 CREATE TABLE IF NOT EXISTS users (
     id {pk},
@@ -101,7 +102,9 @@ CREATE TABLE IF NOT EXISTS contacts (
     lifecycle_stage TEXT,
     lead_status TEXT,
     owner TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    unsubscribed_at TEXT,
+    email_bounced_at TEXT
 );
 CREATE TABLE IF NOT EXISTS deals (
     id {pk},
@@ -309,6 +312,38 @@ CREATE TABLE IF NOT EXISTS form_submissions (
     ip TEXT,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS email_campaigns (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    preheader TEXT,
+    body TEXT NOT NULL,
+    audience TEXT NOT NULL,
+    status TEXT NOT NULL,
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    started_at TEXT,
+    sent_at TEXT,
+    recipients INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS campaign_recipients (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    campaign_id INTEGER NOT NULL REFERENCES email_campaigns(id) ON DELETE CASCADE,
+    contact_id INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    first_name TEXT,
+    status TEXT NOT NULL,
+    provider_id TEXT,
+    error TEXT,
+    sent_at TEXT,
+    delivered_at TEXT,
+    opened_at TEXT,
+    clicked_at TEXT,
+    bounced_at TEXT,
+    unsubscribed_at TEXT
+);
 """
 
 # Columns added after the first release. Databases created by an earlier version gain them on start-up.
@@ -316,7 +351,9 @@ ADDED_COLUMNS = {
     "users": ["workspace_id INTEGER", "job_title TEXT", "department TEXT", "phone TEXT", "location TEXT",
               "linkedin TEXT", "bio TEXT", "photo TEXT", "photo_updated TEXT"],
     "companies": ["workspace_id INTEGER", "website TEXT", "phone TEXT", "owner TEXT"],
-    "contacts": ["workspace_id INTEGER", "lifecycle_stage TEXT", "lead_status TEXT", "owner TEXT"],
+    "contacts": ["workspace_id INTEGER", "lifecycle_stage TEXT", "lead_status TEXT", "owner TEXT", "unsubscribed_at TEXT",
+                 "email_bounced_at TEXT"],
+    "workspaces": ["reply_to TEXT"],
     "deals": ["workspace_id INTEGER", "contact_id INTEGER"],
     "activities": ["workspace_id INTEGER", "contact_id INTEGER", "ticket_id INTEGER"],
     "invoices": ["workspace_id INTEGER", "deal_id INTEGER"],
@@ -473,6 +510,8 @@ def migrate(db, today):
         "CREATE INDEX IF NOT EXISTS ix_quotes_ws ON quotes (workspace_id, status)",
         "CREATE INDEX IF NOT EXISTS ix_quotes_deal ON quotes (deal_id)",
         "CREATE INDEX IF NOT EXISTS ix_submissions_form ON form_submissions (form_id, created_at)",
+        "CREATE INDEX IF NOT EXISTS ix_recipients_campaign ON campaign_recipients (campaign_id, status)",
+        "CREATE INDEX IF NOT EXISTS ix_recipients_provider ON campaign_recipients (provider_id)",
     ):
         db.execute(sql)
     if db.postgres:

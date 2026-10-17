@@ -1,0 +1,20 @@
+{% extends "public/_layout.html" %}
+{% block title %}Unsubscribe{% endblock %}
+{% block main_class %}is-narrow{% endblock %}
+{% block content %}
+<section class="panel public-form-card">
+  {% if done %}
+    <div class="public-done" role="status">
+      <span class="done-tick" aria-hidden="true">✓</span>
+      <h1>You're unsubscribed</h1>
+      <p>{{ email }} won't get any more marketing emails from {{ business.name }}. You may still hear from us about things you've asked for, such as quotes or support.</p>
+    </div>
+  {% else %}
+    <h1>Unsubscribe</h1>
+    <p class="muted public-intro">Stop marketing emails from {{ business.name }} to {{ email }}?</p>
+    <form method="post">
+      <div class="public-actions"><button class="btn primary">Unsubscribe</button></div>
+    </form>
+  {% endif %}
+</section>
+{% endblock %}

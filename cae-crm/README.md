@@ -30,6 +30,7 @@ Open http://127.0.0.1:5000 and choose **Create a workspace**. Leave the sample d
    - `DATABASE_URL`: the Supabase pooler string from step 2.
    - `CAE_SECRET_KEY`: a long random value. `python -c "import secrets; print(secrets.token_hex(32))"` makes one.
    - `CAE_SETUP_CODE`: an invite code of your choosing. People need it to create a workspace.
+   - `RESEND_API_KEY`, `CAE_MAIL_FROM` and optionally `RESEND_WEBHOOK_SECRET`: to send email. See **Email** below.
 4. **Redeploy.** Then open the site and create your workspace.
 
 To run locally against Supabase, copy `.env.example` to `.env`, fill it in and run `python app.py` (after `pip install -r requirements-dev.txt`). `.env` is never committed.
@@ -38,11 +39,22 @@ The app creates and upgrades its tables when it starts. On PostgreSQL it also tu
 
 Vercel finds the app through `wsgi.py`, which `pyproject.toml` names in `[tool.vercel] entrypoint = "wsgi:app"`.
 
+## Email
+
+CAE CRM sends through [Resend](https://resend.com). Every business sends from the one address in `CAE_MAIL_FROM`, shown with the business's own name, and replies go to the reply-to email in **Settings**.
+
+1. Create a Resend account and, under **Domains**, add a sending domain such as `mail.yourdomain.co.uk`. Add the DNS records Resend shows (SPF, DKIM and a DMARC record) at your domain host and wait for them to verify.
+2. Under **API Keys**, create a key with sending access. Add it to Vercel as `RESEND_API_KEY`, and add `CAE_MAIL_FROM` (for example `hello@mail.yourdomain.co.uk`).
+3. Optional: under **Webhooks**, add `https://<your site>/webhooks/resend` for the email events, and add its signing secret to Vercel as `RESEND_WEBHOOK_SECRET`. Turn on open and click tracking for the domain if you want those figures.
+4. Redeploy. Until a domain is verified, Resend only delivers to your own account's address, which is enough for a test.
+
 ## What's in it
 
-The sidebar groups pages the way a business works: **CRM** (Contacts, Companies, Deals, Tickets), **Sales** (Tasks, Quotes, Products), **Marketing** (Forms), **Finance** (Invoices), **Delivery** (Projects), **Insight** (Reports) and **Workspace** (Team). Admins also get **Settings** and **Import**.
+The sidebar groups pages the way a business works: **CRM** (Contacts, Companies, Deals, Tickets), **Sales** (Tasks, Quotes, Products), **Marketing** (Email, Forms), **Finance** (Invoices), **Delivery** (Projects), **Insight** (Reports) and **Workspace** (Team). Admins also get **Settings** and **Import**.
 
 **Quotes.** Create a quote from a deal's line items, mark it as sent and share its private link. The customer reads it, then accepts by typing their name (the time, IP address and browser are recorded as evidence) or declines with a reason. Accepting wins the deal and sets a task to invoice it; one click turns the accepted quote into a VAT invoice. Typed-name e-signatures are valid for most UK commercial contracts under the Electronic Communications Act 2000.
+
+**Email campaigns.** Write a campaign in plain text (blank lines for paragraphs, `- ` for lists, `**bold**`, `[links](https://…)` and `{{first_name}}`), choose who gets it by lifecycle stage and owner, preview it and send yourself a test. Only contacts with recorded marketing consent who haven't unsubscribed or bounced are included, as PECR requires. Admins send; the page sends in batches of 100 so no request runs too long on Vercel. Every email names the business, says why the person is getting it and has a one-click unsubscribe, also in the `List-Unsubscribe` headers Gmail and Yahoo expect. With the Resend webhook set up, deliveries, opens, clicks, bounces and spam complaints are recorded; a bounce stops future sends to that address and a complaint unsubscribes the person. Quotes can be emailed to the customer from the quote page, and a form's owner gets an email for each new enquiry.
 
 **Web forms.** Build a contact form, then share its link or paste the embed code into your website. Each submission becomes a contact (matched by email, so repeat visitors aren't duplicated), with the company, a timeline entry and a follow-up task for the owner. Marketing consent is an unticked box and its wording is saved with the date, as PECR requires. A hidden honeypot field, a minimum fill-in time and a limit of five submissions per address in ten minutes keep spam out without a CAPTCHA. Erasing a contact deletes their submissions too.
 

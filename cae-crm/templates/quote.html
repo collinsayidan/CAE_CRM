@@ -40,6 +40,18 @@
         <button type="button" class="btn ghost sm" data-copy="#quote-link" {{ 'disabled' if state == 'Draft' }}>Copy</button>
       </div>
       {% if state != 'Draft' %}<p class="small"><a class="text-link sm" href="{{ public_url }}" target="_blank" rel="noopener">{{ icon('external') }} Preview what they see</a></p>{% endif %}
+      {% if state in ('Draft', 'Sent') %}
+        {% if contact and contact.email and mail_ready %}
+          <form method="post" action="{{ url_for('email_quote', quote_id=q.id) }}" data-confirm="Email quote {{ q.number }} to {{ contact.email }}?{{ ' It will be marked as sent.' if state == 'Draft' }}" class="panel-gap">
+            <input type="hidden" name="csrf" value="{{ csrf_token }}">
+            <button class="btn primary wide">{{ icon('mail') }} Email it to {{ contact.first_name }}</button>
+          </form>
+        {% elif not mail_ready %}
+          <p class="muted small panel-gap">Once email is switched on, you can send the quote from here.</p>
+        {% else %}
+          <p class="muted small panel-gap">Choose a contact with an email address under Details to email the quote from here.</p>
+        {% endif %}
+      {% endif %}
     </section>
 
     <section class="panel">

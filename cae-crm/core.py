@@ -13,7 +13,7 @@ UK_TZ = ZoneInfo("Europe/London")
 OPEN_SQL = f"stage IN ({','.join(repr(s) for s in OPEN_STAGES)})"
 # Tables whose rows carry a workspace_id, so a form can only point at the caller's own records.
 OWNED_TABLES = {"companies", "contacts", "deals", "tickets", "products", "invoices", "activities", "projects",
-                "engagements", "line_items", "saved_views", "imports", "users", "quotes", "web_forms"}
+                "engagements", "line_items", "saved_views", "imports", "users", "quotes", "web_forms", "email_campaigns"}
 
 
 def today():

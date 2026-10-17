@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Email{% endblock %}
+{% block heading %}Email campaigns{% endblock %}
+{% block subtitle %}<p class="subtitle">{{ reachable }} {{ 'contact has' if reachable == 1 else 'contacts have' }} agreed to marketing emails.</p>{% endblock %}
+{% block actions %}
+  <form method="post" action="{{ url_for('create_campaign') }}" class="inline">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <button class="btn primary">{{ icon('plus') }} New campaign</button>
+  </form>
+{% endblock %}
+
+{% set CHIP = {'Draft': '', 'Sending': 'warn', 'Sent': 'ok'} %}
+{% block content %}
+{% if not configured %}
+  <p class="notice">{{ icon('mail') }} <span><b>Email isn't switched on yet.</b> You can write and preview campaigns now. To send them, an admin adds <code>RESEND_API_KEY</code> and <code>CAE_MAIL_FROM</code> to the hosting settings.</span></p>
+{% endif %}
+<section class="panel flush">
+  <div class="table-wrap">
+    <table class="records">
+      <thead><tr><th>Campaign</th><th>Status</th><th class="num">Sent</th><th class="num">Opened</th><th class="num">Clicked</th><th class="num">Unsubscribed</th></tr></thead>
+      <tbody>
+        {% for c in campaigns %}
+          {% set r = report.get(c.id) %}
+          <tr>
+            <td><a class="row-link" href="{{ url_for('campaign', campaign_id=c.id) }}"><span><b>{{ c.name }}</b><small>{{ c.subject or 'No subject yet' }}</small></span></a></td>
+            <td><span class="chip {{ CHIP[c.status] }}">{{ c.status }}</span>{% if c.sent_at %}<small>{{ c.sent_at | uk_date }}</small>{% endif %}</td>
+            {% if r %}
+              <td class="num"><b>{{ r.sent }}</b></td>
+              <td class="num">{{ ((100 * r.opened / r.sent) | round | int ~ '%') if r.sent else '' }}</td>
+              <td class="num">{{ ((100 * r.clicked / r.sent) | round | int ~ '%') if r.sent else '' }}</td>
+              <td class="num">{{ r.unsubscribed }}</td>
+            {% else %}<td></td><td></td><td></td><td></td>{% endif %}
+          </tr>
+        {% else %}
+          <tr><td colspan="6" class="empty-line">No campaigns yet. Choose <b>New campaign</b> to write your first one.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+<p class="muted small panel-gap">Only contacts who opted in are emailed, as UK PECR requires. Each email carries your business details and a one-click unsubscribe, which takes effect straight away.</p>
+{% endblock %}

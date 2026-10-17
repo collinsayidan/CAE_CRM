@@ -32,6 +32,7 @@
     <div class="form-grid">
       {{ field('Invoice number prefix', 'invoice_prefix', form.invoice_prefix, errors=errors, required=true, hint='Invoices are numbered like INV-001001.') }}
       {{ field('Payment terms in days', 'payment_terms', form.payment_terms, errors=errors, required=true, extra='inputmode=numeric') }}
+      <div class="span-2">{{ field('Reply-to email', 'reply_to', form.reply_to, type='email', errors=errors, placeholder='hello@yourbusiness.co.uk', hint='Replies to your quotes and email campaigns go here.') }}</div>
     </div>
   </section>
 

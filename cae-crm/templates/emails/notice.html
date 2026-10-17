@@ -1,0 +1,11 @@
+{% extends "emails/_frame.html" %}
+{# A one-off email: a quote for a customer, or an alert for the team. #}
+{% block title %}{{ heading }}{% endblock %}
+{% block body %}
+  {% for para in paragraphs %}<p style="margin:0 0 16px">{{ para }}</p>{% endfor %}
+  {% if button_url %}
+    <p style="margin:6px 0 22px"><a href="{{ button_url }}" style="display:inline-block;background:#0f766e;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:8px">{{ button_label }}</a></p>
+    <p style="margin:0 0 16px;font-size:13px;color:#6b7891">Or paste this link into your browser:<br><span style="word-break:break-all">{{ button_url }}</span></p>
+  {% endif %}
+{% endblock %}
+{% block footer %}{{ footer }}{% endblock %}

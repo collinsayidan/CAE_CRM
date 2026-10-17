@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, field %}
+{% set draft = c.status == 'Draft' %}
+{% set admin = current_user.role == 'admin' %}
+{% set CHIP = {'Draft': '', 'Sending': 'warn', 'Sent': 'ok'} %}
+{% block title %}{{ c.name }}{% endblock %}
+{% block crumbs %}<nav class="crumbs" aria-label="Breadcrumb"><a href="{{ url_for('campaigns') }}">Email</a> <span aria-hidden="true">/</span> <span>{{ c.name }}</span></nav>{% endblock %}
+{% block heading %}{{ c.name }} <span class="chip {{ CHIP[c.status] }} heading-chip">{{ c.status }}</span>{% endblock %}
+{% block subtitle %}<p class="subtitle">{% if draft %}Draft by {{ c.created_by }}{% else %}Sent to {{ c.recipients }} {{ 'person' if c.recipients == 1 else 'people' }}{% if c.sent_at %} on {{ c.sent_at | uk_datetime }}{% endif %}{% endif %}</p>{% endblock %}
+{% block actions %}
+  <form method="post" action="{{ url_for('campaign_duplicate', campaign_id=c.id) }}" class="inline">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <button class="btn ghost">Duplicate</button>
+  </form>
+{% endblock %}
+
+{% block content %}
+{% if not configured %}
+  <p class="notice">{{ icon('mail') }} <span><b>Email isn't switched on yet.</b> You can write and preview this campaign. Sending needs <code>RESEND_API_KEY</code> and <code>CAE_MAIL_FROM</code> in the hosting settings.</span></p>
+{% endif %}
+
+{% if draft %}
+<div class="quote-layout campaign-layout">
+  <div class="quote-main">
+    <section class="panel">
+      <form method="post" action="{{ url_for('campaign', campaign_id=c.id) }}" id="campaign-form" data-campaign-form novalidate>
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <div class="form-grid">
+          {{ field('Campaign name (only your team sees this)', 'name', c.name, required=true, extra='maxlength=80') }}
+          <div class="span-2">{{ field('Subject line', 'subject', c.subject, required=true, extra='maxlength=150', hint='Use {{first_name}} to include their first name.') }}</div>
+          <div class="span-2">{{ field('Preview text', 'preheader', c.preheader, extra='maxlength=150', hint='The grey line many email apps show after the subject.') }}</div>
+          <label class="field span-2"><span class="field-label">Message</span>
+            <textarea name="body" rows="14" class="campaign-body">{{ c.body }}</textarea>
+            <span class="field-hint">Leave a blank line between paragraphs. Start lines with "- " for a list. **Bold**, and links as [Book a call](https://example.co.uk). {{ '{{first_name}}' }} becomes each person's first name.</span>
+          </label>
+        </div>
+
+        <h3 class="form-section">Who gets it</h3>
+        <p class="muted small">Only contacts who agreed to marketing emails. Leave every stage unticked to include them all.</p>
+        <div class="stage-picks">
+          {% for s in stages %}<label class="pick-chip"><input type="checkbox" name="stages" value="{{ s }}" {{ 'checked' if s in audience.stages }}><span>{{ s }}</span></label>{% endfor %}
+        </div>
+        <div class="form-grid">
+          <label class="field"><span class="field-label">Contact owner</span>
+            <select name="owner"><option value="">Anyone</option>{% for o in owners %}<option {{ 'selected' if o == audience.owner }}>{{ o }}</option>{% endfor %}</select></label>
+        </div>
+        <p class="audience-count" aria-live="polite"><b data-audience-count>{{ count }}</b> {{ 'person' if count == 1 else 'people' }} will get this email.</p>
+        <div class="form-footer-row"><button class="btn primary">Save draft</button></div>
+      </form>
+    </section>
+  </div>
+
+  <aside class="quote-side">
+    <section class="panel">
+      <header class="panel-head"><h2>Send</h2></header>
+      <form method="post" action="{{ url_for('campaign_test', campaign_id=c.id) }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <button class="btn ghost wide" {{ 'disabled' if not configured }}>{{ icon('mail') }} Send a test to {{ current_user.email }}</button>
+      </form>
+      {% if admin %}
+        <form method="post" action="{{ url_for('campaign_start', campaign_id=c.id) }}" data-confirm="Send this email to {{ count }} {{ 'person' if count == 1 else 'people' }} now? It can't be undone." class="panel-gap">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}">
+          <button class="btn primary wide" {{ 'disabled' if not configured or not count }}>Send to {{ count }} {{ 'person' if count == 1 else 'people' }}</button>
+        </form>
+        <p class="muted small panel-gap">Save your changes before sending. Sending starts straight away.</p>
+      {% else %}
+        <p class="muted small panel-gap">An admin sends campaigns. Save the draft and let them know it's ready.</p>
+      {% endif %}
+    </section>
+    <section class="panel">
+      <header class="panel-head"><h2>Preview</h2><a class="text-link sm" href="{{ url_for('campaign_preview', campaign_id=c.id) }}" target="_blank" rel="noopener">{{ icon('external') }} Full size</a></header>
+      <iframe class="email-preview" src="{{ url_for('campaign_preview', campaign_id=c.id) }}" title="Email preview" loading="lazy" data-preview></iframe>
+      <p class="muted small">Shows the saved draft, with your first name filled in.</p>
+    </section>
+    <form method="post" action="{{ url_for('campaign_delete', campaign_id=c.id) }}" data-confirm="Delete this draft?">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <button class="btn ghost sm danger">{{ icon('trash') }} Delete draft</button>
+    </form>
+  </aside>
+</div>
+
+{% else %}
+<section class="stats" aria-label="Results">
+  <div class="stat"><p class="stat-label">Sent</p><p class="stat-value">{{ stats.sent }}</p><p class="stat-note">of {{ stats.total }}{% if stats.queued %}, {{ stats.queued }} still to go{% endif %}</p></div>
+  <div class="stat"><p class="stat-label">Opened</p><p class="stat-value">{{ ((100 * stats.opened / stats.sent) | round | int) if stats.sent else 0 }}%</p><p class="stat-note">{{ stats.opened }} people</p></div>
+  <div class="stat"><p class="stat-label">Clicked</p><p class="stat-value">{{ ((100 * stats.clicked / stats.sent) | round | int) if stats.sent else 0 }}%</p><p class="stat-note">{{ stats.clicked }} people</p></div>
+  <div class="stat"><p class="stat-label">Bounced or unsubscribed</p><p class="stat-value {{ 'is-bad' if stats.bounced }}">{{ stats.bounced + stats.unsubscribed }}</p><p class="stat-note">{{ stats.bounced }} bounced, {{ stats.unsubscribed }} unsubscribed</p></div>
+</section>
+
+{% if c.status == 'Sending' %}
+  <section class="panel sending-panel" data-deliver="{{ url_for('campaign_deliver', campaign_id=c.id) }}" {% if request.args.get('deliver') %}data-autostart{% endif %}>
+    <h2>{% if stats.failed and not stats.queued %}Some emails didn't send{% else %}Sending…{% endif %}</h2>
+    <div class="send-progress"><span style="width: {{ (100 * stats.sent / (stats.total or 1)) | round | int }}%" data-progress></span></div>
+    <p class="muted small" data-send-status>{{ stats.sent }} of {{ stats.total }} sent.{% if stats.failed %} {{ stats.failed }} failed.{% endif %} Keep this page open until it finishes.</p>
+    {% if admin %}
+    <form method="post" action="{{ url_for('campaign_deliver', campaign_id=c.id) }}" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      {% if stats.failed and not stats.queued %}<input type="hidden" name="retry" value="1">{% endif %}
+      <button class="btn ghost sm" data-deliver-button>{{ 'Retry the failed ones' if stats.failed and not stats.queued else 'Send the next batch' }}</button>
+    </form>
+    {% endif %}
+  </section>
+{% endif %}
+
+<div class="quote-layout">
+  <section class="panel flush quote-main">
+    <header class="panel-head pad"><h2>Recipients</h2>{% if c.recipients > 200 %}<span class="muted small">First 200 of {{ c.recipients }}</span>{% endif %}</header>
+    <div class="table-wrap">
+      <table class="records">
+        <thead><tr><th>Email</th><th>Status</th><th>Opened</th><th>Clicked</th></tr></thead>
+        <tbody>
+          {% for r in recipients %}
+            <tr>
+              <td>{% if r.contact_id %}<a href="{{ url_for('contact', contact_id=r.contact_id) }}">{{ r.email }}</a>{% else %}{{ r.email }}{% endif %}</td>
+              <td>{% if r.unsubscribed_at %}<span class="chip">Unsubscribed</span>
+                  {% elif r.bounced_at %}<span class="chip bad">Bounced</span>
+                  {% elif r.status == 'failed' %}<span class="chip bad" title="{{ r.error }}">Failed</span>
+                  {% elif r.status in ('queued', 'sending') %}<span class="chip warn">Waiting</span>
+                  {% elif r.delivered_at %}<span class="chip ok">Delivered</span>
+                  {% else %}<span class="chip ok">Sent</span>{% endif %}</td>
+              <td>{{ (r.opened_at | uk_datetime) if r.opened_at else '' }}</td>
+              <td>{{ (r.clicked_at | uk_datetime) if r.clicked_at else '' }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <aside class="quote-side">
+    <section class="panel">
+      <header class="panel-head"><h2>Email</h2><a class="text-link sm" href="{{ url_for('campaign_preview', campaign_id=c.id) }}" target="_blank" rel="noopener">{{ icon('external') }} View</a></header>
+      <dl class="props"><div class="prop"><dt>Subject</dt><dd>{{ c.subject }}</dd></div>
+        {% if c.preheader %}<div class="prop"><dt>Preview text</dt><dd>{{ c.preheader }}</dd></div>{% endif %}</dl>
+      <p class="muted small panel-gap">Opens and clicks appear when Resend reports them. Some email apps block open tracking, so treat opens as a minimum.</p>
+    </section>
+  </aside>
+</div>
+{% endif %}
+{% endblock %}

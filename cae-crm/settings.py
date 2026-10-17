@@ -50,13 +50,16 @@ def register(app):
             if not terms.isdigit() or not 0 <= int(terms) <= 120:
                 errors["payment_terms"] = "Enter a number of days between 0 and 120."
             data["payment_terms"] = int(terms) if terms.isdigit() else 30
+            data["reply_to"] = f.get("reply_to", "").strip().lower()
+            if data["reply_to"] and not auth.valid_email(data["reply_to"]):
+                errors["reply_to"] = "Enter an email address, like hello@yourbusiness.co.uk."
             if not errors:
                 db = get_db()
                 db.execute("UPDATE workspaces SET name=?, legal_name=?, address=?, city=?, postcode=?, company_no=?,"
-                           " vat_registered=?, vat_no=?, monthly_target=?, invoice_prefix=?, payment_terms=? WHERE id=?",
+                           " vat_registered=?, vat_no=?, monthly_target=?, invoice_prefix=?, payment_terms=?, reply_to=? WHERE id=?",
                            (data["name"], data["legal_name"], data["address"], data["city"], data["postcode"],
                             data["company_no"], data["vat_registered"], data["vat_no"], data["monthly_target"],
-                            data["invoice_prefix"], data["payment_terms"], ws()))
+                            data["invoice_prefix"], data["payment_terms"], data["reply_to"] or None, ws()))
                 db.commit()
                 flash("Settings saved.", "ok")
                 return redirect(url_for("settings"))

@@ -653,4 +653,42 @@
     btn.textContent = "Copied";
     setTimeout(() => { btn.textContent = label; }, 1600);
   }));
+
+  /* Email campaigns ------------------------------------------------------- */
+  // Send in batches, one request each, until none are left; serverless hosts cut long requests short.
+  const sending = $("[data-deliver]");
+  if (sending) {
+    const bar = $("[data-progress]", sending), status = $("[data-send-status]", sending), button = $("[data-deliver-button]", sending);
+    const run = async () => {
+      if (button) button.disabled = true;
+      try {
+        for (;;) {
+          const r = await post(sending.dataset.deliver, {});
+          const total = r.sent + r.remaining + r.failed;
+          bar.style.width = `${Math.round(100 * r.sent / (total || 1))}%`;
+          status.textContent = `${r.sent} of ${total} sent.${r.failed ? ` ${r.failed} failed.` : ""} Keep this page open until it finishes.`;
+          if (r.error) { toast(`Some emails weren't sent. ${r.error}`, "error"); break; }
+          if (!r.remaining) { location.href = location.pathname; return; }
+        }
+      } catch (e) { toast("Sending paused. Check your connection, then choose Send the next batch.", "error"); }
+      if (button) button.disabled = false;
+    };
+    if ("autostart" in sending.dataset) run();
+    button?.addEventListener("click", e => { if (!button.form.retry) { e.preventDefault(); run(); } });
+  }
+  // Ticking an audience saves the draft and shows how many people it reaches.
+  const draftForm = $("[data-campaign-form]");
+  if (draftForm) {
+    const count = $("[data-audience-count]"), preview = $("[data-preview]");
+    draftForm.addEventListener("change", async e => {
+      if (!e.target.matches("[name=stages], [name=owner]")) return;
+      try {
+        const res = await fetch(draftForm.action, { method: "POST", body: new FormData(draftForm),
+                                                    headers: { "X-Requested-With": "fetch" } });
+        if (!res.ok) return;
+        count.textContent = (await res.json()).audience;
+        preview?.contentWindow?.location.reload();
+      } catch (err) { /* the Save button still works */ }
+    });
+  }
 })();

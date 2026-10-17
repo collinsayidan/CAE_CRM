@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, avatar, logo, field, select with context %}
+{% from "_record.html" import composer, timeline, upcoming_tasks, assoc, prop with context %}
+{% block title %}Ticket #{{ t.id }}{% endblock %}
+
+{% block page %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="{{ url_for('tickets') }}">Tickets</a> <span aria-hidden="true">/</span> <span>#{{ t.id }}</span></nav>
+<div class="record">
+  <aside class="record-left">
+    <section class="panel record-card">
+      <span class="deal-badge ticket">{{ icon('lifebuoy') }}</span>
+      <h1>{{ t.subject }}</h1>
+      <p class="muted">Ticket #{{ t.id }}, opened {{ t.created_at | uk_datetime }} by {{ t.source | lower }}</p>
+      <p class="record-chips"><span class="chip status-{{ t.status | slug }}">{{ t.status }}</span>
+        <span class="prio prio-{{ t.priority | lower }}">{{ t.priority }} priority</span></p>
+      <div class="quick-actions">
+        <button type="button" data-compose="note">{{ icon('note') }}<span>Note</span></button>
+        <button type="button" data-compose="email">{{ icon('mail') }}<span>Email</span></button>
+        <button type="button" data-compose="call">{{ icon('phone') }}<span>Call</span></button>
+        <button type="button" data-compose="task">{{ icon('task') }}<span>Task</span></button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <header class="panel-head"><h2>About</h2><button type="button" class="btn ghost sm" data-open="dlg-edit-ticket">{{ icon('edit') }} Edit</button></header>
+      <dl class="props">
+        {{ prop('Category', t.category) }}
+        {{ prop('Source', t.source) }}
+        {{ prop('Owner', t.owner, 'Unassigned') }}
+        {{ prop('Closed', t.closed_at | uk_datetime if t.closed_at else None, 'Still open') }}
+      </dl>
+      {% if t.description %}<p class="ticket-desc">{{ t.description }}</p>{% endif %}
+    </section>
+  </aside>
+
+  <section class="record-mid">
+    <section class="panel stage-path-panel" aria-label="Ticket status">
+      <form method="post" action="{{ url_for('ticket_status', ticket_id=t.id) }}" class="stage-path">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <input type="hidden" name="next" value="{{ request.full_path }}">
+        {% set reached = statuses.index(t.status) %}
+        {% for s in statuses %}
+          <button name="status" value="{{ s }}" class="{{ 'done' if loop.index0 < reached }} {{ 'current' if s == t.status }} {{ 'won' if s == 'Closed' }}"
+                  {% if s == t.status %}aria-current="step"{% endif %}>{% if s == 'Closed' %}{{ icon('check') }} {% endif %}{{ s }}</button>
+        {% endfor %}
+      </form>
+    </section>
+
+    <section class="panel sla-panel" aria-label="Service levels">
+      {% set first_h, resolve_h = sla_hours[t.priority] %}
+      <div class="sla-box sla-{{ t.sla_first[0] }}">
+        <p class="stat-label">{{ icon('clock') }} First response</p>
+        <p class="sla-state">{{ t.sla_first[1] }}</p>
+        <p class="muted small">{% if t.first_responded_at %}Responded {{ t.first_responded_at | uk_datetime }}. {% endif %}Target {{ first_h }} working {{ 'hour' if first_h == 1 else 'hours' }}, due {{ t.first_response_due | uk_datetime }}</p>
+      </div>
+      <div class="sla-box sla-{{ t.sla_resolve[0] }}">
+        <p class="stat-label">{{ icon('shield') }} Resolution</p>
+        <p class="sla-state">{{ t.sla_resolve[1] }}</p>
+        <p class="muted small">Target {{ resolve_h }} working hours, due {{ t.resolution_due | uk_datetime }}</p>
+      </div>
+    </section>
+
+    {{ composer(record, call_outcomes, owners) }}
+    {{ upcoming_tasks(upcoming) }}
+    {{ timeline(entries) }}
+  </section>
+
+  <aside class="record-right">
+    {% call assoc('Contact', 1 if contact else 0) %}
+      {% if contact %}
+        <a class="assoc-item" href="{{ url_for('contact', contact_id=contact.id) }}">{{ avatar(contact.first_name ~ ' ' ~ contact.last_name, 'sm') }}
+          <span><b>{{ contact.first_name }} {{ contact.last_name }}</b><small>{{ contact.email or contact.phone or '' }}</small></span></a>
+      {% else %}<p class="muted small">No contact. Edit the ticket to link one.</p>{% endif %}
+    {% endcall %}
+    {% call assoc('Company', 1 if company else 0) %}
+      {% if company %}
+        <a class="assoc-item" href="{{ url_for('company', company_id=company.id) }}">{{ logo(company.name, 'sm') }}
+          <span><b>{{ company.name }}</b><small>{{ company.city or company.industry or '' }}</small></span></a>
+      {% else %}<p class="muted small">No company linked.</p>{% endif %}
+    {% endcall %}
+  </aside>
+</div>
+
+<span hidden data-prefill-page='{"company_id": "{{ t.company_id or '' }}", "contact_id": "{{ t.contact_id or '' }}"}'></span>
+
+<dialog class="sheet" id="dlg-edit-ticket" aria-labelledby="dlg-edit-ticket-title">
+  <form method="post" action="{{ url_for('edit_ticket', ticket_id=t.id) }}" novalidate>
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <header><h2 id="dlg-edit-ticket-title">Edit ticket #{{ t.id }}</h2><button type="button" class="icon-btn" data-close aria-label="Close">{{ icon('x') }}</button></header>
+    <div class="form-grid">
+      <div class="span-2">{{ field('Subject', 'subject', t.subject, required=true) }}</div>
+      {{ select('Priority', 'priority', ticket_priorities, t.priority) }}
+      {{ select('Category', 'category', ticket_categories, t.category) }}
+      {{ select('Source', 'source', ticket_sources, t.source) }}
+      {{ select('Owner', 'owner', owners, t.owner) }}
+      {% set contacts = all_contacts() %}
+      {{ select('Contact', 'contact_id', contacts | map(attribute='name') | list, t.contact_id, values=contacts | map(attribute='id') | list, blank='No contact') }}
+      {% set companies = all_companies() %}
+      {{ select('Company', 'company_id', companies | map(attribute='name') | list, t.company_id, values=companies | map(attribute='id') | list, blank='No company') }}
+    </div>
+    <label class="field"><span class="field-label">Description</span><textarea name="description" rows="4">{{ t.description or '' }}</textarea></label>
+    <p class="form-hint">Changing the priority recalculates the service levels from when the ticket was opened.</p>
+    <footer><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Save changes</button></footer>
+  </form>
+</dialog>
+{% endblock %}

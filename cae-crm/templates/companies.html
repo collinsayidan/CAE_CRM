@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, logo %}
+{% from "_lists.html" import view_tabs, bulk_bar, pagination, filter_select with context %}
+{% block title %}Companies{% endblock %}
+{% block heading %}Companies{% endblock %}
+{% block subtitle %}<p class="subtitle">Businesses you work with, and what they're worth to you</p>{% endblock %}
+{% block actions %}
+  {% if current_user.role == 'admin' %}
+    <a class="btn ghost" href="{{ url_for('imports') }}">{{ icon('upload') }} Import</a>
+    <a class="btn ghost" href="{{ url_for('export', obj='companies', **request.args) }}">{{ icon('download') }} Export</a>
+  {% endif %}
+  <button class="btn primary" data-open="dlg-customer">{{ icon('plus') }} Add company</button>
+{% endblock %}
+
+{% block content %}
+{{ view_tabs(tabs, 'companies', url_for('companies'), current_query) }}
+
+<section class="panel flush">
+  <form class="list-toolbar" method="get" role="search">
+    <label class="search-field">{{ icon('search') }}<input type="search" name="q" value="{{ active.q }}" placeholder="Search name, town, postcode or industry" aria-label="Search companies"></label>
+    {{ filter_select('owner', 'Any owner', owners_all, active.owner) }}
+    {{ filter_select('region', 'Any region', region_options, active.region) }}
+    {{ filter_select('industry', 'Any industry', industry_options, active.industry) }}
+    {{ filter_select('sort', 'Sort', ['Lifetime revenue', 'Open pipeline', 'Name', 'Newest first'], active.sort, values=['value', 'pipeline', 'name', 'newest']) }}
+    {% if current_query %}<a class="text-link sm" href="{{ url_for('companies') }}">Clear filters</a>{% endif %}
+    <noscript><button class="btn sm">Apply</button></noscript>
+  </form>
+
+  <form method="post" action="{{ url_for('bulk', obj='companies') }}" data-bulk>
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <input type="hidden" name="next" value="{{ request.full_path }}">
+    {{ bulk_bar('companies', owners_all) }}
+    <div class="table-wrap">
+      <table class="records">
+        <thead><tr>
+          <th class="pick"><input type="checkbox" data-select-all aria-label="Select all"></th>
+          <th>Company</th><th>Location</th><th>Owner</th><th class="num">People</th><th class="num">Open tickets</th>
+          <th class="num">Open pipeline</th><th class="num">Lifetime revenue</th>
+        </tr></thead>
+        <tbody>
+          {% for c in records %}
+            <tr>
+              <td class="pick"><input type="checkbox" name="ids" value="{{ c.id }}" aria-label="Select {{ c.name }}"></td>
+              <td><a class="row-link" href="{{ url_for('company', company_id=c.id) }}">{{ logo(c.name, 'sm') }}<span><b>{{ c.name }}</b>
+                <small>{{ c.industry or 'Industry not set' }}</small></span></a></td>
+              <td>{{ c.city or '' }}<small>{{ c.postcode }}{% if c.region %}, {{ c.region }}{% endif %}</small></td>
+              <td>{{ c.owner or '' }}</td>
+              <td class="num">{{ c.contacts }}</td>
+              <td class="num">{{ c.open_tickets or '' }}</td>
+              <td class="num">{{ c.pipeline | money }}</td>
+              <td class="num"><b>{{ c.lifetime | money }}</b></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="8" class="empty-line">
+              {% if current_query %}No companies match these filters. <a class="text-link" href="{{ url_for('companies') }}">Clear filters</a>
+              {% else %}No companies yet. <button type="button" class="text-link" data-open="dlg-customer">Add one</button> or <a class="text-link" href="{{ url_for('imports') }}">import a spreadsheet</a>.{% endif %}
+            </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </form>
+  {{ pagination(page, pages, total, 'companies') }}
+</section>
+{% endblock %}

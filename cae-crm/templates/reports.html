@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar %}
+{% block title %}Reports{% endblock %}
+{% block heading %}Reports{% endblock %}
+{% block subtitle %}<p class="subtitle">Where revenue comes from, how leads progress, and how well customers are served</p>{% endblock %}
+
+{% macro breakdown(rows, people=false) %}
+  <ul class="rank">
+    {% for r in rows %}
+      <li>
+        <span class="rank-name">{% if people %}{{ avatar(r.k, 'sm') }}{% endif %}{{ r.k or 'Not set' }}</span>
+        <span class="rank-value">{{ r.won_value | money }}</span>
+        <span class="rank-bar"><i style="width: {{ '%.1f' | format(r.share) }}%"></i></span>
+        <span class="rank-meta">Wins {{ r.rate }}% of closed deals. {{ r.pipeline | money }} still open.</span>
+      </li>
+    {% else %}
+      <li class="empty-line">No deals yet.</li>
+    {% endfor %}
+  </ul>
+{% endmacro %}
+
+{% block content %}
+<section class="stats" aria-label="Headline figures">
+  <div class="stat"><p class="stat-label">Average won deal</p><p class="stat-value">{{ avg_deal | money }}</p></div>
+  <div class="stat"><p class="stat-label">Average sales cycle</p><p class="stat-value">{{ cycle }} days</p><p class="stat-note">From deal created to won</p></div>
+  <div class="stat"><p class="stat-label">New contacts</p><p class="stat-value">{{ new_contacts }}</p><p class="stat-note">In the last 90 days</p></div>
+  <div class="stat"><p class="stat-label">First responses on time</p>
+    <p class="stat-value {{ 'is-bad' if service.first_rate is not none and service.first_rate < 80 }}">{{ service.first_rate ~ '%' if service.first_rate is not none else 'None yet' }}</p>
+    <p class="stat-note">{{ service.open }} open of {{ service.total }} tickets</p></div>
+</section>
+
+<div class="layout-even">
+  <section class="panel">
+    <header class="panel-head"><div><h2>Lifecycle funnel</h2><p class="panel-note">How many contacts are at each stage now</p></div></header>
+    <ol class="funnel">
+      {% for stage, n in funnel %}
+        <li><span class="funnel-name">{{ stage }}</span>
+          <span class="funnel-bar"><i class="lifecycle-{{ stage | slug }}" style="width: {{ '%.1f' | format(n / funnel_peak * 100) }}%"></i></span>
+          <b>{{ n }}</b></li>
+      {% endfor %}
+    </ol>
+  </section>
+  <section class="panel">
+    <header class="panel-head"><div><h2>Service levels</h2><p class="panel-note">Tickets answered and resolved within target</p></div>
+      <a class="text-link" href="{{ url_for('tickets', view='list') }}">Tickets</a></header>
+    <div class="sla-rates">
+      <div><p class="stat-label">First response</p><p class="stat-value">{{ service.first_rate ~ '%' if service.first_rate is not none else 'None' }}</p>
+        <div class="winbar"><i style="width: {{ service.first_rate or 0 }}%"></i></div></div>
+      <div><p class="stat-label">Resolution</p><p class="stat-value">{{ service.resolve_rate ~ '%' if service.resolve_rate is not none else 'None' }}</p>
+        <div class="winbar"><i style="width: {{ service.resolve_rate or 0 }}%"></i></div></div>
+    </div>
+    <h3 class="sub-head">Tickets by category</h3>
+    {% set cat_peak = (service.by_category | map(attribute=1) | max) if service.by_category else 1 %}
+    <ul class="rank compact">
+      {% for cat, n in service.by_category %}
+        <li><span class="rank-name">{{ cat }}</span><span class="rank-value">{{ n }}</span>
+          <span class="rank-bar"><i style="width: {{ '%.1f' | format(n / cat_peak * 100) }}%"></i></span></li>
+      {% else %}<li class="empty-line">No tickets yet.</li>{% endfor %}
+    </ul>
+  </section>
+</div>
+
+<div class="layout-even">
+  <section class="panel"><header class="panel-head"><h2>Won revenue by lead source</h2></header>{{ breakdown(by_source) }}</section>
+  <section class="panel"><header class="panel-head"><h2>Leaderboard</h2><p class="panel-note">All time</p></header>{{ breakdown(by_owner, true) }}</section>
+</div>
+
+<section class="panel">
+  <header class="panel-head"><div><h2>Products in the open pipeline</h2><p class="panel-note">Net value quoted on open deals</p></div>
+    <a class="text-link" href="{{ url_for('products') }}">Products</a></header>
+  <ul class="rank">
+    {% for p in products %}
+      <li><span class="rank-name">{{ p.name }}</span><span class="rank-value">{{ plain(p.value) | money }}</span>
+        <span class="rank-bar"><i style="width: {{ '%.1f' | format(plain(p.value) / product_peak * 100) }}%"></i></span>
+        <span class="rank-meta">{{ p.qty }} quoted</span></li>
+    {% else %}
+      <li class="empty-line">No products on open deals yet. Add line items to a deal to see them here.</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

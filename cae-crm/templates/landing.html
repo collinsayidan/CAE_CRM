@@ -1,0 +1,87 @@
+{% from "_macros.html" import icon %}
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CAE CRM – the CRM built for UK businesses</title>
+  <meta name="description" content="Contacts, deals, tickets and VAT invoicing in one CRM, built for how UK businesses work.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400..800;1,400..800&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="landing">
+  <header class="landing-nav">
+    <a class="auth-brand" href="{{ url_for('landing') }}"><span class="mark" aria-hidden="true">C</span>CAE CRM</a>
+    <nav>
+      <a href="{{ url_for('auth.login') }}">Sign in</a>
+      <a class="btn primary" href="{{ url_for('auth.signup') }}">Create a workspace</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <h1>The CRM that already knows how UK business works.</h1>
+        <p class="hero-lede">Contacts, deals, support tickets and VAT invoices in one place. Every feature included, for every team member, with no add-ons to unlock.</p>
+        <div class="hero-actions">
+          <a class="btn primary big" href="{{ url_for('auth.signup') }}">Create your workspace</a>
+          <a class="btn ghost big" href="{{ url_for('auth.login') }}">Sign in</a>
+        </div>
+      </div>
+      <div class="hero-track" aria-hidden="true">
+        <p class="track-label">Won in October</p>
+        <p class="hero-figure">£91,740 <span>of £156,700</span></p>
+        <div class="rail"><div class="rail-fill" style="--won: 58%"></div><div class="rail-pace" style="--expected: 55%"></div></div>
+        <p class="hero-note">£6,267 ahead of pace, with 10 working days left</p>
+      </div>
+    </section>
+
+    <section class="pillars" aria-label="What's included">
+      <article>
+        <span class="pillar-icon">{{ icon('users') }}</span>
+        <h2>Contacts, companies and deals</h2>
+        <p>Every record has one timeline of notes, calls, emails, meetings and changes. Lifecycle stages run from first lead to loyal customer, and the pipeline board works by drag and drop.</p>
+      </article>
+      <article>
+        <span class="pillar-icon">{{ icon('lifebuoy') }}</span>
+        <h2>Support tickets with real service levels</h2>
+        <p>Response and resolution deadlines count UK working hours, and skip weekends and bank holidays. Tickets about to miss them stand out.</p>
+      </article>
+      <article>
+        <span class="pillar-icon">{{ icon('pound') }}</span>
+        <h2>Invoices HMRC would recognise</h2>
+        <p>Build deals from your product list, then invoice them with VAT summarised by rate, your VAT number and payment terms. Aged debt and VAT for the quarter are on one page.</p>
+      </article>
+      <article>
+        <span class="pillar-icon">{{ icon('shield') }}</span>
+        <h2>UK GDPR built in</h2>
+        <p>Record a lawful basis and marketing consent for every person. Export everything you hold about someone in one click, or erase it.</p>
+      </article>
+    </section>
+
+    <section class="compare" aria-labelledby="compare-title">
+      <h2 id="compare-title">What you'd pay extra for elsewhere, included</h2>
+      <table>
+        <thead><tr><th>Feature</th><th>CAE CRM</th><th>Typical CRM starter plan</th></tr></thead>
+        <tbody>
+          <tr><td>Products and line items on deals</td><td>{{ icon('check') }} Included</td><td>Higher tier</td></tr>
+          <tr><td>Help desk with service levels</td><td>{{ icon('check') }} Included</td><td>Separate product</td></tr>
+          <tr><td>UK VAT invoicing and aged debt</td><td>{{ icon('check') }} Included</td><td>Integration needed</td></tr>
+          <tr><td>Working days and UK bank holidays</td><td>{{ icon('check') }} Included</td><td>Not available</td></tr>
+          <tr><td>Companies House numbers and UK postcodes checked</td><td>{{ icon('check') }} Included</td><td>Not available</td></tr>
+          <tr><td>Import from spreadsheets and saved views</td><td>{{ icon('check') }} Included</td><td>Included</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="cta">
+      <h2>Set up your business in two minutes.</h2>
+      <p>Start with sample data to look around, or import your contacts from a spreadsheet.</p>
+      <a class="btn primary big" href="{{ url_for('auth.signup') }}">Create your workspace</a>
+    </section>
+  </main>
+  <footer class="landing-foot">CAE CRM. Amounts in pounds sterling. Built for UK businesses.</footer>
+</body>
+</html>

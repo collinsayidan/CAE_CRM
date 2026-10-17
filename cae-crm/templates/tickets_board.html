@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, avatar %}
+{% block title %}Tickets{% endblock %}
+{% block heading %}Tickets{% endblock %}
+{% block subtitle %}<p class="subtitle">Drag a ticket to change its status. Service levels count UK working hours, 9am to 5pm, excluding bank holidays.</p>{% endblock %}
+{% block actions %}
+  <nav class="layout-switch" aria-label="Layout">
+    <a href="{{ url_for('tickets') }}" aria-current="true">{{ icon('columns') }}<span>Board</span></a>
+    <a href="{{ url_for('tickets', view='list') }}">{{ icon('list') }}<span>List</span></a>
+  </nav>
+  <nav class="filter-chips" aria-label="Filter by owner">
+    <a href="{{ url_for('tickets') }}" {% if not owner %}aria-current="true"{% endif %}>Everyone</a>
+    {% for o in owners %}
+      <a href="{{ url_for('tickets', owner=o) }}" {% if owner == o %}aria-current="true"{% endif %}>{{ o.split()[0] }}</a>
+    {% endfor %}
+  </nav>
+  <button class="btn primary" data-open="dlg-ticket">{{ icon('plus') }} New ticket</button>
+{% endblock %}
+
+{% block content %}
+<div class="board ticket-board" data-ticket-board>
+  {% for status in statuses %}
+    {% set items = columns[status] %}
+    <section class="column status-{{ status | slug }}" data-status="{{ status }}">
+      <header>
+        <div class="col-title"><i></i><h2>{{ status }}</h2></div>
+        <p class="col-total">
+          {% if status == 'Closed' %}<span class="muted">Last 14 days</span>{% else %}
+            {% set late = items | selectattr('sla_worst', 'equalto', 'breached') | list | length %}
+            <span class="{{ 'bad-text' if late }}">{{ late }} past due</span>{% endif %}
+          <span class="col-count" data-col-count>{{ items | length }}</span></p>
+      </header>
+      <div class="col-body" data-dropzone>
+        {% for t in items %}
+          <article class="card ticket-card sla-edge-{{ t.sla_worst if status != 'Closed' else 'ok' }}" draggable="true" data-ticket="{{ t.id }}">
+            <div class="card-top">
+              <a class="card-title" href="{{ url_for('ticket', ticket_id=t.id) }}">{{ t.subject }}</a>
+              <details class="card-menu">
+                <summary class="icon-btn sm" aria-label="Change status of ticket {{ t.id }}">{{ icon('more') }}</summary>
+                <form method="post" action="{{ url_for('ticket_status', ticket_id=t.id) }}" class="menu">
+                  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+                  <input type="hidden" name="next" value="{{ request.full_path }}">
+                  {% for s in statuses if s != status %}<button name="status" value="{{ s }}">Move to {{ s }}</button>{% endfor %}
+                </form>
+              </details>
+            </div>
+            <p class="card-company">#{{ t.id }}{% if t.company %}, {{ t.company }}{% endif %}</p>
+            <div class="card-foot">
+              <span class="prio prio-{{ t.priority | lower }}">{{ t.priority }}</span>
+              {% if status != 'Closed' %}
+                {% set sla = t.sla_first if not t.first_responded_at else t.sla_resolve %}
+                <span class="sla sla-{{ sla[0] }}" title="{{ 'First response' if not t.first_responded_at else 'Resolution' }}">{{ icon('clock') }} {{ sla[1] }}</span>
+              {% else %}
+                <span class="sla sla-{{ t.sla_resolve[0] }}">{{ 'Within SLA' if t.sla_resolve[0] == 'met' else 'Missed SLA' }}</span>
+              {% endif %}
+              {% if t.owner %}{{ avatar(t.owner, 'sm') }}{% endif %}
+            </div>
+          </article>
+        {% endfor %}
+        <p class="col-empty">No tickets {{ 'closed recently' if status == 'Closed' else 'here' }}</p>
+      </div>
+    </section>
+  {% endfor %}
+</div>
+{% endblock %}

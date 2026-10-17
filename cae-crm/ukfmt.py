@@ -2,7 +2,7 @@
 Companies House numbers, phone numbers and the April-March financial year."""
 
 import re
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
 
 POSTCODE_RE = re.compile(
@@ -42,6 +42,20 @@ def parse_money(raw):
     except InvalidOperation:
         return None
     if value <= 0:
+        return None
+    return int((value * 100).quantize(Decimal("1")))
+
+
+def parse_amount(raw):
+    """Like parse_money, but £0 is allowed (free items, trial seats). Returns None when invalid or negative."""
+    cleaned = (raw or "").replace("£", "").replace(",", "").strip()
+    if not cleaned:
+        return None
+    try:
+        value = Decimal(cleaned)
+    except InvalidOperation:
+        return None
+    if value < 0 or not value.is_finite():
         return None
     return int((value * 100).quantize(Decimal("1")))
 
@@ -157,3 +171,23 @@ def working_days(start, end):
             days.append(d)
         d += timedelta(days=1)
     return days
+
+
+WORK_START, WORK_END = time(9), time(17)
+
+
+def add_working_hours(start, hours):
+    """The moment `hours` UK working hours after `start`: 09:00-17:00, Monday to Friday, excluding bank holidays."""
+    remaining = timedelta(hours=hours)
+    t = start
+    while True:
+        day = t.date()
+        opens, closes = datetime.combine(day, WORK_START), datetime.combine(day, WORK_END)
+        if not is_working_day(day) or t >= closes:
+            t = datetime.combine(day + timedelta(days=1), WORK_START)
+            continue
+        t = max(t, opens)
+        if t + remaining <= closes:
+            return t + remaining
+        remaining -= closes - t
+        t = datetime.combine(day + timedelta(days=1), WORK_START)

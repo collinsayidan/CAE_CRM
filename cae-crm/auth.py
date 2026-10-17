@@ -1,14 +1,13 @@
-"""Sign-in, first-run setup, team management and password changes."""
+"""Sign-up (a new workspace for a business), sign-in, team management and password changes."""
 
 import hmac
-import os
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from flask import Blueprint, abort, flash, g, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, current_app, flash, g, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from db import get_db
+from db import DEFAULT_MONTHLY_TARGET, get_db
 
 bp = Blueprint("auth", __name__)
 
@@ -32,28 +31,36 @@ def password_problem(password, confirm=None):
     return None
 
 
-def create_user(db, name, email, password, role="member"):
-    db.execute(
-        "INSERT INTO users (email, name, password_hash, role, created_at) VALUES (?,?,?,?,?)",
-        (email.strip().lower(), name.strip(), generate_password_hash(password), role, now_utc().isoformat()))
+def valid_email(email):
+    local, _, domain = email.partition("@")
+    return bool(local) and "." in domain and " " not in email
+
+
+def create_user(db, workspace_id, name, email, password, role="member"):
+    user_id = db.insert("users", workspace_id=workspace_id, email=email.strip().lower(), name=name.strip(),
+                        password_hash=generate_password_hash(password), role=role, failed_logins=0,
+                        created_at=now_utc().isoformat())
     db.commit()
+    return user_id
 
 
-def user_count():
-    return get_db().execute("SELECT COUNT(*) FROM users").fetchone()[0]
+def create_workspace(db, name, today):
+    return db.insert("workspaces", name=name.strip(), legal_name=name.strip(), vat_registered=1,
+                     monthly_target=DEFAULT_MONTHLY_TARGET, invoice_prefix="INV", payment_terms=30,
+                     created_at=today.isoformat())
 
 
 def load_user():
     user_id = session.get("user_id")
     if user_id is None:
         return None
-    return get_db().execute("SELECT id, email, name, role FROM users WHERE id=?", (user_id,)).fetchone()
+    return get_db().execute("SELECT id, email, name, role, workspace_id FROM users WHERE id=?", (user_id,)).fetchone()
 
 
-def start_session(user):
+def start_session(user_id):
     session.clear()  # new session on sign-in, so an old cookie can't be reused
     session.permanent = True
-    session["user_id"] = user["id"]
+    session["user_id"] = user_id
 
 
 def admin_required():
@@ -69,8 +76,6 @@ def safe_next(target):
 def login():
     if g.get("user"):
         return redirect(url_for("overview"))
-    if not user_count():
-        return redirect(url_for("auth.setup"))
     error, email = None, ""
     if request.method == "POST":
         db = get_db()
@@ -83,7 +88,7 @@ def login():
         elif user and check_password_hash(user["password_hash"], password):
             db.execute("UPDATE users SET failed_logins=0, locked_until=NULL WHERE id=?", (user["id"],))
             db.commit()
-            start_session(user)
+            start_session(user["id"])
             return redirect(safe_next(request.form.get("next")))
         else:
             if user:
@@ -106,32 +111,49 @@ def logout():
     return redirect(url_for("auth.login"))
 
 
-@bp.route("/setup", methods=["GET", "POST"])
+@bp.route("/setup")
 def setup():
-    """Create the first admin account. Closed for good once any account exists."""
-    if user_count():
-        return redirect(url_for("auth.login"))
-    code_required = bool(os.environ.get("VERCEL") or os.environ.get("CAE_SETUP_CODE"))
-    expected = os.environ.get("CAE_SETUP_CODE", "")
+    """The first release's setup page; sign-up has replaced it."""
+    return redirect(url_for("auth.signup"))
+
+
+@bp.route("/signup", methods=["GET", "POST"])
+def signup():
+    """Create a workspace for a business, with the person signing up as its first admin."""
+    if g.get("user"):
+        return redirect(url_for("overview"))
+    expected = current_app.config["SIGNUP_CODE"]
     errors, form = {}, request.form
     if request.method == "POST":
-        if code_required and not (expected and hmac.compare_digest(form.get("setup_code", ""), expected)):
-            errors["setup_code"] = "That setup code isn't right. It's the CAE_SETUP_CODE value in your hosting settings."
+        db = get_db()
+        if expected and not hmac.compare_digest(form.get("setup_code", ""), expected):
+            errors["setup_code"] = "That invite code isn't right."
+        if not form.get("business", "").strip():
+            errors["business"] = "Enter your business name."
         if not form.get("name", "").strip():
             errors["name"] = "Enter your name."
-        if "@" not in form.get("email", ""):
+        email = form.get("email", "").strip().lower()
+        if not valid_email(email):
             errors["email"] = "Enter a valid email address."
+        elif db.execute("SELECT 1 FROM users WHERE email=?", (email,)).fetchone():
+            errors["email"] = "That email already has an account. Sign in instead."
         problem = password_problem(form.get("password", ""), form.get("confirm", ""))
         if problem:
             errors["password"] = problem
         if not errors:
-            db = get_db()
-            create_user(db, form["name"], form["email"], form["password"], "admin")
-            start_session(db.execute("SELECT * FROM users WHERE email=?", (form["email"].strip().lower(),)).fetchone())
-            flash("Your admin account is ready. Add your team from the Team page.", "ok")
+            from core import today
+            t = today()
+            ws_id = create_workspace(db, form["business"], t)
+            user_id = create_user(db, ws_id, form["name"], email, form["password"], "admin")
+            if form.get("sample_data") == "on":
+                from seed import seed_workspace
+                seed_workspace(db, ws_id, t, form["name"].strip(), DEFAULT_MONTHLY_TARGET)
+                db.commit()
+            start_session(user_id)
+            flash(f"Welcome to CAE CRM. {form['business'].strip()} is ready. Add your business details under Settings.", "ok")
             return redirect(url_for("overview"))
-    return render_template("auth/setup.html", errors=errors, form=form, code_required=code_required,
-                           code_configured=bool(expected)), (422 if errors else 200)
+    return render_template("auth/signup.html", errors=errors, form=form, code_required=bool(expected)), \
+        (422 if errors else 200)
 
 
 @bp.route("/account", methods=["GET", "POST"])
@@ -164,25 +186,34 @@ def team():
         email = form.get("email", "").strip().lower()
         if not form.get("name", "").strip():
             errors["name"] = "Enter their name."
-        if "@" not in email:
+        if not valid_email(email):
             errors["email"] = "Enter a valid email address."
         elif db.execute("SELECT 1 FROM users WHERE email=?", (email,)).fetchone():
-            errors["email"] = "Someone on the team already uses that email."
+            errors["email"] = "That email already has a CAE CRM account."
         problem = password_problem(form.get("password", ""))
         if problem:
             errors["password"] = problem
         if not errors:
-            create_user(db, form["name"], email, form["password"], form.get("role") if form.get("role") in ROLES else "member")
+            create_user(db, g.user["workspace_id"], form["name"], email, form["password"],
+                        form.get("role") if form.get("role") in ROLES else "member")
             flash(f"{form['name'].strip()} can now sign in. Share their temporary password with them directly.", "ok")
             return redirect(url_for("auth.team"))
-    users = db.execute("SELECT id, name, email, role, locked_until, created_at FROM users ORDER BY name").fetchall()
+    users = db.execute("SELECT id, name, email, role, locked_until, created_at FROM users WHERE workspace_id=? ORDER BY name",
+                       (g.user["workspace_id"],)).fetchall()
     return render_template("auth/team.html", users=users, errors=errors, form=form, roles=ROLES,
                            now=now_utc().isoformat()), (422 if errors else 200)
+
+
+def _team_member(user_id):
+    row = get_db().execute("SELECT id FROM users WHERE id=? AND workspace_id=?", (user_id, g.user["workspace_id"])).fetchone()
+    if row is None:
+        abort(404)
 
 
 @bp.post("/team/<int:user_id>/password")
 def reset_password(user_id):
     admin_required()
+    _team_member(user_id)
     problem = password_problem(request.form.get("password", ""))
     if problem:
         flash(f"Password not reset. {problem}", "error")
@@ -195,13 +226,31 @@ def reset_password(user_id):
     return redirect(url_for("auth.team"))
 
 
+@bp.post("/team/<int:user_id>/role")
+def change_role(user_id):
+    admin_required()
+    _team_member(user_id)
+    role = request.form.get("role")
+    if role not in ROLES or user_id == g.user["id"]:
+        flash("You can't change your own role.", "error")
+        return redirect(url_for("auth.team"))
+    db = get_db()
+    db.execute("UPDATE users SET role=? WHERE id=?", (role, user_id))
+    db.commit()
+    flash("Role updated.", "ok")
+    return redirect(url_for("auth.team"))
+
+
 @bp.post("/team/<int:user_id>/remove")
 def remove_user(user_id):
     admin_required()
+    _team_member(user_id)
     if user_id == g.user["id"]:
         flash("You can't remove your own account.", "error")
         return redirect(url_for("auth.team"))
     db = get_db()
+    db.execute("DELETE FROM saved_views WHERE user_id=?", (user_id,))
+    db.execute("DELETE FROM imports WHERE user_id=?", (user_id,))
     db.execute("DELETE FROM users WHERE id=?", (user_id,))
     db.commit()
     flash("Team member removed. Their deals and activities keep their name.", "ok")

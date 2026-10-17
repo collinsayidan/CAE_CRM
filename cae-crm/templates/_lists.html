@@ -1,0 +1,75 @@
+{% from "_macros.html" import icon %}
+
+{# Tabs for built-in and saved views, with a button to save the current filters as a new view. #}
+{% macro view_tabs(tabs, obj, base_url, current_query) -%}
+<div class="view-tabs" role="tablist" aria-label="Views">
+  {% for t in tabs %}
+    <span class="view-tab {{ 'is-active' if t.active }}">
+      <a href="{{ base_url }}{{ ('&' if '?' in base_url else '?') ~ t.query if t.query }}" role="tab" aria-selected="{{ 'true' if t.active else 'false' }}">{{ t.name }}</a>
+      {% if t.id %}
+        <form method="post" action="{{ url_for('delete_view', view_id=t.id) }}" data-confirm="Remove the view “{{ t.name }}”?">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+          <button class="view-remove" aria-label="Remove view {{ t.name }}">{{ icon('x') }}</button>
+        </form>
+      {% endif %}
+    </span>
+  {% endfor %}
+  {% if current_query and not (tabs | selectattr('active') | list) %}
+    <details class="save-view">
+      <summary class="btn ghost sm">{{ icon('plus') }} Save view</summary>
+      <form method="post" action="{{ url_for('save_view') }}" class="menu save-view-form">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <input type="hidden" name="object" value="{{ obj }}">
+        <input type="hidden" name="query" value="{{ current_query }}">
+        <label class="field"><span class="field-label">Name this view</span><input name="name" maxlength="40" required placeholder="My leads in Scotland"></label>
+        <button class="btn primary sm">Save view</button>
+      </form>
+    </details>
+  {% endif %}
+</div>
+{%- endmacro %}
+
+{# The bar that appears when rows are ticked. #}
+{% macro bulk_bar(obj, owners, extra_actions=None) -%}
+<div class="bulk-bar" data-bulk-bar hidden>
+  <span><b data-bulk-count>0</b> selected</span>
+  <select name="action" aria-label="Bulk action" data-bulk-action>
+    <option value="">Choose an action…</option>
+    <option value="owner">Assign owner</option>
+    {% if extra_actions %}{% for value, label in extra_actions %}<option value="{{ value }}">{{ label }}</option>{% endfor %}{% endif %}
+    {% if current_user.role == 'admin' %}<option value="delete">Delete</option>{% endif %}
+  </select>
+  <select name="value" aria-label="Value" data-bulk-value hidden></select>
+  <button class="btn primary sm" data-bulk-apply>Apply</button>
+  <template data-bulk-options="owner">{% for o in owners %}<option>{{ o }}</option>{% endfor %}</template>
+  {{ caller() if caller }}
+</div>
+{%- endmacro %}
+
+{% macro pagination(page, pages, total, noun) -%}
+<div class="pager">
+  <span class="muted">{{ "{:,}".format(total) }} {{ noun if total != 1 else noun[:-1] }}</span>
+  {% if pages > 1 %}
+    <nav aria-label="Pages">
+      {% set args = request.args.to_dict() %}
+      {% if page > 1 %}<a class="btn ghost sm" href="?{{ args | pager_query(page - 1) }}">{{ icon('chevron-left') }} Previous</a>{% endif %}
+      <span class="muted">Page {{ page }} of {{ pages }}</span>
+      {% if page < pages %}<a class="btn ghost sm" href="?{{ args | pager_query(page + 1) }}">Next {{ icon('chevron-right') }}</a>{% endif %}
+    </nav>
+  {% endif %}
+</div>
+{%- endmacro %}
+
+{# A select that submits its filter form on change. #}
+{% macro filter_select(name, label, options, selected, values=None) -%}
+<label class="filter-select">
+  <span class="sr-only">{{ label }}</span>
+  <select name="{{ name }}" data-autosubmit>
+    <option value="">{{ label }}</option>
+    {% for o in options %}
+      {% set v = values[loop.index0] if values else o %}
+      <option value="{{ v }}" {{ 'selected' if v | string == selected | string }}>{{ o }}</option>
+    {% endfor %}
+  </select>
+</label>
+{%- endmacro %}

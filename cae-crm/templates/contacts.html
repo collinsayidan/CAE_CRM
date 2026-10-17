@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, avatar %}
+{% from "_lists.html" import view_tabs, bulk_bar, pagination, filter_select with context %}
+{% block title %}Contacts{% endblock %}
+{% block heading %}Contacts{% endblock %}
+{% block subtitle %}<p class="subtitle">The people you sell to and support</p>{% endblock %}
+{% block actions %}
+  {% if current_user.role == 'admin' %}
+    <a class="btn ghost" href="{{ url_for('imports') }}">{{ icon('upload') }} Import</a>
+    <a class="btn ghost" href="{{ url_for('export', obj='contacts', **request.args) }}">{{ icon('download') }} Export</a>
+  {% endif %}
+  <button class="btn primary" data-open="dlg-contact">{{ icon('plus') }} Add contact</button>
+{% endblock %}
+
+{% block content %}
+{{ view_tabs(tabs, 'contacts', url_for('contacts'), current_query) }}
+
+<section class="panel flush">
+  <form class="list-toolbar" method="get" role="search">
+    <label class="search-field">{{ icon('search') }}<input type="search" name="q" value="{{ active.q }}" placeholder="Search name, email or company" aria-label="Search contacts"></label>
+    {{ filter_select('owner', 'Any owner', owners_all, active.owner) }}
+    {{ filter_select('lifecycle', 'Any lifecycle stage', lifecycle_stages, active.lifecycle) }}
+    {{ filter_select('lead_status', 'Any lead status', lead_statuses, active.lead_status) }}
+    {{ filter_select('consent', 'Any consent', ['Opted in to marketing', 'Not opted in'], active.consent, values=['1', '0']) }}
+    {{ filter_select('sort', 'Sort', ['Newest first', 'Name', 'Company', 'Lifecycle stage'], active.sort, values=['newest', 'name', 'company', 'lifecycle']) }}
+    {% if current_query %}<a class="text-link sm" href="{{ url_for('contacts') }}">Clear filters</a>{% endif %}
+    <noscript><button class="btn sm">Apply</button></noscript>
+  </form>
+
+  <form method="post" action="{{ url_for('bulk', obj='contacts') }}" data-bulk>
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <input type="hidden" name="next" value="{{ request.full_path }}">
+    {% call bulk_bar('contacts', owners_all, [('lifecycle', 'Set lifecycle stage')]) %}
+      <template data-bulk-options="lifecycle">{% for s in lifecycle_stages %}<option>{{ s }}</option>{% endfor %}</template>
+    {% endcall %}
+    <div class="table-wrap">
+      <table class="records">
+        <thead><tr>
+          <th class="pick"><input type="checkbox" data-select-all aria-label="Select all"></th>
+          <th>Name</th><th>Company</th><th>Lifecycle stage</th><th>Lead status</th><th>Owner</th><th>Added</th>
+        </tr></thead>
+        <tbody>
+          {% for c in records %}
+            <tr>
+              <td class="pick"><input type="checkbox" name="ids" value="{{ c.id }}" aria-label="Select {{ c.first_name }} {{ c.last_name }}"></td>
+              <td><a class="row-link" href="{{ url_for('contact', contact_id=c.id) }}">{{ avatar(c.first_name ~ ' ' ~ c.last_name, 'sm') }}
+                <span><b>{{ c.first_name }} {{ c.last_name }}</b><small>{{ c.email or 'No email' }}</small></span></a></td>
+              <td>{% if c.company_id %}<a href="{{ url_for('company', company_id=c.company_id) }}">{{ c.company }}</a>{% else %}<span class="muted">None</span>{% endif %}</td>
+              <td><span class="chip lifecycle-{{ c.lifecycle_stage | slug }}">{{ c.lifecycle_stage or 'Lead' }}</span></td>
+              <td>{{ c.lead_status or '' }}</td>
+              <td>{{ c.owner or '' }}</td>
+              <td>{{ c.created_at | uk_date }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="7" class="empty-line">
+              {% if current_query %}No contacts match these filters. <a class="text-link" href="{{ url_for('contacts') }}">Clear filters</a>
+              {% else %}No contacts yet. <button type="button" class="text-link" data-open="dlg-contact">Add one</button> or <a class="text-link" href="{{ url_for('imports') }}">import a spreadsheet</a>.{% endif %}
+            </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </form>
+  {{ pagination(page, pages, total, 'contacts') }}
+</section>
+{% endblock %}

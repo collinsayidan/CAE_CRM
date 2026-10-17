@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, avatar %}
+{% from "_lists.html" import view_tabs, bulk_bar, pagination, filter_select with context %}
+{% block title %}Tickets{% endblock %}
+{% block heading %}Tickets{% endblock %}
+{% block subtitle %}<p class="subtitle">Customer requests and issues, with service levels in UK working hours</p>{% endblock %}
+{% block actions %}
+  <nav class="layout-switch" aria-label="Layout">
+    <a href="{{ url_for('tickets') }}">{{ icon('columns') }}<span>Board</span></a>
+    <a href="{{ url_for('tickets', view='list') }}" aria-current="true">{{ icon('list') }}<span>List</span></a>
+  </nav>
+  {% if current_user.role == 'admin' %}
+    <a class="btn ghost" href="{{ url_for('export', obj='tickets', **request.args) }}">{{ icon('download') }} Export</a>
+  {% endif %}
+  <button class="btn primary" data-open="dlg-ticket">{{ icon('plus') }} New ticket</button>
+{% endblock %}
+
+{% block content %}
+{{ view_tabs(tabs, 'tickets', url_for('tickets', view='list'), current_query) }}
+
+<section class="panel flush">
+  <form class="list-toolbar" method="get" role="search">
+    <input type="hidden" name="view" value="list">
+    <label class="search-field">{{ icon('search') }}<input type="search" name="q" value="{{ active.q }}" placeholder="Search subject or company" aria-label="Search tickets"></label>
+    {{ filter_select('owner', 'Any owner', owners_all, active.owner) }}
+    {{ filter_select('status', 'Any status', statuses, active.status) }}
+    {{ filter_select('priority', 'Any priority', ticket_priorities, active.priority) }}
+    {{ filter_select('category', 'Any category', ticket_categories, active.category) }}
+    {{ filter_select('sort', 'Sort', ['Due soonest', 'Priority', 'Newest first'], active.sort, values=['due', 'priority', 'newest']) }}
+    {% if current_query %}<a class="text-link sm" href="{{ url_for('tickets', view='list') }}">Clear filters</a>{% endif %}
+    <noscript><button class="btn sm">Apply</button></noscript>
+  </form>
+
+  <form method="post" action="{{ url_for('bulk', obj='tickets') }}" data-bulk>
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <input type="hidden" name="next" value="{{ request.full_path }}">
+    {% call bulk_bar('tickets', owners_all, [('status', 'Set status')]) %}
+      <template data-bulk-options="status">{% for s in statuses %}<option>{{ s }}</option>{% endfor %}</template>
+    {% endcall %}
+    <div class="table-wrap">
+      <table class="records">
+        <thead><tr>
+          <th class="pick"><input type="checkbox" data-select-all aria-label="Select all"></th>
+          <th>Ticket</th><th>Status</th><th>Priority</th><th>Owner</th><th>First response</th><th>Resolution</th><th>Opened</th>
+        </tr></thead>
+        <tbody>
+          {% for row in records %}
+            {% set t = decorate(row) %}
+            <tr>
+              <td class="pick"><input type="checkbox" name="ids" value="{{ t.id }}" aria-label="Select ticket {{ t.id }}"></td>
+              <td><a class="row-link" href="{{ url_for('ticket', ticket_id=t.id) }}"><span class="ticket-no">#{{ t.id }}</span><span><b>{{ t.subject }}</b>
+                <small>{{ t.company or 'No company' }}{% if t.contact %}, {{ t.contact }}{% endif %}</small></span></a></td>
+              <td><span class="chip status-{{ t.status | slug }}">{{ t.status }}</span></td>
+              <td><span class="prio prio-{{ t.priority | lower }}">{{ t.priority }}</span></td>
+              <td>{{ t.owner or '' }}</td>
+              <td><span class="sla sla-{{ t.sla_first[0] }}">{{ t.sla_first[1] }}</span></td>
+              <td><span class="sla sla-{{ t.sla_resolve[0] }}">{{ t.sla_resolve[1] }}</span></td>
+              <td>{{ t.created_at | uk_date }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="8" class="empty-line">
+              {% if current_query %}No tickets match these filters. <a class="text-link" href="{{ url_for('tickets', view='list') }}">Clear filters</a>
+              {% else %}No tickets yet. <button type="button" class="text-link" data-open="dlg-ticket">Log the first one</button>.{% endif %}
+            </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </form>
+  {{ pagination(page, pages, total, 'tickets') }}
+</section>
+{% endblock %}

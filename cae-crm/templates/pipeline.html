@@ -1,15 +1,20 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon, avatar %}
-{% block title %}Pipeline{% endblock %}
-{% block heading %}Pipeline{% endblock %}
+{% block title %}Deals{% endblock %}
+{% block heading %}Deals{% endblock %}
 {% block subtitle %}<p class="subtitle">Drag a deal to another stage, or drop it on Won or Lost.</p>{% endblock %}
 {% block actions %}
+  <nav class="layout-switch" aria-label="Layout">
+    <a href="{{ url_for('pipeline') }}" aria-current="true">{{ icon('columns') }}<span>Board</span></a>
+    <a href="{{ url_for('pipeline', view='list') }}">{{ icon('list') }}<span>List</span></a>
+  </nav>
   <nav class="filter-chips" aria-label="Filter by owner">
     <a href="{{ url_for('pipeline') }}" {% if not owner %}aria-current="true"{% endif %}>Everyone</a>
     {% for o in owners %}
       <a href="{{ url_for('pipeline', owner=o) }}" {% if owner == o %}aria-current="true"{% endif %}>{{ o.split()[0] }}</a>
     {% endfor %}
   </nav>
+  <button class="btn primary" data-open="dlg-deal">{{ icon('plus') }} Add deal</button>
 {% endblock %}
 
 {% block content %}
@@ -26,7 +31,7 @@
         {% for d in deals %}
           <article class="card" draggable="true" data-deal="{{ d.id }}" data-value="{{ d.value }}">
             <div class="card-top">
-              <a class="card-title" href="{{ url_for('company', company_id=d.company_id) }}">{{ d.title }}</a>
+              <a class="card-title" href="{{ url_for('deal', deal_id=d.id) }}">{{ d.title }}</a>
               <details class="card-menu">
                 <summary class="icon-btn sm" aria-label="Move {{ d.title }}">{{ icon('more') }}</summary>
                 <form method="post" action="{{ url_for('move_deal', deal_id=d.id) }}" class="menu">

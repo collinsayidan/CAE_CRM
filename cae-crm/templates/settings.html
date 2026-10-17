@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field %}
+{% block title %}Settings{% endblock %}
+{% block heading %}Settings{% endblock %}
+{% block subtitle %}<p class="subtitle">Your business details appear on every invoice you send.</p>{% endblock %}
+
+{% block content %}
+<form method="post" action="{{ url_for('settings') }}" class="settings" novalidate>
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  {% if errors %}<p class="form-alert" role="alert">Settings not saved. Check the highlighted fields.</p>{% endif %}
+
+  <section class="panel">
+    <h2 class="panel-title">Your business</h2>
+    <div class="form-grid">
+      {{ field('Workspace name', 'name', form.name, errors=errors, required=true, hint='What your team sees in the sidebar.') }}
+      {{ field('Registered company name', 'legal_name', form.legal_name, hint='As it should appear on invoices.') }}
+      {{ field('Address', 'address', form.address, extra='autocomplete=address-line1') }}
+      {{ field('Town or city', 'city', form.city) }}
+      {{ field('Postcode', 'postcode', form.postcode, errors=errors, placeholder='EH2 2AN') }}
+      {{ field('Companies House number', 'company_no', form.company_no, errors=errors, placeholder='SC512345') }}
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-title">VAT and invoices</h2>
+    <label class="check"><input type="checkbox" name="vat_registered" {{ 'checked' if form.vat_registered }} data-toggle-target="vat-fields">
+      <span>We're registered for VAT</span></label>
+    <div class="form-grid" id="vat-fields">
+      {{ field('VAT registration number', 'vat_no', form.vat_no, errors=errors, placeholder='GB123456789') }}
+    </div>
+    <p class="form-hint">If you're not VAT registered, invoices won't charge VAT and will say so.</p>
+    <div class="form-grid">
+      {{ field('Invoice number prefix', 'invoice_prefix', form.invoice_prefix, errors=errors, required=true, hint='Invoices are numbered like INV-001001.') }}
+      {{ field('Payment terms in days', 'payment_terms', form.payment_terms, errors=errors, required=true, extra='inputmode=numeric') }}
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-title">Sales target</h2>
+    <div class="form-grid">
+      {{ field('Monthly target, excluding VAT', 'monthly_target', form.monthly_target, errors=errors, required=true, hint='Drives the month track on Home. The quarterly quota is three times this.', extra='inputmode=decimal') }}
+    </div>
+  </section>
+
+  <div class="form-end"><button class="btn primary">Save settings</button></div>
+</form>
+{% endblock %}

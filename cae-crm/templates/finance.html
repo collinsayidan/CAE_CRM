@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon %}
-{% block title %}Finance{% endblock %}
-{% block heading %}Finance{% endblock %}
+{% block title %}Invoices{% endblock %}
+{% block heading %}Invoices{% endblock %}
 {% block subtitle %}<p class="subtitle">Invoices, aged debt and VAT for {{ fy_label }}</p>{% endblock %}
 {% block actions %}<button class="btn primary" data-open="dlg-invoice">{{ icon('plus') }} Raise invoice</button>{% endblock %}
 
@@ -54,7 +54,7 @@
             <td data-v="{{ i.issue_date }}">{{ i.issue_date | uk_date }}</td>
             <td data-v="{{ i.due_date }}">{{ i.due_date | uk_date }}</td>
             <td class="num" data-v="{{ i.net }}">{{ pennies(i.net) }}</td>
-            <td class="num" data-v="{{ i.vat }}">{{ pennies(i.vat) }}<small>{{ i.vat_rate }}%</small></td>
+            <td class="num" data-v="{{ i.vat }}">{{ pennies(i.vat) }}<small>{{ 'Mixed rates' if i.vat_rate < 0 else i.vat_rate ~ '%' }}</small></td>
             <td class="num" data-v="{{ i.net + i.vat }}"><b>{{ pennies(i.net + i.vat) }}</b></td>
             <td>
               {% if state == 'Paid' %}<span class="chip ok">Paid {{ i.paid_date | uk_date_short }}</span>

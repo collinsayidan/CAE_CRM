@@ -1,8 +1,10 @@
-"""Database access for CAE CRM: SQLite locally, PostgreSQL in production, plus demo seed data."""
+"""Database access for CAE CRM: SQLite locally, PostgreSQL in production.
 
-import random
+Every business record belongs to a workspace (one subscribing business). Queries
+must always filter on workspace_id; see core.py for the scoped helpers.
+"""
+
 import sqlite3
-from datetime import date, datetime, timedelta
 
 from flask import current_app, g
 
@@ -11,20 +13,45 @@ try:
 except ImportError:  # only needed when DATABASE_URL points at PostgreSQL
     psycopg = None
 
-from ukfmt import add_months, vat_amount, STANDARD_VAT_RATE
-
 STAGES = [("Lead", 10), ("Qualified", 30), ("Proposal", 50), ("Negotiation", 70), ("Closing", 90)]
 OPEN_STAGES = [name for name, _ in STAGES]
 STAGE_PROBABILITY = dict(STAGES) | {"Won": 100, "Lost": 0}
-DEMO_OWNERS = ["Amara Okafor", "James Whitfield", "Priya Nair", "Callum Fraser"]
 SOURCES = ["Referral", "Website", "Outbound", "Event", "Partner"]
 LAWFUL_BASES = ["Consent", "Contract", "Legitimate interests", "Legal obligation"]
 ACTIVITY_KINDS = ["Call", "Meeting", "Email", "Task"]
-MONTHLY_TARGET = 15_670_000  # £156,700 in pence
+LIFECYCLE_STAGES = ["Subscriber", "Lead", "Marketing qualified lead", "Sales qualified lead",
+                    "Opportunity", "Customer", "Evangelist", "Other"]
+LEAD_STATUSES = ["New", "Attempted to contact", "Connected", "Open deal", "Unqualified", "Bad timing"]
+CALL_OUTCOMES = ["Connected", "Left voicemail", "No answer", "Wrong number", "Busy"]
+TICKET_STATUSES = ["New", "Waiting on us", "Waiting on contact", "Closed"]
+TICKET_PRIORITIES = ["Low", "Medium", "High", "Urgent"]
+TICKET_SOURCES = ["Email", "Phone", "Web form", "Chat"]
+TICKET_CATEGORIES = ["Billing", "Product question", "Problem", "Feature request", "Other"]
+# Service levels in UK working hours (09:00-17:00, Mon-Fri, excluding bank holidays):
+# (first response, resolution)
+TICKET_SLA_HOURS = {"Urgent": (1, 4), "High": (4, 8), "Medium": (8, 24), "Low": (16, 40)}
+BILLING_PERIODS = ["One-off", "Monthly", "Annual"]
+DEFAULT_MONTHLY_TARGET = 15_670_000  # £156,700 in pence
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS workspaces (
+    id {pk},
+    name TEXT NOT NULL,
+    legal_name TEXT,
+    address TEXT,
+    city TEXT,
+    postcode TEXT,
+    company_no TEXT,
+    vat_no TEXT,
+    vat_registered INTEGER NOT NULL DEFAULT 1,
+    monthly_target BIGINT NOT NULL DEFAULT 15670000,
+    invoice_prefix TEXT NOT NULL DEFAULT 'INV',
+    payment_terms INTEGER NOT NULL DEFAULT 30,
+    created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS users (
     id {pk},
+    workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE,
     email TEXT NOT NULL UNIQUE,
     name TEXT NOT NULL,
     password_hash TEXT NOT NULL,
@@ -35,6 +62,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 CREATE TABLE IF NOT EXISTS companies (
     id {pk},
+    workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     company_no TEXT,
     vat_no TEXT,
@@ -43,11 +71,15 @@ CREATE TABLE IF NOT EXISTS companies (
     city TEXT,
     postcode TEXT,
     region TEXT,
+    website TEXT,
+    phone TEXT,
+    owner TEXT,
     created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS contacts (
     id {pk},
-    company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE,
+    company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL,
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
     role TEXT,
@@ -56,11 +88,16 @@ CREATE TABLE IF NOT EXISTS contacts (
     lawful_basis TEXT NOT NULL,
     marketing_consent INTEGER NOT NULL DEFAULT 0,
     consent_date TEXT,
+    lifecycle_stage TEXT,
+    lead_status TEXT,
+    owner TEXT,
     created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS deals (
     id {pk},
+    workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE,
     company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    contact_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL,
     title TEXT NOT NULL,
     value BIGINT NOT NULL,
     stage TEXT NOT NULL,
@@ -73,8 +110,11 @@ CREATE TABLE IF NOT EXISTS deals (
 );
 CREATE TABLE IF NOT EXISTS activities (
     id {pk},
+    workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE,
     company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE,
+    contact_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL,
     deal_id INTEGER REFERENCES deals(id) ON DELETE SET NULL,
+    ticket_id INTEGER,
     kind TEXT NOT NULL,
     subject TEXT NOT NULL,
     owner TEXT NOT NULL,
@@ -83,18 +123,34 @@ CREATE TABLE IF NOT EXISTS activities (
 );
 CREATE TABLE IF NOT EXISTS invoices (
     id {pk},
-    number TEXT NOT NULL UNIQUE,
-    company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE,
+    number TEXT NOT NULL,
+    company_id INTEGER NOT NULL REFERENCES companies(id),
+    deal_id INTEGER REFERENCES deals(id) ON DELETE SET NULL,
     description TEXT NOT NULL,
     net BIGINT NOT NULL,
     vat_rate INTEGER NOT NULL,
     vat BIGINT NOT NULL,
     issue_date TEXT NOT NULL,
     due_date TEXT NOT NULL,
-    paid_date TEXT
+    paid_date TEXT,
+    UNIQUE (workspace_id, number)
+);
+CREATE TABLE IF NOT EXISTS invoice_lines (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    invoice_id INTEGER NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+    description TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    unit_price BIGINT NOT NULL,
+    discount_pct INTEGER NOT NULL DEFAULT 0,
+    vat_rate INTEGER NOT NULL,
+    net BIGINT NOT NULL,
+    vat BIGINT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS projects (
     id {pk},
+    workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE,
     company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     deal_id INTEGER REFERENCES deals(id) ON DELETE SET NULL,
     name TEXT NOT NULL,
@@ -103,7 +159,91 @@ CREATE TABLE IF NOT EXISTS projects (
     progress INTEGER NOT NULL DEFAULT 0,
     due_date TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS products (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    sku TEXT,
+    description TEXT,
+    unit_price BIGINT NOT NULL,
+    vat_rate INTEGER NOT NULL,
+    billing TEXT NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS line_items (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    deal_id INTEGER NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+    product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
+    name TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    unit_price BIGINT NOT NULL,
+    discount_pct INTEGER NOT NULL DEFAULT 0,
+    vat_rate INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS tickets (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL,
+    contact_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL,
+    subject TEXT NOT NULL,
+    description TEXT,
+    status TEXT NOT NULL,
+    priority TEXT NOT NULL,
+    category TEXT NOT NULL,
+    source TEXT NOT NULL,
+    owner TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    first_response_due TEXT NOT NULL,
+    resolution_due TEXT NOT NULL,
+    first_responded_at TEXT,
+    closed_at TEXT
+);
+CREATE TABLE IF NOT EXISTS engagements (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    subject TEXT,
+    body TEXT,
+    outcome TEXT,
+    author TEXT NOT NULL,
+    occurred_at TEXT NOT NULL,
+    company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE,
+    contact_id INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
+    deal_id INTEGER REFERENCES deals(id) ON DELETE CASCADE,
+    ticket_id INTEGER REFERENCES tickets(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS saved_views (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    object TEXT NOT NULL,
+    name TEXT NOT NULL,
+    query TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS imports (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    object TEXT NOT NULL,
+    filename TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 """
+
+# Columns added after the first release. Databases created by an earlier version gain them on start-up.
+ADDED_COLUMNS = {
+    "users": ["workspace_id INTEGER"],
+    "companies": ["workspace_id INTEGER", "website TEXT", "phone TEXT", "owner TEXT"],
+    "contacts": ["workspace_id INTEGER", "lifecycle_stage TEXT", "lead_status TEXT", "owner TEXT"],
+    "deals": ["workspace_id INTEGER", "contact_id INTEGER"],
+    "activities": ["workspace_id INTEGER", "contact_id INTEGER", "ticket_id INTEGER"],
+    "invoices": ["workspace_id INTEGER", "deal_id INTEGER"],
+    "projects": ["workspace_id INTEGER"],
+}
+SCOPED_TABLES = ["users", "companies", "contacts", "deals", "activities", "invoices", "projects"]
 
 
 class Row(tuple):
@@ -159,6 +299,20 @@ class Database:
         else:
             self.conn.executescript(sql)
 
+    def insert(self, table, **values):
+        """INSERT a row and return its new id."""
+        cols = ", ".join(values)
+        marks = ", ".join("?" * len(values))
+        return self.execute(f"INSERT INTO {table} ({cols}) VALUES ({marks}) RETURNING id",
+                            list(values.values())).fetchone()[0]
+
+    def columns(self, table):
+        if self.postgres:
+            rows = self.execute("SELECT column_name FROM information_schema.columns "
+                                "WHERE table_schema = current_schema() AND table_name=?", (table,))
+            return {r[0] for r in rows}
+        return {r[1] for r in self.execute(f"PRAGMA table_info({table})")}
+
     def days_between(self, later, earlier):
         """SQL for the number of days between two ISO date columns."""
         if self.postgres:
@@ -167,6 +321,9 @@ class Database:
 
     def commit(self):
         self.conn.commit()
+
+    def rollback(self):
+        self.conn.rollback()
 
     def close(self):
         self.conn.close()
@@ -184,165 +341,81 @@ def close_db(_exc=None):
         db.close()
 
 
-def init_db(target, today, demo=True):
-    """Create any missing tables, and fill an empty database with demo data if asked."""
+def migrate(db, today):
+    """Bring any database up to the current schema. Safe to run on every start."""
+    if db.postgres:
+        # Serverless cold starts can race; one migrator at a time.
+        db.execute("SELECT pg_advisory_xact_lock(4242)")
+    existing = {t: db.columns(t) for t in ADDED_COLUMNS}
+    upgrading = bool(existing["companies"]) and "workspace_id" not in existing["companies"]
+    for table, cols in ADDED_COLUMNS.items():
+        if not existing[table]:
+            continue  # the table is new, and CREATE below makes it whole
+        for col in cols:
+            if col.split()[0] not in existing[table]:
+                db.execute(f"ALTER TABLE {table} ADD COLUMN {col}")
+    if upgrading:
+        # Before the new tables exist, so renaming invoices can't rewrite their references.
+        _relax_v1_constraints(db)
+    db.executescript(SCHEMA.format(pk=db.pk))
+    # Records from the single-business version move into one workspace.
+    orphans = any(db.execute(f"SELECT 1 FROM {t} WHERE workspace_id IS NULL LIMIT 1").fetchone() for t in SCOPED_TABLES)
+    if orphans:
+        ws = db.execute("SELECT id FROM workspaces ORDER BY id LIMIT 1").fetchone()
+        ws_id = ws[0] if ws else db.insert("workspaces", name="My business", created_at=today.isoformat())
+        for t in SCOPED_TABLES:
+            db.execute(f"UPDATE {t} SET workspace_id=? WHERE workspace_id IS NULL", (ws_id,))
+        db.execute("UPDATE contacts SET lifecycle_stage='Customer' WHERE lifecycle_stage IS NULL "
+                   "AND company_id IN (SELECT company_id FROM deals WHERE stage='Won')")
+        db.execute("UPDATE contacts SET lifecycle_stage='Lead' WHERE lifecycle_stage IS NULL")
+    for sql in (
+        "CREATE INDEX IF NOT EXISTS ix_companies_ws ON companies (workspace_id)",
+        "CREATE INDEX IF NOT EXISTS ix_contacts_ws ON contacts (workspace_id)",
+        "CREATE INDEX IF NOT EXISTS ix_deals_ws ON deals (workspace_id, stage)",
+        "CREATE INDEX IF NOT EXISTS ix_engagements_company ON engagements (company_id)",
+        "CREATE INDEX IF NOT EXISTS ix_engagements_contact ON engagements (contact_id)",
+        "CREATE INDEX IF NOT EXISTS ix_engagements_deal ON engagements (deal_id)",
+        "CREATE INDEX IF NOT EXISTS ix_tickets_ws ON tickets (workspace_id, status)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS ux_invoices_number ON invoices (workspace_id, number)",
+    ):
+        db.execute(sql)
+
+
+def _relax_v1_constraints(db):
+    """Undo two rules from the single-business release: invoice numbers were unique across the whole
+    database (now per workspace), and every contact had to belong to a company (leads can now stand alone)."""
+    if db.postgres:
+        db.execute("ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_number_key")
+        db.execute("ALTER TABLE contacts ALTER COLUMN company_id DROP NOT NULL")
+        return
+    # SQLite can't change constraints in place, so rebuild both tables from the new schema.
+    copies = {
+        "invoices": "id, workspace_id, number, company_id, deal_id, description, net, vat_rate, vat, "
+                    "issue_date, due_date, paid_date",
+        "contacts": "id, workspace_id, company_id, first_name, last_name, role, email, phone, lawful_basis, "
+                    "marketing_consent, consent_date, lifecycle_stage, lead_status, owner, created_at",
+    }
+    db.execute("PRAGMA foreign_keys = OFF")
+    db.execute("PRAGMA legacy_alter_table = ON")  # keep other tables pointing at the new tables by name
+    for table in copies:
+        db.execute(f"ALTER TABLE {table} RENAME TO {table}_v1")
+    db.executescript(SCHEMA.format(pk=db.pk))
+    for table, cols in copies.items():
+        db.execute(f"INSERT INTO {table} ({cols}) SELECT {cols} FROM {table}_v1")
+        db.execute(f"DROP TABLE {table}_v1")
+    db.execute("PRAGMA legacy_alter_table = OFF")
+    db.execute("PRAGMA foreign_keys = ON")
+
+
+def init_db(target, today):
     db = Database(target)
     try:
-        if db.postgres:
-            # Serverless cold starts can race; one migrator at a time.
-            db.execute("SELECT pg_advisory_xact_lock(4242)")
-        db.executescript(SCHEMA.format(pk=db.pk))
-        if demo and not db.execute("SELECT COUNT(*) FROM companies").fetchone()[0]:
-            seed_db(db, today)
+        migrate(db, today)
         db.commit()
     finally:
         db.close()
 
 
-def next_invoice_number(conn):
-    row = conn.execute("SELECT MAX(id) FROM invoices").fetchone()
-    return f"CAE-{(row[0] or 0) + 1001:06d}"
-
-
-# --- Demo data (fictional UK businesses) -----------------------------------
-
-COMPANIES = [
-    ("Thistle & Pine Hotels Ltd", "SC512345", "GB284716590", "Hospitality", "14 Princes Street", "Edinburgh", "EH2 2AN", "Scotland"),
-    ("Mersey Freight Ltd", "08451236", "GB193847562", "Logistics", "3 Brunswick Dock", "Liverpool", "L3 4AF", "North West"),
-    ("Kestrel Retail Group plc", "04928173", "GB302918476", "Retail", "22 Park Row", "Leeds", "LS1 5JD", "Yorkshire"),
-    ("Brightwater Utilities Ltd", "09182736", "GB475610293", "Utilities", "1 Temple Quay", "Bristol", "BS1 6DZ", "South West"),
-    ("Harbourline Logistics Ltd", "07364518", "GB561029384", "Logistics", "Ocean Gate, Town Quay", "Southampton", "SO14 3TJ", "South East"),
-    ("Oakmoor Health Ltd", "10293847", "GB629384710", "Healthcare", "8 Colmore Row", "Birmingham", "B3 2NS", "West Midlands"),
-    ("Clydeside Engineering Ltd", "SC401928", "GB738291045", "Manufacturing", "90 St Vincent Street", "Glasgow", "G2 5UB", "Scotland"),
-    ("Pennine Foods Ltd", "06519284", "GB847102938", "Food & Drink", "11 Piccadilly", "Manchester", "M1 3BN", "North West"),
-    ("Cardiff Bay Studios Ltd", "11928374", "GB910283746", "Media", "Pierhead Street", "Cardiff", "CF10 4PH", "Wales"),
-    ("Fenwick & Shaw LLP", "OC398271", "GB120394857", "Legal", "40 Gresham Street", "London", "EC2V 7BN", "London"),
-    ("Northgate Housing Association", "12039485", "GB231049586", "Housing", "5 Grey Street", "Newcastle upon Tyne", "NE1 6EE", "North East"),
-    ("Lough Marine Services Ltd", "NI612938", "GB342059687", "Marine", "Airport Road West", "Belfast", "BT3 9ED", "Northern Ireland"),
-    ("Cotswold Craft Brewers Ltd", "13048596", "GB453061728", "Food & Drink", "2 Market Place", "Cirencester", "GL7 2PE", "South West"),
-    ("Granite City Energy Ltd", "SC623049", "GB564072839", "Energy", "15 Union Street", "Aberdeen", "AB11 6BA", "Scotland"),
-]
-FIRST_NAMES = ["Eilidh", "Rhys", "Siobhan", "Oliver", "Aisha", "Tom", "Niamh", "Harry", "Zara", "Euan", "Grace", "Dev", "Ffion", "Kwame", "Isla", "Ravi"]
-LAST_NAMES = ["MacLeod", "Evans", "O'Neill", "Patel", "Hughes", "Campbell", "Ahmed", "Taylor", "Morgan", "Brown", "Jones", "Doyle"]
-ROLES = ["Operations Director", "Head of Procurement", "Finance Director", "IT Manager", "Managing Director", "Commercial Lead"]
-DEAL_TITLES = [
-    "Fleet licence expansion", "Integration build", "Premium SLA", "Annual renewal", "Seat true-up",
-    "Regional expansion", "Data migration", "Onboarding package", "Multi-site rollout", "Analytics add-on",
-    "Support uplift", "Pilot programme", "Payroll module", "Compliance pack",
-]
-
-
-def seed_db(conn, today):
-    rng = random.Random(42)
-    now = datetime.combine(today, datetime.min.time())
-    created = (today - timedelta(days=400)).isoformat()
-
-    for c in COMPANIES:
-        conn.execute(
-            "INSERT INTO companies (name, company_no, vat_no, industry, address, city, postcode, region, created_at)"
-            " VALUES (?,?,?,?,?,?,?,?,?)",
-            (*c, created),
-        )
-    company_ids = [r[0] for r in conn.execute("SELECT id FROM companies")]
-    domains = {r[0]: r[1] for r in conn.execute("SELECT id, name FROM companies")}
-
-    # Contacts. 07700 900xxx is Ofcom's range reserved for drama, so never a real number.
-    for cid in company_ids:
-        domain = domains[cid].split()[0].lower().replace("&", "") + ".co.uk"
-        for _ in range(rng.randint(1, 2)):
-            first, last = rng.choice(FIRST_NAMES), rng.choice(LAST_NAMES)
-            consent = rng.random() < 0.6
-            conn.execute(
-                "INSERT INTO contacts (company_id, first_name, last_name, role, email, phone, lawful_basis,"
-                " marketing_consent, consent_date, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                (cid, first, last, rng.choice(ROLES),
-                 f"{first}.{last}@{domain}".lower().replace("'", ""),
-                 f"+44 7700 900{rng.randint(0, 999):03d}",
-                 rng.choice(LAWFUL_BASES[:3]), int(consent),
-                 (today - timedelta(days=rng.randint(10, 300))).isoformat() if consent else None,
-                 created),
-            )
-
-    def add_deal(stage, value, close_date, closed_at, created_at):
-        cur = conn.execute(
-            "INSERT INTO deals (company_id, title, value, stage, probability, owner, source, close_date, closed_at, created_at)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id",
-            (rng.choice(company_ids), rng.choice(DEAL_TITLES), value, stage, STAGE_PROBABILITY[stage],
-             rng.choice(DEMO_OWNERS), rng.choice(SOURCES), close_date.isoformat(),
-             closed_at.isoformat() if closed_at else None, created_at.isoformat()),
-        )
-        return cur.fetchone()[0]
-
-    # Won revenue for each of the last 12 months (the current month is partial).
-    this_month = today.replace(day=1)
-    won = []
-    for back in range(11, -1, -1):
-        month = add_months(this_month, -back)
-        last_day = (add_months(month, 1) - timedelta(days=1)).day if back else today.day
-        goal = MONTHLY_TARGET * rng.uniform(0.45, 1.08) * (today.day / 30 if back == 0 else 1)
-        parts = rng.randint(2, 4)
-        for _ in range(parts):
-            value = int(goal / parts * rng.uniform(0.7, 1.3)) // 1000 * 1000
-            closed = month.replace(day=rng.randint(1, last_day))
-            deal_id = add_deal("Won", value, closed, closed, closed - timedelta(days=rng.randint(20, 95)))
-            won.append((deal_id, value, closed))
-
-    for _ in range(22):
-        closed = today - timedelta(days=rng.randint(1, 360))
-        add_deal("Lost", rng.randint(80, 600) * 10_000, closed, closed, closed - timedelta(days=rng.randint(15, 80)))
-
-    weights = [14, 11, 9, 7, 6]
-    for _ in range(47):
-        stage = rng.choices(OPEN_STAGES, weights)[0]
-        add_deal(stage, rng.randint(90, 600) * 10_000, today + timedelta(days=rng.randint(3, 100)), None,
-                 today - timedelta(days=rng.randint(5, 70)))
-
-    # Invoices for won deals, in issue order so numbers run sequentially.
-    rows = conn.execute(
-        "SELECT id, company_id, title, value, closed_at FROM deals WHERE stage='Won' ORDER BY closed_at"
-    ).fetchall()
-    for deal_id, cid, title, value, closed_at in rows:
-        issue = date.fromisoformat(closed_at) + timedelta(days=2)
-        if issue > today:
-            continue
-        due = issue + timedelta(days=30)
-        paid = None
-        if due < today - timedelta(days=10) or (issue < today - timedelta(days=12) and rng.random() < 0.5):
-            paid = min(today, issue + timedelta(days=rng.randint(10, 45))).isoformat()
-        if due < today and rng.random() < 0.12:
-            paid = None  # a few overdue
-        conn.execute(
-            "INSERT INTO invoices (number, company_id, description, net, vat_rate, vat, issue_date, due_date, paid_date)"
-            " VALUES (?,?,?,?,?,?,?,?,?)",
-            (next_invoice_number(conn), cid, title, value, STANDARD_VAT_RATE,
-             vat_amount(value, STANDARD_VAT_RATE), issue.isoformat(), due.isoformat(), paid),
-        )
-
-    # Delivery projects for recently won deals.
-    for deal_id, cid, title, value, closed_at in rows[-14:]:
-        progress = rng.choice([100, 100, 85, 60, 40, 20, 5])
-        status = "Complete" if progress == 100 else rng.choice(["On track", "On track", "At risk", "Blocked"])
-        conn.execute(
-            "INSERT INTO projects (company_id, deal_id, name, owner, status, progress, due_date) VALUES (?,?,?,?,?,?,?)",
-            (cid, deal_id, f"Deliver: {title}", rng.choice(DEMO_OWNERS), status, progress,
-             (date.fromisoformat(closed_at) + timedelta(days=rng.randint(30, 120))).isoformat()),
-        )
-
-    subjects = {
-        "Call": ["Discovery call", "Pricing follow-up", "Renewal check-in"],
-        "Meeting": ["On-site demo", "Quarterly business review", "Contract walkthrough"],
-        "Email": ["Send proposal", "Share case study", "Confirm DPA signed"],
-        "Task": ["Update forecast", "Prepare SOW", "Credit check via Companies House"],
-    }
-    open_deals = conn.execute(f"SELECT id, company_id, owner FROM deals WHERE stage IN ({','.join('?' * len(OPEN_STAGES))})",
-                              OPEN_STAGES).fetchall()
-    for _ in range(28):
-        deal_id, cid, owner = rng.choice(open_deals)
-        kind = rng.choice(ACTIVITY_KINDS)
-        due = now + timedelta(days=rng.randint(-6, 14), hours=rng.choice([9, 10, 11, 13, 14, 15, 16]),
-                              minutes=rng.choice([0, 30]))
-        conn.execute(
-            "INSERT INTO activities (company_id, deal_id, kind, subject, owner, due_at, done) VALUES (?,?,?,?,?,?,?)",
-            (cid, deal_id, kind, rng.choice(subjects[kind]), owner, due.isoformat(timespec="minutes"),
-             int(due.date() < today and rng.random() < 0.8)),
-        )
+def next_invoice_number(db, workspace_id, prefix):
+    count = db.execute("SELECT COUNT(*) FROM invoices WHERE workspace_id=?", (workspace_id,)).fetchone()[0]
+    return f"{prefix}-{count + 1001:06d}"

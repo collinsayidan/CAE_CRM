@@ -5,8 +5,9 @@ from datetime import datetime, timedelta
 
 from flask import abort, flash, g, jsonify, redirect, render_template, request, url_for
 
-from core import (back, chosen_owner, get_or_404, log_event, now, one, owned, rows, sla_state, wants_json, ws)
+from core import (actor_name, back, chosen_owner, get_or_404, log_event, now, one, owned, rows, sla_state, wants_json, ws)
 from crm import render_index, timeline
+from events import emit
 from db import (CALL_OUTCOMES, TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_SLA_HOURS, TICKET_SOURCES,
                 TICKET_STATUSES, get_db)
 from ukfmt import add_working_hours
@@ -29,7 +30,8 @@ def set_ticket_status(ticket_id, status):
     get_db().execute("UPDATE tickets SET status=?, first_responded_at=?, closed_at=? WHERE id=? AND workspace_id=?",
                      (status, first, closed, ticket_id, ws()))
     subject = "Ticket closed" if status == "Closed" else ("Ticket reopened" if t["status"] == "Closed" else f"Status changed to {status}")
-    log_event(subject, f"By {g.user['name']}", ticket_id=ticket_id, company_id=t["company_id"], contact_id=t["contact_id"])
+    emit("ticket.status_changed", ticket_id, value=status, previous_status=t["status"])
+    log_event(subject, f"By {actor_name()}", ticket_id=ticket_id, company_id=t["company_id"], contact_id=t["contact_id"])
     return t
 
 
@@ -88,6 +90,7 @@ def register(app):
         from crm import notify_owner
         notify_owner(owner, f"{g.user['name']} gave you ticket #{ticket_id}: {subject}", f"{priority} priority",
                      url_for("ticket", ticket_id=ticket_id))
+        emit("ticket.created", ticket_id, value=priority)
         db.commit()
         flash(f"Ticket #{ticket_id} opened. First response due {datetime.fromisoformat(first_due):%a %d %b %H:%M}.", "ok")
         return redirect(url_for("ticket", ticket_id=ticket_id))
@@ -125,6 +128,7 @@ def register(app):
                     f.get("source") if f.get("source") in TICKET_SOURCES else t["source"], owner,
                     owned("companies", f.get("company_id")), owned("contacts", f.get("contact_id")),
                     first_due, resolve_due, ticket_id, ws()))
+        emit("ticket.updated", ticket_id)
         db.commit()
         flash("Ticket updated.", "ok")
         return redirect(url_for("ticket", ticket_id=ticket_id))

@@ -464,6 +464,58 @@ CREATE TABLE IF NOT EXISTS custom_fields (
     position INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS api_keys (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    prefix TEXT NOT NULL,
+    key_hash TEXT NOT NULL UNIQUE,
+    access TEXT NOT NULL,
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    last_used_at TEXT,
+    window_start TEXT,
+    window_count INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS webhooks (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    url TEXT NOT NULL,
+    events TEXT NOT NULL,
+    secret TEXT NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1,
+    failures INTEGER NOT NULL DEFAULT 0,
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS webhook_deliveries (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    webhook_id INTEGER NOT NULL REFERENCES webhooks(id) ON DELETE CASCADE,
+    event TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    status TEXT NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    response_code INTEGER,
+    last_error TEXT,
+    next_attempt_at TEXT,
+    created_at TEXT NOT NULL,
+    delivered_at TEXT
+);
+CREATE TABLE IF NOT EXISTS workflow_rules (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    on_event TEXT NOT NULL,
+    on_value TEXT,
+    action TEXT NOT NULL,
+    settings TEXT NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1,
+    runs INTEGER NOT NULL DEFAULT 0,
+    last_run_at TEXT,
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 """
 
 # Columns added after the first release. Databases created by an earlier version gain them on start-up.
@@ -642,6 +694,9 @@ def migrate(db, today):
         "CREATE INDEX IF NOT EXISTS ix_audit_ws ON audit_events (workspace_id, id)",
         "CREATE INDEX IF NOT EXISTS ix_notifications_user ON notifications (user_id, id)",
         "CREATE INDEX IF NOT EXISTS ix_attachments_record ON attachments (workspace_id, record_type, record_id)",
+        "CREATE INDEX IF NOT EXISTS ix_deliveries_due ON webhook_deliveries (status, next_attempt_at)",
+        "CREATE INDEX IF NOT EXISTS ix_deliveries_hook ON webhook_deliveries (webhook_id, id)",
+        "CREATE INDEX IF NOT EXISTS ix_workflow_trigger ON workflow_rules (workspace_id, on_event)",
     ):
         db.execute(sql)
     if db.postgres:

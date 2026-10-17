@@ -11,6 +11,7 @@ from urllib.parse import urlencode
 
 from flask import Flask, abort, g, jsonify, redirect, render_template, request, session, url_for
 
+import api
 import audit
 import auth
 import billing
@@ -20,6 +21,7 @@ import dataio
 import fields
 import files
 import documents
+import events
 import finance
 import home
 import integrations
@@ -33,6 +35,8 @@ import settings
 import twofactor
 import ukfmt
 import webforms
+import webhooks
+import workflows
 import xero
 from core import days_until, now, relative_time, scalar, today, workspace
 from db import close_db, init_db, is_postgres
@@ -50,7 +54,8 @@ NAV = [
 # Everything about running the workspace sits behind one Settings link: (endpoint, label, admins only).
 SETTINGS_TABS = [("settings", "Business details", True), ("auth.team", "Team", False),
                  ("integrations", "Integrations", False), ("imports", "Import", True), ("billing", "Billing", True),
-                 ("custom_fields_page", "Custom fields", True), ("vat", "VAT returns", True),
+                 ("custom_fields_page", "Custom fields", True), ("workflows", "Workflows", True),
+                 ("developers", "API and webhooks", True), ("vat", "VAT returns", True),
                  ("audit_trail", "Audit trail", True)]
 # Which nav item lights up for pages that aren't in the nav themselves.
 NAV_PARENT = {"contact": "contacts", "company": "companies", "deal": "pipeline", "ticket": "tickets",
@@ -183,6 +188,8 @@ def create_app(config=None):
         missing = app.config["MISSING_SETTINGS"]
         if missing and request.endpoint != "static":
             return render_template("auth/settings_needed.html", missing=missing), 503
+        if request.blueprint == "api":
+            return None  # the API signs in with keys (see api.py), not with a session and CSRF token
         if request.method == "POST" and request.endpoint not in CSRF_EXEMPT:
             token = request.form.get("csrf") or request.headers.get("X-CSRF-Token")
             if not token or token != session.get("csrf"):
@@ -211,8 +218,9 @@ def create_app(config=None):
         return app.send_static_file("brand/favicon.ico")
 
     app.register_blueprint(auth.bp)
+    events.register(app)  # first, so its after_request hook runs last, once everything else is saved
     for module in (home, crm, sales, service, finance, quotes, webforms, campaigns, billing, integrations, xero, mtd,
-                   documents, notifications, files, fields, dataio, settings, audit):
+                   documents, notifications, files, fields, workflows, webhooks, api, dataio, settings, audit):
         module.register(app)
     return app
 

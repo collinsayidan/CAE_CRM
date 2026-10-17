@@ -7,6 +7,7 @@ from datetime import timedelta
 from flask import abort, flash, g, redirect, render_template, request, url_for
 
 import mail
+from events import emit
 from core import back, get_or_404, log_event, now, one, owned, rows, today, workspace, ws
 from db import get_db, next_quote_number
 from finance import raise_invoice
@@ -275,6 +276,7 @@ def register(app):
                     request.headers.get("User-Agent", "")[:300], q["id"]))
         log_event(f"Quote {q['number']} accepted", f"Signed online by {name} on {stamp[:16].replace('T', ' at ')}. "
                   f"{money(q['net'] + q['vat'], pennies=True)} including VAT.", **links(q))
+        emit("quote.accepted", q["id"])
         tell_owner(q, f"Quote {q['number']} accepted by {name}", f"{money(q['net'] + q['vat'], pennies=True)} including VAT")
         deal = one("SELECT * FROM deals WHERE id=? AND workspace_id=?", q["deal_id"], q["workspace_id"]) if q["deal_id"] else None
         if deal and deal["stage"] not in ("Won", "Lost"):
@@ -297,6 +299,7 @@ def register(app):
         db.execute("UPDATE quotes SET status='Declined', decided_at=?, decline_reason=? WHERE id=? AND status='Sent'",
                    (now().isoformat(timespec="seconds"), reason, q["id"]))
         log_event(f"Quote {q['number']} declined by the customer", reason or "No reason given.", **links(q))
+        emit("quote.declined", q["id"], reason=reason or None)
         tell_owner(q, f"Quote {q['number']} was declined", reason or "No reason given.")
         db.commit()
         return redirect(url_for("public_quote", token=token))

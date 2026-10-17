@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, field, select %}
+{% block title %}Workflows{% endblock %}
+{% block heading %}Workflows{% endblock %}
+{% block subtitle %}<p class="subtitle">Let CAE CRM do the routine follow-up: create tasks, assign owners and tell people when things happen.</p>{% endblock %}
+
+{% block content %}
+<section class="panel flush">
+  <div class="panel-head pad"><h2>Your rules</h2></div>
+  <ul class="field-list">
+    {% for r in rules %}
+      <li class="{{ 'paused' if not r.active }}">
+        <span><b>{{ r.name }}{% if not r.active %} <span class="chip">Paused</span>{% endif %}</b>
+          <small>{{ describe_rule(r) }} Ran {{ r.runs }} time{{ 's' if r.runs != 1 }}{% if r.last_run_at %}, last {{ r.last_run_at | relative_time }}{% endif %}.</small></span>
+        <span class="hook-actions">
+          <form method="post" action="{{ url_for('toggle_workflow', rule_id=r.id) }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn ghost sm">{{ 'Pause' if r.active else 'Turn on' }}</button></form>
+          <form method="post" action="{{ url_for('delete_workflow', rule_id=r.id) }}" data-confirm="Remove the rule {{ r.name }}?"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="icon-btn sm" aria-label="Remove {{ r.name }}">{{ icon('trash') }}</button></form>
+        </span>
+      </li>
+    {% else %}
+      <li class="empty-line">No rules yet. Start with one below, such as giving every new web enquiry a follow-up call.</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="panel panel-gap">
+  <h2 class="panel-title">Add a rule</h2>
+  <form method="post" action="{{ url_for('workflows') }}" class="rule-form">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <div class="form-grid">
+      {{ field('Name', 'name', required=true, placeholder='Call back new enquiries', extra='maxlength=80') }}
+      {{ select('When', 'on_event', triggers.values() | map(attribute=0) | list, values=triggers.keys() | list) }}
+      <div data-show-when="on_event=deal.stage_changed">{{ select('Stage', 'on_stage', stages, blank='Any stage') }}</div>
+      <div data-show-when="on_event=ticket.created">{{ select('Priority', 'on_priority', priorities, blank='Any priority') }}</div>
+      <div data-show-when="on_event=form.submitted">{{ select('Form', 'on_form', forms | map(attribute='name') | list, values=forms | map(attribute='id') | list, blank='Any form') }}</div>
+      {{ select('Then', 'action', actions.values() | list, values=actions.keys() | list) }}
+    </div>
+
+    <div class="form-grid" data-show-when="action=task">
+      {{ field('Task', 'task_subject', required=true, placeholder='Call to follow up', extra='maxlength=120') }}
+      {{ select('Type', 'task_kind', kinds, selected='Call') }}
+      {{ field('Due after (days)', 'task_days', value='1', type='number', required=true, extra='min=0 max=90') }}
+      {{ select('For', 'task_person', ["The record's owner", 'The team, taking turns'] + people, values=['owner', 'rotate'] + people) }}
+    </div>
+    <div class="form-grid" data-show-when="action=notify">
+      {{ select('Who', 'notify_person', ["The record's owner"] + people, values=['owner'] + people) }}
+      {{ field('Message', 'notify_message', placeholder='Worth a call today', extra='maxlength=200') }}
+    </div>
+    <div class="form-grid" data-show-when="action=owner">
+      {{ select('Assign to', 'owner_person', ['The team, taking turns'] + people, values=['rotate'] + people) }}
+    </div>
+    <div class="form-grid" data-show-when="action=lifecycle">
+      {{ select('Lifecycle stage', 'lifecycle_stage', lifecycle_stages, selected='Sales qualified lead') }}
+    </div>
+    <button class="btn primary">{{ icon('plus') }} Add rule</button>
+  </form>
+  <p class="muted small panel-gap">Rules run straight after the change that sets them off, and each run is noted on the record's timeline. Imports and bulk changes don't set rules off, and a rule's own changes never set off another rule.</p>
+</section>
+{% endblock %}

@@ -5,10 +5,10 @@ from the record itself. They show in the record's About panel and are edited in 
 import json
 from datetime import date
 
-from flask import flash, g, redirect, render_template, request, session, url_for
+from flask import flash, g, redirect, render_template, request, url_for
 
 import auth
-from core import now, rows, ws
+from core import change_failed, now, rows, ws
 from db import get_db
 
 OBJECTS = {"contacts": "Contacts", "companies": "Companies", "deals": "Deals", "tickets": "Tickets"}
@@ -81,7 +81,7 @@ def register(app):
         """After a record is edited successfully, save its custom fields from the same form."""
         target = EDITS.get(request.endpoint)
         if (not target or request.method != "POST" or response.status_code >= 400 or not g.get("user")
-                or any(c == "error" for c, _ in session.get("_flashes", []))):
+                or change_failed()):
             return response
         table, arg = target
         fields = definitions(table)

@@ -9,7 +9,7 @@ import io
 from flask import Response, current_app, g, render_template, request, session
 
 import auth
-from core import now, rows, ws
+from core import change_failed, now, rows, ws
 from db import get_db
 
 # What each change is called in the trail. Anything missing falls back to its endpoint name.
@@ -41,7 +41,11 @@ LABELS = {
     "auth.two_factor_reset": "Reset a team member's two-factor sign-in",
     "auth.two_factor_check": "Signed in with two-factor",
     "upload_file": "Attached a file", "delete_file": "Removed a file", "custom_fields_page": "Added a custom field",
-    "delete_custom_field": "Removed a custom field",
+    "delete_custom_field": "Removed a custom field", "workflows": "Added a workflow rule",
+    "toggle_workflow": "Paused or resumed a workflow rule", "delete_workflow": "Removed a workflow rule",
+    "create_api_key": "Made an API key", "revoke_api_key": "Revoked an API key", "create_webhook": "Added a webhook",
+    "delete_webhook": "Removed a webhook", "toggle_webhook": "Paused or resumed a webhook",
+    "test_webhook": "Sent a test webhook",
 }
 # Routine or high-volume actions that would bury the changes that matter.
 SKIP = {"auth.logout", "oauth_sync", "campaign_deliver", "auth.forgot"}
@@ -94,7 +98,7 @@ def register(app):
         endpoint = request.endpoint
         if request.method != "POST" or response.status_code >= 400 or endpoint in SKIP or endpoint is None:
             return response
-        if any(category == "error" for category, _ in session.get("_flashes", [])):
+        if change_failed():
             return response  # the page said it didn't work, so nothing changed
         try:
             user = g.get("user")

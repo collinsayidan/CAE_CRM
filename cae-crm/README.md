@@ -117,6 +117,86 @@ Ticket pages add the status path and the two service-level clocks.
 - **Files:** attach contracts, purchase orders and photos to any contact, company, deal or ticket (up to 4 MB each: PDFs, images, Office and OpenDocument files, text, CSV, zip and saved emails). Files always download rather than open in the page. Whoever attached a file, or an admin, can remove it. Erasing a contact or deleting a record removes its files too. With `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` set, files go to a private Supabase Storage bucket and download through links that expire after a minute; without them, they're kept in the database.
 - **Custom fields:** admins add up to 30 fields in **Settings → Custom fields**: text, number, date, dropdown or yes/no, on contacts, companies, deals or tickets. They show in the About panel, are filled in from the Edit window, and are included in CSV exports. Removing a field hides it but keeps what was entered.
 
+### Workflows
+
+Admins set up rules in **Settings → Workflows**: *when* something happens (a contact is added, a web form is submitted, a deal moves to a stage, a ticket is opened, a quote is accepted, an invoice is paid), optionally narrowed to one stage, priority or form, *then* do one thing:
+- create a task (call, meeting, email or task) for a named person, the record's owner, or the team taking turns;
+- notify someone;
+- assign an owner (a named person, or the team taking turns);
+- set the contact's lifecycle stage.
+
+Rules run straight after the change that sets them off, from the app, the API or a public form or quote. Each run is noted on the record's timeline. A rule's own changes never set off another rule, so rules can't loop. Imports and bulk changes don't set rules off.
+
+### API
+
+Admins make keys in **Settings → API and webhooks**. A key is shown once and only its hash is stored. **Read only** keys can list and fetch; **read and write** keys can also add and update. Each key can make 120 requests a minute (`API_RATE_LIMIT`). In a read-only workspace (unpaid), reads still work and changes get `402`.
+
+```bash
+curl -H "Authorization: Bearer cae_..." https://your-site/api/v1/deals?stage=Won
+```
+
+| Method and path | What it does |
+| --- | --- |
+| `GET /api/v1/` | The workspace and the key's access |
+| `GET /api/v1/{contacts,companies,deals,tickets,invoices}` | A page of records. `page`, `per_page` (up to 100), `created_since=YYYY-MM-DD` and filters such as `email`, `stage`, `status`, `priority`, `owner`, `company_id` |
+| `GET /api/v1/{object}/{id}` | One record |
+| `POST /api/v1/{contacts,companies,deals,tickets}` | Add a record (JSON body). Returns `201` |
+| `PATCH /api/v1/{contacts,companies,deals,tickets}/{id}` | Change only the fields sent. A deal's `stage` and a ticket's `status` can change here too |
+
+- **Same rules as the app.** Records go through the same checks: a contact needs a lawful basis, a company needs a UK postcode, and an owner must be on the team. Problems return `422` with `fields` saying which.
+- **Money** is in whole pence (`value_pence`, `net_pence`). When adding a deal you can send `value` in pounds instead, for example `"£1,250.50"`.
+- **Custom fields** appear under `custom`, by name, and can be set the same way: `"custom": {"Tier": "Gold"}`.
+- **Logging.** Changes made through the API appear on timelines and in the audit trail as "API key *name*".
+- **Not in the API:** deleting records and erasing personal data stay in the app, where an admin can see what they're doing.
+
+### Webhooks
+
+In **Settings → API and webhooks**, add an `https://` address and choose events:
+- `contact.created`, `contact.updated`
+- `company.created`, `company.updated`
+- `deal.created`, `deal.updated`, `deal.stage_changed`, `deal.won`, `deal.lost`
+- `ticket.created`, `ticket.updated`, `ticket.status_changed`
+- `quote.accepted`, `quote.declined`
+- `invoice.created`, `invoice.paid`
+- `form.submitted`
+
+**What gets sent.** Each event is POSTed as JSON: `{"id", "event", "created_at", "data": {the record, as the API shows it}}`. Some events add extra fields: `previous_stage`, `previous_status`, or `form` and `submission`.
+
+**Checking it came from CAE CRM.** Every request carries `CAE-Signature: t=<unix time>,v1=<signature>`, where the signature is the HMAC-SHA256 of `<t>.<raw body>` keyed with the webhook's signing secret. To check one in Python:
+
+```python
+import hashlib, hmac, time
+
+def is_from_cae(raw_body: bytes, header: str, secret: str) -> bool:
+    parts = dict(p.split("=", 1) for p in header.split(","))
+    expected = hmac.new(secret.encode(), f"{parts['t']}.".encode() + raw_body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, parts["v1"]) and abs(time.time() - int(parts["t"])) < 300
+```
+
+**When deliveries fail.** The first attempt is made as soon as the change is saved. Failures are retried by the cron job up to 6 times over about two days. On Vercel's Hobby plan the cron job runs daily, so retries are daily too.
+
+**Pausing.** After 20 failures in a row, a webhook is paused and admins are notified.
+
+**Safe addresses only.** Addresses must resolve to public internet addresses. Redirects aren't followed, so a webhook can't reach anything private.
+
+### Power BI and Excel
+
+Every table is also available as a read-only CSV feed:
+- `/api/v1/feed/contacts`
+- `/api/v1/feed/companies`
+- `/api/v1/feed/deals`
+- `/api/v1/feed/tickets`
+- `/api/v1/feed/invoices`
+- `/api/v1/feed/tasks`
+
+Feeds use plain column names, amounts in pounds, company names alongside ids, and custom fields as columns. Add `?format=json` for JSON.
+
+To connect Power BI:
+1. Choose **Get data → Web** and paste a feed address.
+2. Choose **Basic** sign-in, with user name `api` and a read-only key as the password.
+
+Scheduled refresh in the Power BI service uses the same sign-in. Cells that a spreadsheet could run as a formula are neutralised, but numbers and phone numbers are left as they are.
+
 ### Lists, views and data
 
 - **Views:** filter any list, then save the filters as a view tab. Built-in views include My contacts, New leads, Open tickets and Urgent.

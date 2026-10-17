@@ -1443,3 +1443,27 @@ a.me > div { min-width: 0; }
 .field-list li span small { color: var(--muted); font-size: 12.5px; }
 .custom-field-form .btn { margin-top: 12px; }
 .panel.flush > .panel-title.pad { padding-top: 18px; padding-bottom: 6px; margin: 0; }
+
+/* API, webhooks and workflows */
+.key-reveal { border-color: var(--primary); }
+.key-reveal .copy-field input { font-family: ui-monospace, Consolas, monospace; }
+.panel.flush > p.pad { margin: 0 0 12px; }
+.inline-add { padding-top: 16px; padding-bottom: 20px; border-top: 1px solid var(--line); }
+.inline-add > .btn, .rule-form > .btn { margin-top: 12px; }
+.hook { padding: 14px 24px; border-top: 1px solid var(--line); }
+.hook > header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.hook > header > span:first-child { min-width: 0; }
+.hook-url { display: block; font-size: 14px; overflow-wrap: anywhere; }
+.hook small { color: var(--muted); font-size: 12.5px; }
+.hook-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.hook details { margin-top: 8px; font-size: 13px; }
+.hook summary { cursor: pointer; color: var(--muted); }
+.records.compact { margin-top: 10px; font-size: 13px; }
+.records.compact td, .records.compact th { padding: 6px 8px; }
+.event-choices { border: 0; padding: 0; margin: 14px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 4px 16px; }
+.event-choices legend { margin-bottom: 6px; }
+.event-choices code { font-size: 11.5px; color: var(--muted); }
+.how-to { margin: 8px 0 14px; padding-left: 20px; line-height: 1.6; }
+.rule-form .form-grid + .form-grid { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.field-list li.paused b { color: var(--muted); }
+[data-show-when][hidden] { display: none !important; }

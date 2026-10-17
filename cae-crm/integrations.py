@@ -311,4 +311,5 @@ def register(app):
             results.append({"connection": conn["id"], "result": run_sync(conn)})
         import documents
         reminders = documents.send_due_reminders()
-        return jsonify(synced=len(results), results=results, reminders=reminders)
+        import webhooks
+        return jsonify(synced=len(results), results=results, reminders=reminders, webhooks=webhooks.retry_due(budget=20))

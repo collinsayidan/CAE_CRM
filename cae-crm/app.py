@@ -136,4 +136,9 @@ def create_app(config=None):
 
 
 if __name__ == "__main__":
+    try:  # local settings from .env, when python-dotenv is installed (requirements-dev.txt)
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass
     create_app().run(debug=os.environ.get("FLASK_DEBUG") == "1")

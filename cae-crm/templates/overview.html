@@ -2,7 +2,7 @@
 {% from "_macros.html" import icon, avatar, logo, stage_chip with context %}
 {% block title %}Overview{% endblock %}
 {% block heading %}{{ greeting }}, {{ first_name }}{% endblock %}
-{% block subtitle %}<p class="subtitle">{{ today.strftime('%A %-d %B %Y') }}</p>{% endblock %}
+{% block subtitle %}<p class="subtitle">{{ today.strftime('%A') ~ ' ' ~ today.day ~ today.strftime(' %B %Y') }}</p>{% endblock %}
 
 {% block content %}
 {% if empty %}
@@ -45,13 +45,13 @@
     <div class="rail-fill"></div>
     <div class="rail-pace" title="Where you'd be at an even pace"><span>Pace</span></div>
     <div class="rail-ticks">
-      {% for d in track.days %}<i class="{{ 'gone' if d < today }}{{ ' now' if d == today }}" title="{{ d.strftime('%a %-d %b') }}"></i>{% endfor %}
+      {% for d in track.days %}<i class="{{ 'gone' if d < today }}{{ ' now' if d == today }}" title="{{ d.strftime('%a ') ~ (d | uk_date_short) }}"></i>{% endfor %}
     </div>
   </div>
   <div class="rail-scale">
-    <span>{{ track.days[0].strftime('%a %-d %b') }}</span>
+    <span>{{ track.days[0].strftime('%a ') ~ (track.days[0] | uk_date_short) }}</span>
     <span>{{ track.elapsed }} of {{ track.days | length }} working days gone</span>
-    <span>{{ track.days[-1].strftime('%a %-d %b') }}</span>
+    <span>{{ track.days[-1].strftime('%a ') ~ (track.days[-1] | uk_date_short) }}</span>
   </div>
 </section>
 

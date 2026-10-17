@@ -49,7 +49,7 @@ NAV_PARENT = {"contact": "contacts", "company": "companies", "deal": "pipeline",
               "auth.member": "auth.team", "auth.edit_member": "auth.team", "quote": "quotes", "web_form": "forms",
               "campaign": "campaigns", "vat": "integrations", "vat_return": "integrations"}
 # Pages anyone can reach without signing in.
-PUBLIC_ENDPOINTS = {"landing", "auth.login", "auth.signup", "auth.setup", "static",
+PUBLIC_ENDPOINTS = {"landing", "favicon", "auth.login", "auth.signup", "auth.setup", "static",
                     "public_form", "public_quote", "accept_quote", "decline_quote", "unsubscribe", "resend_webhook",
                     "stripe_webhook", "cron_sync"}
 # Forms embedded on other websites can't carry our session's CSRF token; they have their own spam checks.
@@ -171,6 +171,11 @@ def create_app(config=None):
         if request.path == "/":
             return redirect(url_for("landing"))
         return redirect(url_for("auth.login", next=request.full_path.rstrip("?")))
+
+    @app.get("/favicon.ico")
+    def favicon():
+        # Browsers ask for this on every page, including public quotes and forms.
+        return app.send_static_file("brand/favicon.ico")
 
     app.register_blueprint(auth.bp)
     for module in (home, crm, sales, service, finance, quotes, webforms, campaigns, billing, integrations, xero, mtd,

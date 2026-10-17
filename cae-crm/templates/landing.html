@@ -10,10 +10,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400..800;1,400..800&display=swap">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% include "_brand_head.html" %}
 </head>
 <body class="landing">
   <header class="landing-nav">
-    <a class="auth-brand" href="{{ url_for('landing') }}"><span class="mark" aria-hidden="true">C</span>CAE CRM</a>
+    <a class="auth-brand" href="{{ url_for('landing') }}"><img class="mark" src="{{ url_for('static', filename='brand/icon.svg') }}" alt="" width="32" height="32">CAE CRM</a>
     <nav>
       <a href="{{ url_for('auth.login') }}">Sign in</a>
       <a class="btn primary" href="{{ url_for('auth.signup') }}">Create a workspace</a>

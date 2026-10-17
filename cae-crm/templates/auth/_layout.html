@@ -8,11 +8,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400..800;1,400..800&display=swap">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% include "_brand_head.html" %}
   <script>try { const t = localStorage.getItem("cae-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
 </head>
 <body class="auth-page">
   <main class="auth-shell">
-    <a class="auth-brand" href="{{ url_for('auth.login') }}"><span class="mark" aria-hidden="true">C</span>CAE CRM</a>
+    <a class="auth-brand" href="{{ url_for('auth.login') }}"><img class="mark" src="{{ url_for('static', filename='brand/icon.svg') }}" alt="" width="32" height="32">CAE CRM</a>
     <section class="auth-card">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, message in messages %}<p class="form-alert {{ 'is-ok' if category == 'ok' }}" role="status">{{ message }}</p>{% endfor %}

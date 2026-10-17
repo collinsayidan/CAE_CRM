@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400..800;1,400..800&display=swap">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% include "_brand_head.html" %}
   <script>
     document.documentElement.classList.add("js");
     try { const t = localStorage.getItem("cae-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
@@ -18,7 +19,7 @@
 <body>
   <aside class="sidebar" id="sidebar">
     <a class="brand" href="{{ url_for('overview') }}">
-      <span class="mark" aria-hidden="true">C</span>
+      <img class="mark" src="{{ url_for('static', filename='brand/icon.svg') }}" alt="" width="32" height="32">
       <span class="brand-text"><span class="brand-name">CAE CRM</span><span class="brand-ws" title="Your workspace">{{ workspace.name }}</span></span>
     </a>
     <nav aria-label="Main" class="main-nav">

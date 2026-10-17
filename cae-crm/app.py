@@ -18,12 +18,15 @@ import crm
 import dataio
 import finance
 import home
+import integrations
+import mtd
 import quotes
 import sales
 import service
 import settings
 import ukfmt
 import webforms
+import xero
 from core import days_until, now, relative_time, scalar, today, workspace
 from db import close_db, init_db, is_postgres
 from ukfmt import money
@@ -38,17 +41,17 @@ NAV = [
     ("Finance", [("invoices", "Invoices", "pound")]),
     ("Delivery", [("projects", "Projects", "flag")]),
     ("Insight", [("reports", "Reports", "trend")]),
-    ("Workspace", [("auth.team", "Team", "users")]),
+    ("Workspace", [("auth.team", "Team", "users"), ("integrations", "Integrations", "bolt")]),
 ]
 # Which nav item lights up for pages that aren't in the nav themselves.
 NAV_PARENT = {"contact": "contacts", "company": "companies", "deal": "pipeline", "ticket": "tickets",
               "invoice": "invoices", "import_map": "imports",
               "auth.member": "auth.team", "auth.edit_member": "auth.team", "quote": "quotes", "web_form": "forms",
-              "campaign": "campaigns"}
+              "campaign": "campaigns", "vat": "integrations", "vat_return": "integrations"}
 # Pages anyone can reach without signing in.
 PUBLIC_ENDPOINTS = {"landing", "auth.login", "auth.signup", "auth.setup", "static",
                     "public_form", "public_quote", "accept_quote", "decline_quote", "unsubscribe", "resend_webhook",
-                    "stripe_webhook"}
+                    "stripe_webhook", "cron_sync"}
 # Forms embedded on other websites can't carry our session's CSRF token; they have their own spam checks.
 # Mail apps' one-click unsubscribe and Resend's webhooks post from elsewhere too; the webhook is signed.
 CSRF_EXEMPT = {"public_form", "unsubscribe", "resend_webhook", "stripe_webhook"}
@@ -86,6 +89,15 @@ def create_app(config=None):
         SEAT_PRICE=int(os.environ.get("CAE_SEAT_PRICE") or 1500),
         TRIAL_DAYS=int(os.environ.get("CAE_TRIAL_DAYS") or 14),
         BILLING_EXEMPT=os.environ.get("CAE_BILLING_EXEMPT", ""),
+        # Integrations: OAuth apps for Gmail, Outlook, Xero and HMRC. Each appears once its id and secret are set.
+        **{f"{p}_{k}": os.environ.get(f"{p}_{k}", "") for p in ("GOOGLE", "MICROSOFT", "XERO", "HMRC")
+           for k in ("CLIENT_ID", "CLIENT_SECRET")},
+        XERO_SCOPES=os.environ.get("XERO_SCOPES", ""),
+        XERO_SALES_ACCOUNT=os.environ.get("XERO_SALES_ACCOUNT", "200"),
+        HMRC_ENV=os.environ.get("HMRC_ENV", "sandbox"),
+        VENDOR_PUBLIC_IP=os.environ.get("CAE_VENDOR_PUBLIC_IP", ""),
+        TOKEN_KEY=os.environ.get("CAE_TOKEN_KEY", ""),
+        CRON_SECRET=os.environ.get("CRON_SECRET", ""),
         TODAY=None,  # tests pin the date and time; otherwise the real ones are used
         NOW=None,
     )
@@ -161,7 +173,8 @@ def create_app(config=None):
         return redirect(url_for("auth.login", next=request.full_path.rstrip("?")))
 
     app.register_blueprint(auth.bp)
-    for module in (home, crm, sales, service, finance, quotes, webforms, campaigns, billing, dataio, settings):
+    for module in (home, crm, sales, service, finance, quotes, webforms, campaigns, billing, integrations, xero, mtd,
+                   dataio, settings):
         module.register(app)
     return app
 

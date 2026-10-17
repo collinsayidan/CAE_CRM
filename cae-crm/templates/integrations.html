@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% set admin = current_user.role == 'admin' %}
+{% block title %}Integrations{% endblock %}
+{% block heading %}Integrations{% endblock %}
+{% block subtitle %}<p class="subtitle">Connect your email, accounts and HMRC. Each connection can be removed at any time.</p>{% endblock %}
+
+{% block content %}
+<ul class="integration-grid">
+  {% for key, p in providers.items() %}
+    {% set conn = mine.get(key) %}
+    <li class="panel integration">
+      <header class="integration-head">
+        <span class="integration-mark mark-{{ key }}" aria-hidden="true">{{ p.name[0] }}</span>
+        <div><h2>{{ p.name }}</h2><p class="muted small">{{ 'Just for you' if p.level == 'user' else 'For the whole business' }}</p></div>
+        {% if conn %}<span class="chip ok">Connected</span>{% endif %}
+      </header>
+      <p class="integration-blurb">{{ p.blurb }}</p>
+
+      {% if conn %}
+        <dl class="props integration-props">
+          {% if conn.account %}<div class="prop"><dt>Account</dt><dd>{{ conn.account }}</dd></div>{% endif %}
+          {% if key != 'hmrc' %}<div class="prop"><dt>Last synced</dt><dd>{{ (conn.last_sync_at | uk_datetime) if conn.last_sync_at else 'Not yet' }}</dd></div>{% endif %}
+          {% if conn.last_error %}<div class="prop"><dt>Last problem</dt><dd class="bad-text">{{ conn.last_error }}</dd></div>{% endif %}
+        </dl>
+        <div class="head-buttons">
+          {% if key in ('google', 'microsoft', 'xero') %}
+            <form method="post" action="{{ url_for('oauth_sync', conn_id=conn.id) }}"><input type="hidden" name="csrf" value="{{ csrf_token }}">
+              <button class="btn ghost sm">Sync now</button></form>
+          {% endif %}
+          {% if key == 'xero' and admin %}
+            <form method="post" action="{{ url_for('xero_push_all') }}" data-confirm="Send every invoice that isn't in Xero yet (up to 50)?"><input type="hidden" name="csrf" value="{{ csrf_token }}">
+              <button class="btn ghost sm">Send invoices to Xero</button></form>
+          {% endif %}
+          {% if key == 'hmrc' and admin %}<a class="btn primary sm" href="{{ url_for('vat') }}">VAT returns</a>{% endif %}
+          {% if p.level == 'user' or admin %}
+            <form method="post" action="{{ url_for('oauth_disconnect', conn_id=conn.id) }}" data-confirm="Disconnect {{ p.name }}?"><input type="hidden" name="csrf" value="{{ csrf_token }}">
+              <button class="btn ghost sm danger">Disconnect</button></form>
+          {% endif %}
+        </div>
+      {% elif not available(key) %}
+        <p class="muted small">Not set up yet. An admin adds the {{ p.env }}_CLIENT_ID and {{ p.env }}_CLIENT_SECRET settings to switch this on.</p>
+      {% elif p.level == 'workspace' and not admin %}
+        <p class="muted small">An admin connects this for the business.</p>
+      {% else %}
+        <form method="post" action="{{ url_for('oauth_connect', provider=key) }}"><input type="hidden" name="csrf" value="{{ csrf_token }}">
+          <button class="btn primary sm">Connect {{ p.name.split(' (')[0] }}</button></form>
+        {% if key == 'hmrc' and not hmrc_live %}<p class="muted small panel-gap">Using HMRC's test service (sandbox). Sign in with an HMRC test user.</p>{% endif %}
+      {% endif %}
+    </li>
+  {% endfor %}
+</ul>
+
+<section class="panel panel-gap">
+  <header class="panel-head"><h2>How email logging works</h2></header>
+  <ul class="plain-list">
+    <li>Only emails to or from people already in your contacts are logged. Everything else is ignored and nothing about it is kept.</li>
+    <li>CAE CRM keeps the subject and a short preview on the contact's timeline, never the full message or attachments.</li>
+    <li>{% if cron %}New email is checked automatically every day.{% else %}Use <b>Sync now</b> to check for new email.{% endif %} The first sync looks back three days.</li>
+  </ul>
+  {% if team_mail %}
+    <p class="muted small panel-gap">Mailboxes connected in your team: {% for m in team_mail %}{{ m.name }} ({{ m.account }}){{ ', ' if not loop.last }}{% endfor %}.</p>
+  {% endif %}
+</section>
+{% endblock %}

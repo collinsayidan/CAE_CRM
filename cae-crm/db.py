@@ -154,6 +154,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     issue_date TEXT NOT NULL,
     due_date TEXT NOT NULL,
     paid_date TEXT,
+    xero_invoice_id TEXT,
     UNIQUE (workspace_id, number)
 );
 CREATE TABLE IF NOT EXISTS invoice_lines (
@@ -351,6 +352,41 @@ CREATE TABLE IF NOT EXISTS campaign_recipients (
     bounced_at TEXT,
     unsubscribed_at TEXT
 );
+CREATE TABLE IF NOT EXISTS connections (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    provider TEXT NOT NULL,
+    account TEXT,
+    tenant_id TEXT,
+    access_token TEXT,
+    refresh_token TEXT,
+    expires_at TEXT,
+    sync_cursor TEXT,
+    last_sync_at TEXT,
+    last_error TEXT,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS synced_emails (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    connection_id INTEGER NOT NULL REFERENCES connections(id) ON DELETE CASCADE,
+    message_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE (connection_id, message_id)
+);
+CREATE TABLE IF NOT EXISTS vat_returns (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    period_key TEXT NOT NULL,
+    period_start TEXT NOT NULL,
+    period_end TEXT NOT NULL,
+    boxes TEXT NOT NULL,
+    receipt TEXT,
+    submitted_by TEXT NOT NULL,
+    submitted_at TEXT NOT NULL,
+    UNIQUE (workspace_id, period_key)
+);
 """
 
 # Columns added after the first release. Databases created by an earlier version gain them on start-up.
@@ -365,7 +401,7 @@ ADDED_COLUMNS = {
                    "cancel_at_period_end INTEGER NOT NULL DEFAULT 0"],
     "deals": ["workspace_id INTEGER", "contact_id INTEGER"],
     "activities": ["workspace_id INTEGER", "contact_id INTEGER", "ticket_id INTEGER"],
-    "invoices": ["workspace_id INTEGER", "deal_id INTEGER"],
+    "invoices": ["workspace_id INTEGER", "deal_id INTEGER", "xero_invoice_id TEXT"],
     "projects": ["workspace_id INTEGER"],
 }
 SCOPED_TABLES = ["users", "companies", "contacts", "deals", "activities", "invoices", "projects"]
@@ -521,6 +557,7 @@ def migrate(db, today):
         "CREATE INDEX IF NOT EXISTS ix_submissions_form ON form_submissions (form_id, created_at)",
         "CREATE INDEX IF NOT EXISTS ix_recipients_campaign ON campaign_recipients (campaign_id, status)",
         "CREATE INDEX IF NOT EXISTS ix_recipients_provider ON campaign_recipients (provider_id)",
+        "CREATE INDEX IF NOT EXISTS ix_connections_ws ON connections (workspace_id, provider)",
     ):
         db.execute(sql)
     if db.postgres:

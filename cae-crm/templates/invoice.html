@@ -12,6 +12,13 @@
       <button class="btn ghost">{{ icon('check') }} Mark paid</button>
     </form>
   {% endif %}
+  {% if i.xero_invoice_id %}<span class="chip ok">In Xero</span>
+  {% elif xero and current_user.role == 'admin' %}
+    <form method="post" action="{{ url_for('invoice_to_xero', invoice_id=i.id) }}" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <button class="btn ghost">Send to Xero</button>
+    </form>
+  {% endif %}
   <button class="btn primary" data-print>{{ icon('printer') }} Print or save as PDF</button>
 {% endblock %}
 

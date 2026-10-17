@@ -33,23 +33,26 @@ from ukfmt import money
 
 # Sidebar sections, HubSpot-style: (heading, [(endpoint, label, icon)]).
 NAV = [
-    (None, [("overview", "Home", "home")]),
+    (None, [("overview", "Home", "home"), ("tasks", "Tasks", "calendar"), ("reports", "Reports", "trend")]),
     ("CRM", [("contacts", "Contacts", "users"), ("companies", "Companies", "building"),
              ("pipeline", "Deals", "pipeline"), ("tickets", "Tickets", "lifebuoy")]),
-    ("Sales", [("tasks", "Tasks", "calendar"), ("quotes", "Quotes", "note"), ("products", "Products", "box")]),
+    ("Sales and finance", [("quotes", "Quotes", "note"), ("invoices", "Invoices", "pound"),
+                           ("products", "Products", "box"), ("projects", "Projects", "flag")]),
     ("Marketing", [("campaigns", "Email", "mail"), ("forms", "Forms", "list")]),
-    ("Finance", [("invoices", "Invoices", "pound")]),
-    ("Delivery", [("projects", "Projects", "flag")]),
-    ("Insight", [("reports", "Reports", "trend")]),
-    ("Workspace", [("auth.team", "Team", "users"), ("integrations", "Integrations", "bolt")]),
 ]
+# Everything about running the workspace sits behind one Settings link: (endpoint, label, admins only).
+SETTINGS_TABS = [("settings", "Business details", True), ("auth.team", "Team", False),
+                 ("integrations", "Integrations", False), ("imports", "Import", True), ("billing", "Billing", True),
+                 ("vat", "VAT returns", True)]
 # Which nav item lights up for pages that aren't in the nav themselves.
 NAV_PARENT = {"contact": "contacts", "company": "companies", "deal": "pipeline", "ticket": "tickets",
-              "invoice": "invoices", "import_map": "imports",
-              "auth.member": "auth.team", "auth.edit_member": "auth.team", "quote": "quotes", "web_form": "forms",
-              "campaign": "campaigns", "vat": "integrations", "vat_return": "integrations"}
+              "invoice": "invoices", "quote": "quotes", "web_form": "forms",
+              "campaign": "campaigns"}
+# Which settings tab lights up for pages inside one.
+SETTINGS_PARENT = {"auth.member": "auth.team", "auth.edit_member": "auth.team", "import_map": "imports",
+                   "vat_return": "vat"}
 # Pages anyone can reach without signing in.
-PUBLIC_ENDPOINTS = {"landing", "favicon", "auth.login", "auth.signup", "auth.setup", "static",
+PUBLIC_ENDPOINTS = {"landing", "favicon", "auth.login", "auth.signup", "auth.setup", "auth.forgot", "auth.reset", "static",
                     "public_form", "public_quote", "accept_quote", "decline_quote", "unsubscribe", "resend_webhook",
                     "stripe_webhook", "cron_sync"}
 # Forms embedded on other websites can't carry our session's CSRF token; they have their own spam checks.
@@ -60,8 +63,15 @@ CSRF_EXEMPT = {"public_form", "unsubscribe", "resend_webhook", "stripe_webhook"}
 def create_app(config=None):
     app = Flask(__name__, instance_relative_config=True)
     hosted = bool(os.environ.get("VERCEL"))
-    database = (os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL")
-                or os.environ.get("CAE_DATABASE"))
+    preview = os.environ.get("VERCEL_ENV") == "preview"
+    if preview:
+        # Preview deployments (one per pull request) must never touch live data, even if DATABASE_URL is shared
+        # with them: they run new code, including database changes, before it's been reviewed.
+        database_setting, database = "PREVIEW_DATABASE_URL", os.environ.get("PREVIEW_DATABASE_URL")
+    else:
+        database_setting = "DATABASE_URL"
+        database = (os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL")
+                    or os.environ.get("CAE_DATABASE"))
     if not database and not hosted:
         database = os.path.join(app.instance_path, "cae_crm.sqlite3")
     secret = os.environ.get("CAE_SECRET_KEY")
@@ -69,7 +79,7 @@ def create_app(config=None):
         SECRET_KEY=secret or secrets.token_hex(32),
         DATABASE=database,
         # On a host, a missing key or database must stop the app rather than lose accounts and data.
-        MISSING_SETTINGS=[name for name, ok in (("CAE_SECRET_KEY", secret), ("DATABASE_URL", database)) if hosted and not ok],
+        MISSING_SETTINGS=[name for name, ok in (("CAE_SECRET_KEY", secret), (database_setting, database)) if hosted and not ok],
         # When set, creating a new workspace needs this invite code.
         SIGNUP_CODE=os.environ.get("CAE_SETUP_CODE", ""),
         SESSION_COOKIE_SAMESITE="Lax",
@@ -133,6 +143,9 @@ def create_app(config=None):
         return base | dict(
             billing=billing.state(w),
             nav=NAV, nav_active=NAV_PARENT.get(request.endpoint, request.endpoint), workspace=w,
+            settings_tabs=[t for t in SETTINGS_TABS if (not t[2] or g.user["role"] == "admin")
+                           and (t[0] != "billing" or billing.state(w)["enabled"])],
+            settings_active=SETTINGS_PARENT.get(request.endpoint, request.endpoint),
             pennies=lambda p: money(p, pennies=True),
             greeting="Good morning" if hour < 12 else "Good afternoon" if hour < 18 else "Good evening",
             first_name=g.user["name"].split()[0],

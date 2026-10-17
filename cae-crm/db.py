@@ -387,6 +387,12 @@ CREATE TABLE IF NOT EXISTS vat_returns (
     submitted_at TEXT NOT NULL,
     UNIQUE (workspace_id, period_key)
 );
+CREATE TABLE IF NOT EXISTS password_resets (
+    id {pk},
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    ip TEXT,
+    created_at TEXT NOT NULL
+);
 """
 
 # Columns added after the first release. Databases created by an earlier version gain them on start-up.

@@ -36,13 +36,10 @@
       {% endfor %}
     </nav>
     <div class="sidebar-foot">
-      {% if current_user.role == 'admin' %}
-        <nav class="admin-links" aria-label="Administration">
-          <a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}aria-current="page"{% endif %}>{{ icon('cog') }}<span>Settings</span></a>
-          <a href="{{ url_for('imports') }}" {% if request.endpoint in ('imports', 'import_map') %}aria-current="page"{% endif %}>{{ icon('upload') }}<span>Import</span></a>
-          {% if billing.enabled %}<a href="{{ url_for('billing') }}" {% if request.endpoint == 'billing' %}aria-current="page"{% endif %}>{{ icon('pound') }}<span>Billing</span></a>{% endif %}
-        </nav>
-      {% endif %}
+      {% set in_settings = settings_active in (settings_tabs | map(attribute=0) | list) or request.endpoint == 'workspace_settings' %}
+      <nav class="admin-links" aria-label="Settings">
+        <a href="{{ url_for('workspace_settings') }}" {% if in_settings %}aria-current="page"{% endif %}>{{ icon('cog') }}<span>Settings</span></a>
+      </nav>
       <a class="me" href="{{ url_for('auth.member', user_id=current_user.id) }}" title="Your profile">
         {{ avatar(current_user.name, team=true) }}
         <div><p class="me-name">{{ current_user.name }}</p><p class="me-role">{{ current_user.job_title or (current_user.role | capitalize) }}</p></div>
@@ -87,6 +84,14 @@
       {% endif %}
     {% endif %}
     <main id="content">
+      {% if settings_active in (settings_tabs | map(attribute=0) | list) %}
+        <nav class="settings-tabs" aria-label="Settings">
+          <a href="{{ url_for('workspace_settings') }}">{{ icon('cog') }}<span>Settings</span></a>
+          {% for endpoint, label, _ in settings_tabs %}
+            <a href="{{ url_for(endpoint) }}" {% if settings_active == endpoint %}aria-current="page"{% endif %}>{{ label }}</a>
+          {% endfor %}
+        </nav>
+      {% endif %}
       {% block page %}
       <div class="page-head">
         <div>

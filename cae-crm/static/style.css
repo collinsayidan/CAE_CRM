@@ -145,7 +145,7 @@ kbd { font-family: var(--body); font-size: 11.5px; padding: 2px 6px; border: 1px
 .search-trigger:hover { border-color: var(--muted); }
 .search-trigger span { flex: 1; }
 .top-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-main { padding: 28px 36px 64px; max-width: 1320px; }
+main { padding: 28px 36px 64px; max-width: 1600px; }
 
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 24px; }
 .page-head h1 { font-size: clamp(28px, 3.4vw, 38px); font-weight: 700; letter-spacing: -.025em; }
@@ -1036,12 +1036,35 @@ body.landing { background: var(--surface); }
 
 /* Record and list responsiveness --------------------------------------- */
 @media (max-width: 1520px) {
+  /* Two columns on laptops: linked records become a row of cards above the timeline, visible without scrolling. */
   .record { grid-template-columns: 280px minmax(0, 1fr); }
-  .record-right { grid-column: 1 / -1; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); align-items: start; }
-  .record-right { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .record-left { grid-column: 1; grid-row: 1 / span 2; }
+  .record-right { grid-column: 2; grid-row: 1; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); align-items: start; }
+  .record-mid { grid-column: 2; grid-row: 2; }
 }
+@media (max-width: 900px) {
+  .record-left, .record-mid, .record-right { grid-column: auto; grid-row: auto; }
+  .record-right { order: 1; }
+  .record-mid { order: 2; }
+}
+/* Settings hub and tabs ------------------------------------------------------ */
+.settings-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin: -6px 0 22px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.settings-tabs a { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: var(--r-md); font-size: 14px; font-weight: 700; color: var(--muted); text-decoration: none; }
+.settings-tabs a:hover { background: var(--surface-2); color: var(--ink); }
+.settings-tabs a[aria-current] { background: var(--accent-soft); color: var(--primary); }
+.settings-tabs .icon { width: 16px; height: 16px; }
+.hub-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 16px; }
+.hub-card { display: flex; gap: 14px; align-items: flex-start; padding: 18px 20px; height: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl); box-shadow: var(--shadow); text-decoration: none; color: inherit; transition: border-color .15s, transform .15s; }
+.hub-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.hub-card b { display: block; font-size: 16px; }
+.hub-card small { display: block; color: var(--muted); font-size: 13.5px; margin-top: 3px; }
+@media (max-width: 640px) {
+  .settings-tabs { flex-wrap: nowrap; overflow-x: auto; margin-left: -16px; margin-right: -16px; padding: 0 16px 10px; }
+  .settings-tabs a { white-space: nowrap; }
+}
+
 /* Integrations and VAT ------------------------------------------------------ */
-.integration-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.integration-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 16px; }
 .integration { display: grid; gap: 12px; align-content: start; }
 .integration-head { display: flex; gap: 12px; align-items: center; }
 .integration-head > div { flex: 1; min-width: 0; }
@@ -1071,7 +1094,7 @@ body.landing { background: var(--surface); }
 }
 
 /* Billing ---------------------------------------------------------------- */
-.plan-banner { display: block; margin: 16px 36px 0; max-width: 1248px; padding: 10px 16px; border-radius: var(--r-md); background: var(--warn-soft); color: var(--warn-ink); font-size: 14px; text-decoration: none; }
+.plan-banner { display: block; margin: 16px 36px 0; max-width: 1528px; padding: 10px 16px; border-radius: var(--r-md); background: var(--warn-soft); color: var(--warn-ink); font-size: 14px; text-decoration: none; }
 .plan-banner.bad { background: var(--bad-soft); color: var(--bad); }
 .plan-banner:hover { text-decoration: underline; }
 .billing-summary h2 { font-size: 22px; letter-spacing: -.01em; }
@@ -1187,7 +1210,7 @@ a.me > div { min-width: 0; }
 .photo-controls label.btn:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 .photo-controls .photo-remove { margin-top: 0; }
 .photo-preview img { display: block; }
-.team-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+.team-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 16px; }
 .team-card {
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl); box-shadow: var(--shadow);
   padding: 22px 18px 18px; display: grid; justify-items: center; gap: 10px; text-align: center; min-width: 0;

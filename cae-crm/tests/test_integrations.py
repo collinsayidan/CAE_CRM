@@ -170,8 +170,8 @@ def test_vat_return_is_worked_out_and_submitted_with_fraud_headers(app, client, 
     connect(client, "hmrc")
     page = client.get("/vat?screens=width%3D1920&timezone=UTC%2B01:00").get_data(as_text=True)
     assert "Prepare return" in page
-    vat, net = query(app, "SELECT SUM(vat), SUM(net) FROM invoices WHERE workspace_id=? AND issue_date >= '2026-07-01' "
-                          "AND issue_date <= '2026-09-30'", app.ws)[0]
+    vat, net = (int(v or 0) for v in query(app, "SELECT SUM(vat), SUM(net) FROM invoices WHERE workspace_id=? "
+                                                "AND issue_date >= '2026-07-01' AND issue_date <= '2026-09-30'", app.ws)[0])
     form = client.get("/vat/26A3?start=2026-07-01&end=2026-09-30").get_data(as_text=True)
     assert f'value="{(vat or 0) / 100:.2f}"' in form
     base = {"csrf": client.csrf, "start": "2026-07-01", "end": "2026-09-30", "box1": f"{(vat or 0) / 100:.2f}", "box2": "0",

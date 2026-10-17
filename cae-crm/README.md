@@ -31,6 +31,7 @@ Open http://127.0.0.1:5000 and choose **Create a workspace**. Leave the sample d
    - `CAE_SECRET_KEY`: a long random value. `python -c "import secrets; print(secrets.token_hex(32))"` makes one.
    - `CAE_SETUP_CODE`: an invite code of your choosing. People need it to create a workspace.
    - `RESEND_API_KEY`, `CAE_MAIL_FROM` and optionally `RESEND_WEBHOOK_SECRET`: to send email. See **Email** below.
+   - The `STRIPE_…` settings and `CAE_BILLING_EXEMPT`: to charge for CAE CRM. See **Billing** below.
 4. **Redeploy.** Then open the site and create your workspace.
 
 To run locally against Supabase, copy `.env.example` to `.env`, fill it in and run `python app.py` (after `pip install -r requirements-dev.txt`). `.env` is never committed.
@@ -47,6 +48,18 @@ CAE CRM sends through [Resend](https://resend.com). Every business sends from th
 2. Under **API Keys**, create a key with sending access. Add it to Vercel as `RESEND_API_KEY`, and add `CAE_MAIL_FROM` (for example `hello@mail.yourdomain.co.uk`).
 3. Optional: under **Webhooks**, add `https://<your site>/webhooks/resend` for the email events, and add its signing secret to Vercel as `RESEND_WEBHOOK_SECRET`. Turn on open and click tracking for the domain if you want those figures.
 4. Redeploy. Until a domain is verified, Resend only delivers to your own account's address, which is enough for a test.
+
+## Billing
+
+Each business gets a 14-day free trial without a card, then pays per user a month, plus VAT, through [Stripe](https://stripe.com). The number of users billed follows the team: adding or removing someone updates the subscription, and Stripe prorates the change. When a trial ends unpaid or a subscription lapses, the workspace becomes read-only. People can still sign in, view and export everything, and erase personal data, but can't add or change records until an admin subscribes. Web forms and quote acceptance keep working, so no leads are lost. Admins subscribe through Stripe Checkout (with VAT number collection) and manage cards, invoices and cancellation in Stripe's billing portal.
+
+Without `STRIPE_SECRET_KEY`, billing is off and every workspace has full access.
+
+1. In Stripe, create a product "CAE CRM" with a **recurring monthly price per unit** in GBP, and copy its `price_…` id to `STRIPE_PRICE_ID`. Set `CAE_SEAT_PRICE` to the same amount in pence so the app shows it.
+2. If you're VAT registered, create a 20% **exclusive** tax rate and copy its `txr_…` id to `STRIPE_TAX_RATE_ID`.
+3. Under **Developers → Webhooks**, add `https://<your site>/webhooks/stripe` for `checkout.session.completed` and `customer.subscription.created`, `.updated` and `.deleted`. Copy the signing secret to `STRIPE_WEBHOOK_SECRET`.
+4. Turn on the **customer portal** (Settings → Billing → Customer portal) so customers can update cards, see invoices and cancel.
+5. Add `STRIPE_SECRET_KEY` (start with a `sk_test_…` key), set `CAE_BILLING_EXEMPT` to your own workspace's id, and redeploy.
 
 ## What's in it
 

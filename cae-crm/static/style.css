@@ -1043,6 +1043,15 @@ body.landing { background: var(--surface); }
   .record-right { grid-column: 1 / -1; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); align-items: start; }
   .record-right { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
 }
+/* Billing ---------------------------------------------------------------- */
+.plan-banner { display: block; margin: 16px 36px 0; max-width: 1248px; padding: 10px 16px; border-radius: var(--r-md); background: var(--warn-soft); color: var(--warn-ink); font-size: 14px; text-decoration: none; }
+.plan-banner.bad { background: var(--bad-soft); color: var(--bad); }
+.plan-banner:hover { text-decoration: underline; }
+.billing-summary h2 { font-size: 22px; letter-spacing: -.01em; }
+.billing-summary > .muted { margin-top: 6px; }
+.billing-facts { margin-top: 18px; }
+.plain-list { margin: 0; padding-left: 18px; display: grid; gap: 8px; font-size: 14px; color: var(--ink-2); }
+
 /* Email campaigns -------------------------------------------------------- */
 .notice { display: flex; gap: 10px; align-items: flex-start; padding: 12px 16px; margin-bottom: 18px; border-radius: var(--r-lg); background: var(--warn-soft); color: var(--warn-ink); font-size: 14px; }
 .notice .icon { width: 18px; height: 18px; flex: none; margin-top: 1px; }
@@ -1219,6 +1228,7 @@ a.me > div { min-width: 0; }
   body.nav-open .scrim { display: block; position: fixed; inset: 0; z-index: 25; background: rgba(10, 22, 48, .45); }
   .only-mobile { display: inline-grid; }
   .topbar, main { padding-left: 16px; padding-right: 16px; }
+  .plan-banner { margin: 12px 16px 0; }
   .search-trigger kbd, .search-trigger span { display: none; }
   .search-trigger { flex: 0; }
   .layout-aside, .layout-even { grid-template-columns: 1fr; }

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% set admin = current_user.role == 'admin' %}
+{% set STATUS = {'trialing': 'Free trial', 'trial_over': 'Trial ended', 'active': 'Active', 'past_due': 'Payment overdue',
+                 'unpaid': 'Unpaid', 'canceled': 'Cancelled', 'incomplete': 'Waiting for payment',
+                 'incomplete_expired': 'Payment not completed', 'paused': 'Paused', 'exempt': 'Free of charge', 'off': 'Off'} %}
+{% set CHIP = {'active': 'ok', 'exempt': 'ok', 'trialing': 'warn', 'past_due': 'bad', 'trial_over': 'bad', 'unpaid': 'bad',
+               'canceled': 'bad', 'incomplete': 'warn', 'incomplete_expired': 'bad'} %}
+{% block title %}Billing{% endblock %}
+{% block heading %}Billing <span class="chip {{ CHIP.get(b.status, '') }} heading-chip">{{ STATUS.get(b.status, b.status | capitalize) }}</span>{% endblock %}
+{% block subtitle %}<p class="subtitle">{{ pennies(seat_price) }} per user a month{{ ' plus VAT' if vat }}. Everything included, for every user.</p>{% endblock %}
+
+{% block content %}
+{% if not b.enabled %}
+  <p class="notice">{{ icon('pound') }} <span><b>Billing is off.</b> Every workspace has full access. To charge for CAE CRM, add the Stripe settings described in the README.</span></p>
+{% elif b.exempt %}
+  <section class="panel narrow-wide"><h2 class="panel-title">Free of charge</h2>
+    <p class="muted">{{ w.name }} doesn't pay for CAE CRM. Nothing to do here.</p></section>
+{% else %}
+<div class="quote-layout">
+  <div class="quote-main">
+    <section class="panel billing-summary">
+      {% if b.status == 'trialing' and not b.subscribed %}
+        <h2>{{ b.days_left }} {{ 'day' if b.days_left == 1 else 'days' }} left in your free trial</h2>
+        <p class="muted">Your trial ends on {{ b.trial_ends | uk_date }}. Subscribe at any time; you won't be charged until the trial ends.</p>
+      {% elif b.status == 'trial_over' %}
+        <h2>Your free trial has ended</h2>
+        <p class="muted">{{ w.name }} is read-only. Your data is safe: everyone can still sign in, view and export it. Subscribe to carry on adding and changing records.</p>
+      {% elif b.status == 'active' or (b.status == 'trialing' and b.subscribed) %}
+        <h2>{{ 'Subscribed' if b.status == 'active' else 'Subscribed, trial running' }}</h2>
+        <p class="muted">{% if b.cancelling %}Your subscription is cancelled and ends on {{ b.period_end | uk_date }}. You can restart it from Manage billing.
+          {% elif b.period_end %}{{ 'First payment' if b.status == 'trialing' else 'Next payment' }} on {{ b.period_end | uk_date }}.{% endif %}</p>
+      {% elif b.status == 'past_due' %}
+        <h2>Your last payment didn't go through</h2>
+        <p class="muted">Stripe will try again over the next few days. Update your card under Manage billing to avoid the workspace becoming read-only.</p>
+      {% else %}
+        <h2>Your subscription has ended</h2>
+        <p class="muted">{{ w.name }} is read-only. Subscribe again to carry on adding and changing records.</p>
+      {% endif %}
+
+      <dl class="facts tight billing-facts">
+        <dt>Users</dt><dd>{{ team }}{% if b.seats and b.seats != team %} <span class="muted small">(billed for {{ b.seats }}, updating)</span>{% endif %}</dd>
+        <dt>Monthly cost</dt><dd><b>{{ pennies(seat_price * team) }}</b>{{ ' plus VAT' if vat }}</dd>
+      </dl>
+
+      {% if admin %}
+        <div class="head-buttons panel-gap">
+          {% if not b.subscribed or b.status in ('canceled', 'incomplete_expired') %}
+            <form method="post" action="{{ url_for('billing_checkout') }}">
+              <input type="hidden" name="csrf" value="{{ csrf_token }}">
+              <button class="btn primary">{{ icon('pound') }} Subscribe</button>
+            </form>
+          {% endif %}
+          {% if w.stripe_customer_id %}
+            <form method="post" action="{{ url_for('billing_portal') }}">
+              <input type="hidden" name="csrf" value="{{ csrf_token }}">
+              <button class="btn {{ 'primary' if b.status == 'past_due' else 'ghost' }}">Manage billing</button>
+            </form>
+          {% endif %}
+        </div>
+      {% else %}
+        <p class="muted small panel-gap">Only admins can manage billing.</p>
+      {% endif %}
+    </section>
+  </div>
+  <aside class="quote-side">
+    <section class="panel">
+      <header class="panel-head"><h2>How billing works</h2></header>
+      <ul class="plain-list">
+        <li>You pay for the number of people on your team, each month.</li>
+        <li>Add or remove someone and the next bill adjusts automatically, part-month included.</li>
+        <li>Payments, invoices, card changes and cancelling are handled securely by Stripe under Manage billing.</li>
+        <li>If you stop paying, nothing is deleted. Your workspace becomes read-only and you can export everything.</li>
+      </ul>
+    </section>
+  </aside>
+</div>
+{% endif %}
+{% endblock %}

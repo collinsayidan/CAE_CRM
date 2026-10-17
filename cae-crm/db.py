@@ -50,7 +50,14 @@ CREATE TABLE IF NOT EXISTS workspaces (
     invoice_prefix TEXT NOT NULL DEFAULT 'INV',
     payment_terms INTEGER NOT NULL DEFAULT 30,
     created_at TEXT NOT NULL,
-    reply_to TEXT
+    reply_to TEXT,
+    plan_status TEXT,
+    trial_ends TEXT,
+    stripe_customer_id TEXT,
+    stripe_subscription_id TEXT,
+    seats INTEGER,
+    period_end TEXT,
+    cancel_at_period_end INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS users (
     id {pk},
@@ -353,7 +360,9 @@ ADDED_COLUMNS = {
     "companies": ["workspace_id INTEGER", "website TEXT", "phone TEXT", "owner TEXT"],
     "contacts": ["workspace_id INTEGER", "lifecycle_stage TEXT", "lead_status TEXT", "owner TEXT", "unsubscribed_at TEXT",
                  "email_bounced_at TEXT"],
-    "workspaces": ["reply_to TEXT"],
+    "workspaces": ["reply_to TEXT", "plan_status TEXT", "trial_ends TEXT", "stripe_customer_id TEXT",
+                   "stripe_subscription_id TEXT", "seats INTEGER", "period_end TEXT",
+                   "cancel_at_period_end INTEGER NOT NULL DEFAULT 0"],
     "deals": ["workspace_id INTEGER", "contact_id INTEGER"],
     "activities": ["workspace_id INTEGER", "contact_id INTEGER", "ticket_id INTEGER"],
     "invoices": ["workspace_id INTEGER", "deal_id INTEGER"],

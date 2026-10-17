@@ -58,9 +58,10 @@ def create_user(db, workspace_id, name, email, password, role="member"):
 
 
 def create_workspace(db, name, today):
+    trial = timedelta(days=int(current_app.config.get("TRIAL_DAYS") or 14))
     return db.insert("workspaces", name=name.strip(), legal_name=name.strip(), vat_registered=1,
                      monthly_target=DEFAULT_MONTHLY_TARGET, invoice_prefix="INV", payment_terms=30,
-                     created_at=today.isoformat())
+                     created_at=today.isoformat(), plan_status="trialing", trial_ends=(today + trial).isoformat())
 
 
 def load_user():
@@ -321,6 +322,8 @@ def team():
             if job_title:
                 db.execute("UPDATE users SET job_title=? WHERE id=?", (job_title, user_id))
                 db.commit()
+            from billing import sync_seats
+            sync_seats(g.user["workspace_id"])
             flash(f"{form['name'].strip()} can now sign in. Share their temporary password with them directly.", "ok")
             return redirect(url_for("auth.team"))
     users = db.execute(f"SELECT {TEAM_COLUMNS} FROM users WHERE workspace_id=? ORDER BY name",
@@ -435,5 +438,7 @@ def remove_user(user_id):
     db.execute("DELETE FROM imports WHERE user_id=?", (user_id,))
     db.execute("DELETE FROM users WHERE id=?", (user_id,))
     db.commit()
+    from billing import sync_seats
+    sync_seats(g.user["workspace_id"])
     flash("Team member removed. Their deals and activities keep their name.", "ok")
     return redirect(url_for("auth.team"))

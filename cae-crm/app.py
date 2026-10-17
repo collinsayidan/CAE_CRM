@@ -12,6 +12,7 @@ from urllib.parse import urlencode
 from flask import Flask, abort, g, jsonify, redirect, render_template, request, session, url_for
 
 import auth
+import billing
 import campaigns
 import crm
 import dataio
@@ -46,10 +47,11 @@ NAV_PARENT = {"contact": "contacts", "company": "companies", "deal": "pipeline",
               "campaign": "campaigns"}
 # Pages anyone can reach without signing in.
 PUBLIC_ENDPOINTS = {"landing", "auth.login", "auth.signup", "auth.setup", "static",
-                    "public_form", "public_quote", "accept_quote", "decline_quote", "unsubscribe", "resend_webhook"}
+                    "public_form", "public_quote", "accept_quote", "decline_quote", "unsubscribe", "resend_webhook",
+                    "stripe_webhook"}
 # Forms embedded on other websites can't carry our session's CSRF token; they have their own spam checks.
 # Mail apps' one-click unsubscribe and Resend's webhooks post from elsewhere too; the webhook is signed.
-CSRF_EXEMPT = {"public_form", "unsubscribe", "resend_webhook"}
+CSRF_EXEMPT = {"public_form", "unsubscribe", "resend_webhook", "stripe_webhook"}
 
 
 def create_app(config=None):
@@ -75,6 +77,15 @@ def create_app(config=None):
         RESEND_API_KEY=os.environ.get("RESEND_API_KEY", ""),
         MAIL_FROM=os.environ.get("CAE_MAIL_FROM", ""),
         RESEND_WEBHOOK_SECRET=os.environ.get("RESEND_WEBHOOK_SECRET", ""),
+        # Billing through Stripe: a price per user a month (STRIPE_PRICE_ID), an optional 20% VAT tax rate, and
+        # workspaces that never pay (CAE_BILLING_EXEMPT, comma-separated ids). Without a key, billing is off.
+        STRIPE_SECRET_KEY=os.environ.get("STRIPE_SECRET_KEY", ""),
+        STRIPE_PRICE_ID=os.environ.get("STRIPE_PRICE_ID", ""),
+        STRIPE_WEBHOOK_SECRET=os.environ.get("STRIPE_WEBHOOK_SECRET", ""),
+        STRIPE_TAX_RATE_ID=os.environ.get("STRIPE_TAX_RATE_ID", ""),
+        SEAT_PRICE=int(os.environ.get("CAE_SEAT_PRICE") or 1500),
+        TRIAL_DAYS=int(os.environ.get("CAE_TRIAL_DAYS") or 14),
+        BILLING_EXEMPT=os.environ.get("CAE_BILLING_EXEMPT", ""),
         TODAY=None,  # tests pin the date and time; otherwise the real ones are used
         NOW=None,
     )
@@ -108,6 +119,7 @@ def create_app(config=None):
         t, w = today(), workspace()
         hour = now().hour
         return base | dict(
+            billing=billing.state(w),
             nav=NAV, nav_active=NAV_PARENT.get(request.endpoint, request.endpoint), workspace=w,
             pennies=lambda p: money(p, pennies=True),
             greeting="Good morning" if hour < 12 else "Good afternoon" if hour < 18 else "Good evening",
@@ -138,6 +150,8 @@ def create_app(config=None):
         if request.endpoint == "static":
             return None
         g.user = auth.load_user()
+        if g.user and request.endpoint not in PUBLIC_ENDPOINTS:
+            return billing.guard_writes()
         if g.user or request.endpoint in PUBLIC_ENDPOINTS:
             return None
         if request.path.startswith("/api/") or request.headers.get("X-Requested-With") == "fetch":
@@ -147,7 +161,7 @@ def create_app(config=None):
         return redirect(url_for("auth.login", next=request.full_path.rstrip("?")))
 
     app.register_blueprint(auth.bp)
-    for module in (home, crm, sales, service, finance, quotes, webforms, campaigns, dataio, settings):
+    for module in (home, crm, sales, service, finance, quotes, webforms, campaigns, billing, dataio, settings):
         module.register(app)
     return app
 

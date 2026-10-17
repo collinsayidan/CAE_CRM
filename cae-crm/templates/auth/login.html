@@ -12,6 +12,6 @@
   {{ field('Password', 'password', type='password', required=true, extra='autocomplete=current-password') }}
   <button class="btn primary wide">Sign in</button>
 </form>
-<p class="auth-note">Forgotten your password? Ask an admin on your team to reset it.</p>
+<p class="auth-note"><a class="text-link" href="{{ url_for('auth.forgot') }}">Forgotten your password?</a></p>
 <p class="auth-note">New to CAE CRM? <a class="text-link" href="{{ url_for('auth.signup') }}">Create a workspace for your business</a></p>
 {% endblock %}

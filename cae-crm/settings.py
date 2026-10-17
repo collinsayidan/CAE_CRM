@@ -2,7 +2,7 @@
 
 import re
 
-from flask import flash, redirect, render_template, request, url_for
+from flask import flash, g, redirect, render_template, request, url_for
 
 import auth
 import ukfmt
@@ -10,7 +10,25 @@ from core import workspace, ws
 from db import get_db
 
 
+HUB = [
+    ("settings", "cog", "Business details", "Your company details, VAT, invoice numbering and sales target.", True),
+    ("auth.team", "users", "Team", "Who's on CAE CRM, their profiles, roles and access.", False),
+    ("integrations", "bolt", "Integrations", "Connect your email, Xero and HMRC.", False),
+    ("imports", "upload", "Import", "Bring in contacts and companies from a spreadsheet.", True),
+    ("billing", "pound", "Billing", "Your plan, number of users and payments.", True),
+    ("vat", "shield", "VAT returns", "Submit Making Tax Digital VAT returns to HMRC.", True),
+]
+
+
 def register(app):
+
+    @app.route("/workspace")
+    def workspace_settings():
+        """One place for everything about running the workspace."""
+        from billing import state
+        admin = g.user["role"] == "admin"
+        cards = [c for c in HUB if (admin or not c[4]) and (c[0] != "billing" or state(workspace())["enabled"])]
+        return render_template("workspace.html", cards=cards)
 
     @app.route("/settings", methods=["GET", "POST"])
     def settings():

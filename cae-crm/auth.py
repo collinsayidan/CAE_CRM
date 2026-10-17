@@ -1,6 +1,7 @@
 """Sign-up (a new workspace for a business), sign-in, the team and their profiles, and password changes."""
 
 import base64
+import hashlib
 import hmac
 import io
 import secrets
@@ -64,17 +65,34 @@ def create_workspace(db, name, today):
                      created_at=today.isoformat(), plan_status="trialing", trial_ends=(today + trial).isoformat())
 
 
+def password_version(password_hash):
+    """A fingerprint of the current password, kept in the session: changing the password signs out other sessions."""
+    return hashlib.sha256(password_hash.encode()).hexdigest()[:16]
+
+
 def load_user():
     user_id = session.get("user_id")
     if user_id is None:
         return None
-    return get_db().execute("SELECT id, email, name, role, workspace_id, job_title FROM users WHERE id=?", (user_id,)).fetchone()
+    user = get_db().execute("SELECT id, email, name, role, workspace_id, job_title, password_hash FROM users WHERE id=?",
+                            (user_id,)).fetchone()
+    if user is None:
+        return None
+    version = password_version(user["password_hash"])
+    if "pv" not in session:
+        session["pv"] = version  # sessions from before this check carry on
+    elif session["pv"] != version:
+        session.clear()  # the password changed since this session started
+        return None
+    return user
 
 
 def start_session(user_id):
     session.clear()  # new session on sign-in, so an old cookie can't be reused
     session.permanent = True
     session["user_id"] = user_id
+    row = get_db().execute("SELECT password_hash FROM users WHERE id=?", (user_id,)).fetchone()
+    session["pv"] = password_version(row["password_hash"])
 
 
 def admin_required():
@@ -210,6 +228,81 @@ def logout():
     return redirect(url_for("auth.login"))
 
 
+RESET_HOURS = 1
+RESETS_PER_USER = 3  # an hour
+RESETS_PER_IP = 10  # an hour
+
+
+def reset_signer():
+    from itsdangerous import URLSafeTimedSerializer
+    return URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt="cae-password-reset")
+
+
+@bp.route("/forgot", methods=["GET", "POST"])
+def forgot():
+    """Email a link to set a new password. Says the same whether or not the email has an account."""
+    import mail
+    from quotes import client_ip
+    if g.get("user"):
+        return redirect(url_for("auth.account"))
+    sent, email = False, ""
+    if request.method == "POST" and mail.configured():
+        email = request.form.get("email", "").strip().lower()
+        db = get_db()
+        user = db.execute("SELECT id, name, email, password_hash FROM users WHERE email=?", (email,)).fetchone()
+        since = (now_utc() - timedelta(hours=1)).isoformat()
+        ip = client_ip()
+        busy = db.execute("SELECT COUNT(*) FROM password_resets WHERE ip=? AND created_at >= ?", (ip, since)).fetchone()[0] >= RESETS_PER_IP
+        if user and not busy and db.execute("SELECT COUNT(*) FROM password_resets WHERE user_id=? AND created_at >= ?",
+                                            (user["id"], since)).fetchone()[0] < RESETS_PER_USER:
+            token = reset_signer().dumps({"u": user["id"], "v": password_version(user["password_hash"])})
+            link = url_for("auth.reset", token=token, _external=True)
+            business = {"name": "CAE CRM"}
+            html = render_template("emails/notice.html", business=business, heading="Reset your password", paragraphs=[
+                f"Hi {user['name'].split()[0]},",
+                "Someone asked to reset the password for your CAE CRM account. If it was you, choose a new password "
+                f"using the button below. The link works once and lasts {RESET_HOURS} hour.",
+                "If it wasn't you, ignore this email. Your password won't change."],
+                button_url=link, button_label="Choose a new password",
+                footer="You're getting this because a password reset was requested for this email address on CAE CRM.")
+            text = (f"Hi {user['name'].split()[0]},\n\nChoose a new CAE CRM password here (works once, for {RESET_HOURS} hour):\n"
+                    f"{link}\n\nIf you didn't ask for this, ignore this email.\n")
+            try:
+                mail.send(mail.message(user["email"], "Reset your CAE CRM password", html, text, "CAE CRM"))
+            except mail.MailError:
+                current_app.logger.warning("Password reset email not sent")
+        db.insert("password_resets", user_id=user["id"] if user else None, ip=ip, created_at=now_utc().isoformat())
+        db.commit()
+        sent = True
+    return render_template("auth/forgot.html", sent=sent, email=email, can_email=mail.configured())
+
+
+@bp.route("/reset/<token>", methods=["GET", "POST"])
+def reset(token):
+    from itsdangerous import BadSignature
+    try:
+        data = reset_signer().loads(token, max_age=RESET_HOURS * 3600)
+    except BadSignature:  # expired or tampered with
+        data = None
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id=?", (data["u"],)).fetchone() if data else None
+    if not user or password_version(user["password_hash"]) != data.get("v"):
+        return render_template("auth/reset.html", invalid=True, errors={}), 400  # used already, or the password changed
+    errors = {}
+    if request.method == "POST":
+        problem = password_problem(request.form.get("password", ""), request.form.get("confirm", ""))
+        if problem:
+            errors["password"] = problem
+        else:
+            db.execute("UPDATE users SET password_hash=?, failed_logins=0, locked_until=NULL WHERE id=?",
+                       (generate_password_hash(request.form["password"]), user["id"]))
+            db.commit()
+            session.clear()
+            flash("Password changed. Sign in with your new password. Any devices signed in to your account were signed out.", "ok")
+            return redirect(url_for("auth.login"))
+    return render_template("auth/reset.html", invalid=False, errors=errors, email=user["email"]), (422 if errors else 200)
+
+
 @bp.route("/setup")
 def setup():
     """The first release's setup page; sign-up has replaced it."""
@@ -267,10 +360,11 @@ def account():
         if problem:
             errors["password"] = problem
         if not errors:
-            db.execute("UPDATE users SET password_hash=? WHERE id=?",
-                       (generate_password_hash(request.form["password"]), g.user["id"]))
+            new_hash = generate_password_hash(request.form["password"])
+            db.execute("UPDATE users SET password_hash=? WHERE id=?", (new_hash, g.user["id"]))
             db.commit()
-            flash("Password changed.", "ok")
+            session["pv"] = password_version(new_hash)  # stay signed in here; other sessions are signed out
+            flash("Password changed. Any other devices signed in to your account have been signed out.", "ok")
             return redirect(url_for("auth.account"))
     return _account_page(errors=errors), (422 if errors else 200)
 

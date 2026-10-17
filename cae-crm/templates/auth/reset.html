@@ -1,0 +1,19 @@
+{% extends "auth/_layout.html" %}
+{% from "_macros.html" import field %}
+{% block title %}Choose a new password{% endblock %}
+{% block content %}
+{% if invalid %}
+  <h1>This link has expired</h1>
+  <p class="auth-lede">Reset links last an hour and work once. Ask for a new one.</p>
+  <a class="btn primary wide" href="{{ url_for('auth.forgot') }}">Get a new link</a>
+{% else %}
+  <h1>Choose a new password</h1>
+  <p class="auth-lede">For {{ email }}. Any devices signed in to your account will be signed out.</p>
+  <form method="post" class="auth-form" novalidate>
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    {{ field('New password', 'password', type='password', errors=errors, required=true, hint='At least 10 characters. A few unrelated words works well.', extra='autocomplete=new-password autofocus') }}
+    {{ field('Confirm new password', 'confirm', type='password', required=true, extra='autocomplete=new-password') }}
+    <button class="btn primary wide">Save new password</button>
+  </form>
+{% endif %}
+{% endblock %}

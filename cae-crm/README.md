@@ -26,7 +26,7 @@ Open http://127.0.0.1:5000 and choose **Create a workspace**. Leave the sample d
 
 1. **Root directory.** In the Vercel project, open **Settings → General** and set **Root Directory** to `cae-crm`.
 2. **Database (Supabase).** In the Supabase project, click **Connect** and copy the **Transaction pooler** string (port 6543), with your database password in place of `[YOUR-PASSWORD]` and no square brackets. Use the pooler, not the direct connection: Vercel can't reach Supabase's direct address. Any PostgreSQL connection string works, and strings from Vercel's Supabase integration (`POSTGRES_URL`) are accepted as they are.
-3. **Environment variables.** In **Settings → Environment Variables**, add these for Production and Preview (`.env.example` lists them):
+3. **Environment variables.** In **Settings → Environment Variables**, add these for Production (`.env.example` lists them):
    - `DATABASE_URL`: the Supabase pooler string from step 2.
    - `CAE_SECRET_KEY`: a long random value. `python -c "import secrets; print(secrets.token_hex(32))"` makes one.
    - `CAE_SETUP_CODE`: an invite code of your choosing. People need it to create a workspace.
@@ -34,6 +34,7 @@ Open http://127.0.0.1:5000 and choose **Create a workspace**. Leave the sample d
    - The `STRIPE_…` settings and `CAE_BILLING_EXEMPT`: to charge for CAE CRM. See **Billing** below.
    - The integration settings and `CRON_SECRET`: for Gmail, Outlook, Xero and HMRC. See **Integrations** below.
 4. **Redeploy.** Then open the site and create your workspace.
+5. **Previews.** Vercel builds a preview of every pull request. Previews never use `DATABASE_URL`, so new code can't touch live data before it's reviewed. Create a second (free) Supabase project for previews and add its Transaction pooler string as `PREVIEW_DATABASE_URL` for the **Preview** environment only, along with `CAE_SECRET_KEY`. Until then, previews show the "Finish setting up" page.
 
 To run locally against Supabase, copy `.env.example` to `.env`, fill it in and run `python app.py` (after `pip install -r requirements-dev.txt`). `.env` is never committed.
 

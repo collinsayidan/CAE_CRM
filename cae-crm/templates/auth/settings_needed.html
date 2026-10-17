@@ -8,6 +8,10 @@
     <li><b>DATABASE_URL</b>
       <span>Where customers, deals and accounts are stored. Use your Supabase Transaction pooler connection string (port 6543), with your database password in place of [YOUR-PASSWORD]. In Supabase, click Connect to copy it.</span></li>
   {% endif %}
+  {% if 'PREVIEW_DATABASE_URL' in missing %}
+    <li><b>PREVIEW_DATABASE_URL</b>
+      <span>This is a preview deployment, so it never uses your live database. Create a second Supabase project for previews and add its Transaction pooler connection string as PREVIEW_DATABASE_URL, for the Preview environment only.</span></li>
+  {% endif %}
   {% if 'CAE_SECRET_KEY' in missing %}
     <li><b>CAE_SECRET_KEY</b>
       <span>Keeps sign-ins secure. Use a long random value. Running <code>python -c "import secrets; print(secrets.token_hex(32))"</code> makes one.</span></li>

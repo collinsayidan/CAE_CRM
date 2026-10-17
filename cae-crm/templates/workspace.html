@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Settings{% endblock %}
+{% block heading %}Settings{% endblock %}
+{% block subtitle %}<p class="subtitle">{{ workspace.name }}{% if current_user.role != 'admin' %}. Admins can change more here.{% endif %}</p>{% endblock %}
+
+{% block content %}
+<ul class="hub-grid">
+  {% for endpoint, icon_name, label, blurb, _ in cards %}
+    <li><a class="hub-card" href="{{ url_for(endpoint) }}">
+      <span class="stat-icon">{{ icon(icon_name) }}</span>
+      <span><b>{{ label }}</b><small>{{ blurb }}</small></span>
+    </a></li>
+  {% endfor %}
+</ul>
+{% endblock %}

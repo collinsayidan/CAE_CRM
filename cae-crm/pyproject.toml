@@ -9,6 +9,7 @@ dependencies = [
     "tzdata",  # Europe/London time zone data on hosts without a system zoneinfo
     "Pillow>=11.0",  # resizes team profile photos
     "cryptography>=43",  # encrypts integration tokens at rest
+    "sentry-sdk[flask]>=2.0",  # error monitoring, when SENTRY_DSN is set
 ]
 
 [tool.vercel]

@@ -3,3 +3,4 @@ psycopg[binary]>=3.2
 tzdata
 Pillow>=11.0
 cryptography>=43
+sentry-sdk[flask]>=2.0

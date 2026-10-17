@@ -258,9 +258,12 @@ def register(app):
         if not f.get("subject", "").strip() or not due or f.get("kind") not in ACTIVITY_KINDS:
             flash("Task not created. It needs a type, a subject and a date.", "error")
             return back("tasks")
+        owner = chosen_owner(f.get("owner"))
         get_db().insert("activities", workspace_id=ws(), kind=f["kind"], subject=f["subject"].strip(),
-                        owner=chosen_owner(f.get("owner")), due_at=due.isoformat(timespec="minutes"), done=0,
-                        **resolve_links(f))
+                        owner=owner, due_at=due.isoformat(timespec="minutes"), done=0, **resolve_links(f))
+        from crm import notify_owner
+        notify_owner(owner, f"{g.user['name']} gave you a task: {f['subject'].strip()}",
+                     f"Due {ukfmt.uk_datetime(due.isoformat())}", url_for("tasks"))
         get_db().commit()
         flash(f"Scheduled for {ukfmt.uk_datetime(due.isoformat())}: {f['subject'].strip()}.", "ok")
         return back("tasks")

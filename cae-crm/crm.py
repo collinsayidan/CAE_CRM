@@ -463,8 +463,11 @@ def register(app):
             if not subject:
                 flash("Task not created. Give it a subject.", "error")
                 return back("overview")
+            owner = chosen_owner(f.get("owner"))
             get_db().insert("activities", workspace_id=ws(), kind=task_type, subject=subject,
-                            owner=chosen_owner(f.get("owner")), due_at=when.isoformat(timespec="minutes"), done=0, **links)
+                            owner=owner, due_at=when.isoformat(timespec="minutes"), done=0, **links)
+            notify_owner(owner, f"{g.user['name']} gave you a task: {subject}", f"Due {ukfmt.uk_datetime(when.isoformat())}",
+                         f.get("next"))
             get_db().commit()
             flash(f"Task created for {ukfmt.uk_datetime(when.isoformat())}.", "ok")
             return back("overview")
@@ -477,6 +480,9 @@ def register(app):
             return back("overview")
         outcome = f.get("outcome") if kind == "call" and f.get("outcome") in CALL_OUTCOMES else None
         log_event(subject, body, kind=kind, outcome=outcome, occurred_at=when.isoformat(timespec="minutes"), **links)
+        from notifications import mentioned, notify
+        notify(mentioned(f"{subject or ''} {body}"), f"{g.user['name']} mentioned you in a {kind}",
+               (subject or body)[:200], f.get("next") if (f.get("next") or "").startswith("/") else None)
         if links["ticket_id"] and kind in ("email", "call"):
             # The first email or call on a ticket is its first response.
             get_db().execute("UPDATE tickets SET first_responded_at=? WHERE id=? AND workspace_id=? AND first_responded_at IS NULL",
@@ -575,6 +581,12 @@ def delete_company_records(company_id):
                (ws(), company_id))
     db.execute("DELETE FROM companies WHERE id=? AND workspace_id=?", (company_id, ws()))
     return None
+
+
+def notify_owner(owner_name, title, body=None, url=None):
+    """Tell a team member about something given to them, if the owner is a person on the team."""
+    from notifications import notify, user_named
+    notify([user_named(owner_name)], title, body, url if (url or "").startswith("/") else None)
 
 
 def line_totals(lines):

@@ -64,7 +64,8 @@ CREATE TABLE IF NOT EXISTS workspaces (
     bank_sort_code TEXT,
     bank_account_number TEXT,
     payment_link TEXT,
-    reminders_on INTEGER NOT NULL DEFAULT 0
+    reminders_on INTEGER NOT NULL DEFAULT 0,
+    onboarding_done INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS users (
     id {pk},
@@ -426,6 +427,16 @@ CREATE TABLE IF NOT EXISTS invoice_reminders (
     sent_to TEXT,
     sent_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS notifications (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    body TEXT,
+    url TEXT,
+    created_at TEXT NOT NULL,
+    read_at TEXT
+);
 """
 
 # Columns added after the first release. Databases created by an earlier version gain them on start-up.
@@ -440,7 +451,7 @@ ADDED_COLUMNS = {
                    "stripe_subscription_id TEXT", "seats INTEGER", "period_end TEXT",
                    "cancel_at_period_end INTEGER NOT NULL DEFAULT 0", "logo TEXT", "logo_updated TEXT",
                    "bank_account_name TEXT", "bank_sort_code TEXT", "bank_account_number TEXT", "payment_link TEXT",
-                   "reminders_on INTEGER NOT NULL DEFAULT 0"],
+                   "reminders_on INTEGER NOT NULL DEFAULT 0", "onboarding_done INTEGER NOT NULL DEFAULT 0"],
     "deals": ["workspace_id INTEGER", "contact_id INTEGER"],
     "activities": ["workspace_id INTEGER", "contact_id INTEGER", "ticket_id INTEGER"],
     "invoices": ["workspace_id INTEGER", "deal_id INTEGER", "xero_invoice_id TEXT", "sent_at TEXT", "sent_to TEXT"],
@@ -601,6 +612,7 @@ def migrate(db, today):
         "CREATE INDEX IF NOT EXISTS ix_recipients_provider ON campaign_recipients (provider_id)",
         "CREATE INDEX IF NOT EXISTS ix_connections_ws ON connections (workspace_id, provider)",
         "CREATE INDEX IF NOT EXISTS ix_audit_ws ON audit_events (workspace_id, id)",
+        "CREATE INDEX IF NOT EXISTS ix_notifications_user ON notifications (user_id, id)",
     ):
         db.execute(sql)
     if db.postgres:

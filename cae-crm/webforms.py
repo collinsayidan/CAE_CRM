@@ -233,6 +233,10 @@ def register(app):
                       subject=f"Reply to {first} {last} ({form['name']})", owner=form["owner"],
                       due_at=next_working_morning(t).isoformat(timespec="minutes"), done=0)
         db.commit()
+        from notifications import notify, user_named
+        notify([user_named(form["owner"], form["workspace_id"])], f"New enquiry from {first} {last}",
+               message[:200] or form["name"], url_for("contact", contact_id=contact_id), form["workspace_id"])
+        db.commit()
         alert_owner(form, contact_id, f"{first} {last}", email, company_name, message)
 
     def alert_owner(form, contact_id, name, email, company, message):

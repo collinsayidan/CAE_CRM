@@ -25,13 +25,16 @@ Open http://127.0.0.1:5000 and choose **Create a workspace**. Leave the sample d
 ## Deploy to Vercel
 
 1. **Root directory.** In the Vercel project, open **Settings → General** and set **Root Directory** to `cae-crm`.
-2. **Database.** Open **Storage**, create a **Neon Postgres** database and connect it to the project. This adds `DATABASE_URL` for you. Any PostgreSQL connection string works.
-3. **Environment variables.** In **Settings → Environment Variables**, add:
+2. **Database (Supabase).** In the Supabase project, click **Connect** and copy the **Transaction pooler** string (port 6543), with your database password in place of `[YOUR-PASSWORD]` and no square brackets. Use the pooler, not the direct connection: Vercel can't reach Supabase's direct address. Any PostgreSQL connection string works, and strings from Vercel's Supabase integration (`POSTGRES_URL`) are accepted as they are.
+3. **Environment variables.** In **Settings → Environment Variables**, add these for Production and Preview (`.env.example` lists them):
+   - `DATABASE_URL`: the Supabase pooler string from step 2.
    - `CAE_SECRET_KEY`: a long random value. `python -c "import secrets; print(secrets.token_hex(32))"` makes one.
    - `CAE_SETUP_CODE`: an invite code of your choosing. People need it to create a workspace.
 4. **Redeploy.** Then open the site and create your workspace.
 
-The app creates and upgrades its tables when it starts. A database from the first release is upgraded in place, and its records move into a workspace called "My business". If a required setting is missing, the site shows a "Finish setting up" page naming it, rather than running without it.
+To run locally against Supabase, copy `.env.example` to `.env`, fill it in and run `python app.py` (after `pip install -r requirements-dev.txt`). `.env` is never committed.
+
+The app creates and upgrades its tables when it starts. On PostgreSQL it also turns on row level security for every table, so Supabase's public Data API can't read or change CRM data; the app connects as the tables' owner and isn't affected. A database from the first release is upgraded in place, and its records move into a workspace called "My business". If a required setting is missing, the site shows a "Finish setting up" page naming it, rather than running without it.
 
 Vercel finds the app through `wsgi.py`, which `pyproject.toml` names in `[tool.vercel] entrypoint = "wsgi:app"`.
 

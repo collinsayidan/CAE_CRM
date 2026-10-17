@@ -304,3 +304,11 @@ def test_reports_figures(client):
                  "Products in the open pipeline"):
         assert text in html
     assert re.search(r"\d+ days", html)
+
+
+def test_postgres_urls_from_hosts_are_cleaned():
+    from db import clean_postgres_url
+    url = ("postgres://postgres.abc:pw@aws-0-eu-west-2.pooler.supabase.com:6543/postgres"
+           "?sslmode=require&supa=base-pooler.x&pgbouncer=true")
+    assert clean_postgres_url(url) == ("postgres://postgres.abc:pw@aws-0-eu-west-2.pooler.supabase.com:6543/postgres"
+                                       "?sslmode=require")

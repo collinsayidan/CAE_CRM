@@ -207,39 +207,48 @@
     function draw() {
       const data = series.slice(-range);
       const W = chartEl.clientWidth || 800, H = chartEl.clientHeight || 290;
-      const pad = { l: 52, r: 12, t: 14, b: 30 };
+      const pad = { l: 52, r: 12, t: 18, b: 30 };
       const step = 50000;
       const yMax = Math.max(step, Math.ceil(Math.max(target, ...data.map(d => d.value)) * 1.12 / step) * step);
-      const x = i => pad.l + (W - pad.l - pad.r) * (data.length === 1 ? 0.5 : i / (data.length - 1));
       const y = v => pad.t + (H - pad.t - pad.b) * (1 - v / yMax);
+      const slot = (W - pad.l - pad.r) / data.length;
+      const barW = Math.min(46, slot * 0.58);
+      const cx = i => pad.l + slot * (i + 0.5);
 
-      const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Monthly won revenue" });
+      const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Monthly won revenue against target" });
+      // Hatching marks the current month, which is still in progress.
+      const defs = el("defs", {});
+      const hatch = el("pattern", { id: "partial-hatch", width: 6, height: 6, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" });
+      hatch.append(el("rect", { width: 6, height: 6, fill: "var(--chart-fill)" }), el("line", { x1: 0, y1: 0, x2: 0, y2: 6, stroke: "var(--chart-hit)", "stroke-width": 2, opacity: 0.5 }));
+      defs.append(hatch);
+      svg.append(defs);
+
       for (let v = 0; v <= yMax; v += step) {
         svg.append(el("line", { class: "grid", x1: pad.l, x2: W - pad.r, y1: y(v), y2: y(v) }));
         const t = el("text", { class: "axis", x: pad.l - 10, y: y(v) + 4, "text-anchor": "end" });
         t.textContent = v === 0 ? "£0" : `£${v / 1000}K`;
         svg.append(t);
       }
-      // Smooth monotone-ish curve through the points.
-      const pts = data.map((d, i) => [x(i), y(d.value)]);
-      let path = `M${pts[0][0]},${pts[0][1]}`;
-      for (let i = 0; i < pts.length - 1; i++) {
-        const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], mx = (x0 + x1) / 2;
-        path += ` C${mx},${y0} ${mx},${y1} ${x1},${y1}`;
-      }
-      svg.append(el("path", { class: "area", d: `${path} L${pts.at(-1)[0]},${y(0)} L${pts[0][0]},${y(0)} Z` }));
-      svg.append(el("line", { class: "target", x1: pad.l, x2: W - pad.r, y1: y(target), y2: y(target) }));
-      svg.append(el("path", { class: "line", d: path }));
-      const guide = el("line", { class: "guide", y1: pad.t, y2: H - pad.b, x1: 0, x2: 0 });
-      svg.append(guide);
-      const dots = data.map((d, i) => {
-        const c = el("circle", { class: `dot${d.value >= target ? " hit" : ""}${d.partial ? " partial" : ""}`, cx: pts[i][0], cy: pts[i][1], r: 4.5 });
-        svg.append(c);
-        const label = el("text", { class: "axis", x: pts[i][0], y: H - 8, "text-anchor": "middle" });
+
+      const bars = data.map((d, i) => {
+        const x0 = cx(i) - barW / 2, top = y(d.value), base = y(0);
+        const h = Math.max(0, base - top), r = Math.min(7, barW / 2, h);
+        // Rounded top corners, square base.
+        const path = h > 0
+          ? `M${x0},${base} V${top + r} Q${x0},${top} ${x0 + r},${top} H${x0 + barW - r} Q${x0 + barW},${top} ${x0 + barW},${top + r} V${base} Z`
+          : `M${x0},${base} H${x0 + barW}`;
+        const bar = el("path", { class: `bar${d.value >= target ? " hit" : ""}${d.partial ? " partial" : ""}`, d: path });
+        svg.append(bar);
+        const label = el("text", { class: "axis", x: cx(i), y: H - 8, "text-anchor": "middle" });
         label.textContent = d.label;
-        if (range <= 6 || i % 2 === data.length % 2 || i === data.length - 1) svg.append(label);
-        return c;
+        if (range <= 6 || slot > 44 || i % 2 === (data.length - 1) % 2) svg.append(label);
+        return bar;
       });
+
+      svg.append(el("line", { class: "target", x1: pad.l, x2: W - pad.r, y1: y(target), y2: y(target) }));
+      const tl = el("text", { class: "target-label", x: W - pad.r, y: y(target) - 7, "text-anchor": "end" });
+      tl.textContent = `Target ${gbp.format(target)}`;
+      svg.append(tl);
 
       const tip = document.createElement("div");
       tip.className = "chart-tip";
@@ -248,24 +257,21 @@
       chartEl.onpointermove = e => {
         const box = chartEl.getBoundingClientRect();
         const px = (e.clientX - box.left) * (W / box.width);
-        let i = 0;
-        pts.forEach(([cx], j) => { if (Math.abs(cx - px) < Math.abs(pts[i][0] - px)) i = j; });
+        const i = Math.max(0, Math.min(data.length - 1, Math.floor((px - pad.l) / slot)));
         const d = data[i];
-        guide.setAttribute("x1", pts[i][0]);
-        guide.setAttribute("x2", pts[i][0]);
-        dots.forEach((dot, j) => dot.setAttribute("r", j === i ? 6.5 : 4.5));
+        bars.forEach((bar, j) => bar.classList.toggle("active", j === i));
         const diff = d.value - target;
         tip.innerHTML = `<span></span><b></b><span></span>`;
         tip.children[0].textContent = d.full + (d.partial ? " so far" : "");
         tip.children[1].textContent = gbp.format(d.value);
-        tip.children[2].textContent = d.partial ? "" : `${gbp.format(Math.abs(diff))} ${diff >= 0 ? "over" : "under"} target`;
-        tip.style.left = `${pts[i][0] / W * 100}%`;
-        tip.style.top = `${pts[i][1] / H * 100}%`;
+        tip.children[2].textContent = d.partial ? "Month in progress" : `${gbp.format(Math.abs(diff))} ${diff >= 0 ? "over" : "under"} target`;
+        tip.style.left = `${cx(i) / W * 100}%`;
+        tip.style.top = `${Math.min(y(d.value), y(target)) / H * 100}%`;
         chartEl.classList.add("hovering");
       };
       chartEl.onpointerleave = () => {
         chartEl.classList.remove("hovering");
-        dots.forEach(dot => dot.setAttribute("r", 4.5));
+        bars.forEach(bar => bar.classList.remove("active"));
       };
 
       const total = data.reduce((s, d) => s + d.value, 0);

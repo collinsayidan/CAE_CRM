@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field %}
+{% block title %}Your account{% endblock %}
+{% block heading %}Your account{% endblock %}
+{% block subtitle %}<p class="subtitle">Signed in as {{ current_user.email }}</p>{% endblock %}
+
+{% block content %}
+<section class="panel narrow">
+  <h2 class="panel-title">Change password</h2>
+  <form method="post" action="{{ url_for('auth.account') }}" class="auth-form" novalidate>
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    {{ field('Current password', 'current', type='password', errors=errors, required=true, extra='autocomplete=current-password') }}
+    {{ field('New password', 'password', type='password', errors=errors, required=true, hint='At least 10 characters.', extra='autocomplete=new-password') }}
+    {{ field('Confirm new password', 'confirm', type='password', required=true, extra='autocomplete=new-password') }}
+    <div><button class="btn primary">Change password</button></div>
+  </form>
+</section>
+{% endblock %}

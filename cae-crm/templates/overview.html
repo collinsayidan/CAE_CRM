@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon, avatar, logo, stage_chip with context %}
 {% block title %}Overview{% endblock %}
-{% block heading %}{{ greeting }}{% endblock %}
+{% block heading %}{{ greeting }}, {{ first_name }}{% endblock %}
 {% block subtitle %}<p class="subtitle">{{ today.strftime('%A %-d %B %Y') }}</p>{% endblock %}
 
 {% block content %}
@@ -41,7 +41,7 @@
 
 <section class="stats" aria-label="Key figures">
   <div class="stat">
-    <p class="stat-label">Won this month</p>
+    <div class="stat-head"><span class="stat-icon">{{ icon('pound') }}</span><p class="stat-label">Won this month</p></div>
     <p class="stat-value">{{ won_this | money }}</p>
     <p class="stat-note">
       {% if change is not none %}<span class="delta {{ 'up' if change >= 0 else 'down' }}">{{ '%+d' | format(change) }}%</span> on last month to date{% else %}Nothing was won by this point last month{% endif %}
@@ -49,20 +49,22 @@
     {{ spark_won }}
   </div>
   <div class="stat">
-    <p class="stat-label">Open pipeline</p>
+    <div class="stat-head"><span class="stat-icon">{{ icon('pipeline') }}</span><p class="stat-label">Open pipeline</p></div>
     <p class="stat-value">{{ pipeline_value | money }}</p>
     <p class="stat-note">{{ open_count }} open deals</p>
     {{ spark_created }}
   </div>
   <div class="stat">
-    <p class="stat-label">Weighted forecast</p>
+    <div class="stat-head"><span class="stat-icon">{{ icon('trend') }}</span><p class="stat-label">Weighted forecast</p></div>
     <p class="stat-value">{{ forecast | money }}</p>
     <p class="stat-note">Each deal's value multiplied by its stage probability</p>
+    {{ spark_forecast }}
   </div>
   <div class="stat">
-    <p class="stat-label">Win rate</p>
+    <div class="stat-head"><span class="stat-icon">{{ icon('check') }}</span><p class="stat-label">Win rate</p></div>
     <p class="stat-value">{{ win_rate }}%</p>
     <p class="stat-note">{{ won_n }} won of {{ closed_n }} closed in the last 12 months</p>
+    <div class="winbar" aria-hidden="true"><i style="width: {{ win_rate }}%"></i></div>
   </div>
 </section>
 
@@ -80,7 +82,8 @@
     </header>
     <div class="chart" id="revenue-chart" aria-label="Revenue won each month against the monthly target"></div>
     <div class="chart-legend">
-      <span><i class="key-line"></i>Won revenue</span>
+      <span><i class="key-hit"></i>Met target</span>
+      <span><i class="key-miss"></i>Below target</span>
       <span><i class="key-target"></i>Monthly target, {{ (track.target) | money_short }}</span>
     </div>
     <script type="application/json" id="revenue-data">{{ series_json | safe }}</script>
@@ -137,16 +140,22 @@
 
   <section class="panel">
     <header class="panel-head"><h2>Pipeline by stage</h2></header>
-    <ul class="stage-bars">
-      {% for m in mix %}
-        <li>
-          <span class="sb-name">{{ m.stage }}</span>
-          <span class="sb-bar"><i style="width: {{ '%.1f' | format(m.total / peak * 100) }}%; background: {{ stage_colours[m.stage] }}"></i></span>
-          <span class="sb-value">{{ m.total | money_short }}</span>
-          <span class="sb-n">{{ m.n }}</span>
-        </li>
-      {% endfor %}
-    </ul>
+    <div class="mix">
+      <div class="donut-wrap">
+        {{ mix_donut }}
+        <div class="donut-centre"><b>{{ pipeline_value | money_short }}</b><span>{{ open_count }} deals</span></div>
+      </div>
+      <ul class="stage-bars">
+        {% for m in mix %}
+          <li>
+            <i class="sb-swatch" style="background: {{ stage_colours[m.stage] }}"></i>
+            <span class="sb-name">{{ m.stage }}</span>
+            <span class="sb-value">{{ m.total | money_short }}</span>
+            <span class="sb-n" title="Deals">{{ m.n }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
     <div class="quota">
       <div class="quota-ring">{{ quota_ring }}<span>{{ quota_pct | round | int }}%</span></div>
       <div>

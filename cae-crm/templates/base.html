@@ -8,7 +8,7 @@
   <title>{% block title %}{% endblock %} – CAE CRM</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:ital,wght@0,400..900;1,400..900&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400..800;1,400..800&display=swap">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script>
     document.documentElement.classList.add("js");
@@ -33,7 +33,15 @@
       {% endfor %}
     </nav>
     <div class="sidebar-foot">
-      <p>Amounts in pounds sterling. Dates are day, month, year.</p>
+      <div class="me">
+        <span class="avatar" style="--h: {{ current_user.name | hue }}" aria-hidden="true">{{ current_user.name | initials }}</span>
+        <div><p class="me-name">{{ current_user.name }}</p><p class="me-role">{{ current_user.role | capitalize }}</p></div>
+      </div>
+      <nav class="me-links" aria-label="Your account">
+        <a href="{{ url_for('auth.account') }}" {% if request.endpoint == 'auth.account' %}aria-current="page"{% endif %}>Account</a>
+        {% if current_user.role == 'admin' %}<a href="{{ url_for('auth.team') }}" {% if request.endpoint == 'auth.team' %}aria-current="page"{% endif %}>Team</a>{% endif %}
+        <form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button>Sign out</button></form>
+      </nav>
     </div>
   </aside>
   <div class="scrim" data-close-sidebar></div>

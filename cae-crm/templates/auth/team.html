@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, avatar, field, select %}
+{% block title %}Team{% endblock %}
+{% block heading %}Team{% endblock %}
+{% block subtitle %}<p class="subtitle">Everyone here can sign in. Admins can also manage the team and erase personal data.</p>{% endblock %}
+{% block actions %}<button class="btn primary" data-open="dlg-member">{{ icon('plus') }} Add team member</button>{% endblock %}
+
+{% block content %}
+<section class="panel flush">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Name</th><th>Role</th><th>Added</th><th>Reset password</th><th></th></tr></thead>
+      <tbody>
+        {% for u in users %}
+          <tr>
+            <td><span class="row-link">{{ avatar(u.name, 'sm') }}<span><b>{{ u.name }}</b><small>{{ u.email }}</small></span></span></td>
+            <td>{% if u.role == 'admin' %}<span class="chip ok">Admin</span>{% else %}<span class="chip">Member</span>{% endif %}
+                {% if u.locked_until and u.locked_until > now %}<span class="chip bad">Locked</span>{% endif %}</td>
+            <td>{{ u.created_at | uk_date }}</td>
+            <td>
+              <form method="post" action="{{ url_for('auth.reset_password', user_id=u.id) }}" class="inline">
+                <input type="hidden" name="csrf" value="{{ csrf_token }}">
+                <input type="password" name="password" placeholder="New temporary password" autocomplete="new-password" aria-label="New password for {{ u.name }}" minlength="10" required>
+                <button class="btn ghost sm">Reset</button>
+              </form>
+            </td>
+            <td class="num">
+              {% if u.id != current_user.id %}
+                <form method="post" action="{{ url_for('auth.remove_user', user_id=u.id) }}" data-confirm="Remove {{ u.name }}? They won't be able to sign in.">
+                  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+                  <button class="btn ghost sm danger">Remove</button>
+                </form>
+              {% else %}<span class="muted small">You</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<dialog class="sheet" id="dlg-member" aria-labelledby="dlg-member-title" {% if errors %}data-autoopen{% endif %}>
+  <form method="post" action="{{ url_for('auth.team') }}" novalidate>
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <header><h2 id="dlg-member-title">Add a team member</h2><button type="button" class="icon-btn" data-close aria-label="Close">{{ icon('x') }}</button></header>
+    {% if errors %}<p class="form-alert" role="alert">Team member not added. Check the highlighted fields.</p>{% endif %}
+    <div class="form-grid">
+      {{ field('Name', 'name', form.name, errors=errors, required=true) }}
+      {{ field('Email', 'email', form.email, type='email', errors=errors, required=true) }}
+      {{ field('Temporary password', 'password', type='password', errors=errors, required=true, hint='Share it with them directly. They can change it from Account.', extra='autocomplete=new-password') }}
+      {{ select('Role', 'role', ['Member', 'Admin'], form.role or 'member', values=roles | reverse | list) }}
+    </div>
+    <footer><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Add team member</button></footer>
+  </form>
+</dialog>
+{% endblock %}

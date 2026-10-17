@@ -1,0 +1,17 @@
+{% extends "auth/_layout.html" %}
+{% block title %}Finish setting up{% endblock %}
+{% block content %}
+<h1>Finish setting up</h1>
+<p class="auth-lede">CAE CRM is deployed, but it needs {{ 'this setting' if missing | length == 1 else 'these settings' }} before anyone can sign in. Add {{ 'it' if missing | length == 1 else 'them' }} in your hosting project's environment variables, then redeploy.</p>
+<ul class="settings-list">
+  {% if 'DATABASE_URL' in missing %}
+    <li><b>DATABASE_URL</b>
+      <span>Where customers, deals and accounts are stored. On Vercel, open Storage, create a Neon Postgres database and connect it to this project. That adds DATABASE_URL for you.</span></li>
+  {% endif %}
+  {% if 'CAE_SECRET_KEY' in missing %}
+    <li><b>CAE_SECRET_KEY</b>
+      <span>Keeps sign-ins secure. Use a long random value. Running <code>python -c "import secrets; print(secrets.token_hex(32))"</code> makes one.</span></li>
+  {% endif %}
+</ul>
+{% endblock %}
+{% block foot %}Nothing has been stored yet.{% endblock %}

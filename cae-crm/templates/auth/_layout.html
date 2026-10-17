@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% endblock %} – CAE CRM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400..800;1,400..800&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script>try { const t = localStorage.getItem("cae-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+</head>
+<body class="auth-page">
+  <main class="auth-shell">
+    <a class="auth-brand" href="{{ url_for('auth.login') }}"><span class="mark" aria-hidden="true">C</span>CAE CRM</a>
+    <section class="auth-card">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}<p class="form-alert {{ 'is-ok' if category == 'ok' }}" role="status">{{ message }}</p>{% endfor %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </section>
+    <p class="auth-foot">{% block foot %}A UK sales CRM. Amounts in pounds sterling.{% endblock %}</p>
+  </main>
+</body>
+</html>

@@ -19,8 +19,8 @@
   <header class="panel-head"><div><h2>Aged debt</h2><p class="panel-note">Unpaid invoices by how late they are</p></div></header>
   {% set total = totals.outstanding or 1 %}
   <div class="aging-bar" role="img" aria-label="Aged debt breakdown">
-    {% for label, value in aging.items() if value %}
-      <span class="age-{{ loop.index }}" style="flex: {{ value }}" title="{{ label }}: {{ pennies(value) }}"></span>
+    {% for label, value in aging.items() %}
+      {% if value %}<span class="age-{{ loop.index }}" style="flex: {{ value }}" title="{{ label }}: {{ pennies(value) }}"></span>{% endif %}
     {% endfor %}
   </div>
   <ul class="aging-key">

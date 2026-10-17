@@ -39,6 +39,7 @@
         <nav class="admin-links" aria-label="Administration">
           <a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}aria-current="page"{% endif %}>{{ icon('cog') }}<span>Settings</span></a>
           <a href="{{ url_for('imports') }}" {% if request.endpoint in ('imports', 'import_map') %}aria-current="page"{% endif %}>{{ icon('upload') }}<span>Import</span></a>
+          {% if billing.enabled %}<a href="{{ url_for('billing') }}" {% if request.endpoint == 'billing' %}aria-current="page"{% endif %}>{{ icon('pound') }}<span>Billing</span></a>{% endif %}
         </nav>
       {% endif %}
       <a class="me" href="{{ url_for('auth.member', user_id=current_user.id) }}" title="Your profile">
@@ -75,6 +76,15 @@
       </div>
     </header>
 
+    {% if billing.enabled and not billing.exempt and request.endpoint != 'billing' %}
+      {% if not billing.can_write %}
+        <a class="plan-banner bad" href="{{ url_for('billing') }}"><b>Read-only.</b> {{ 'Your free trial has ended.' if billing.status == 'trial_over' else 'Your subscription has ended.' }} You can view and export everything. Subscribe to make changes &rarr;</a>
+      {% elif billing.status == 'past_due' %}
+        <a class="plan-banner bad" href="{{ url_for('billing') }}"><b>Payment overdue.</b> Update your card to keep making changes &rarr;</a>
+      {% elif billing.status == 'trialing' and not billing.subscribed and billing.days_left <= 7 %}
+        <a class="plan-banner" href="{{ url_for('billing') }}"><b>{{ billing.days_left }} {{ 'day' if billing.days_left == 1 else 'days' }} left in your free trial.</b> Subscribe to keep everything running &rarr;</a>
+      {% endif %}
+    {% endif %}
     <main id="content">
       {% block page %}
       <div class="page-head">

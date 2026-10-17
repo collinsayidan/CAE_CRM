@@ -37,7 +37,8 @@ def register(app):
         w = workspace()
         errors = {}
         form = request.form if request.method == "POST" else dict(w) | {
-            "monthly_target": f"{w['monthly_target'] / 100:,.0f}", "vat_registered": "on" if w["vat_registered"] else ""}
+            "monthly_target": f"{w['monthly_target'] / 100:,.0f}", "vat_registered": "on" if w["vat_registered"] else "",
+            "reminders_on": "on" if w["reminders_on"] else ""}
         if request.method == "POST":
             f = request.form
             data = {k: f.get(k, "").strip() for k in ("name", "legal_name", "address", "city")}
@@ -70,15 +71,43 @@ def register(app):
                 errors["payment_terms"] = "Enter a number of days between 0 and 120."
             data["payment_terms"] = int(terms) if terms.isdigit() else 30
             data["reply_to"] = f.get("reply_to", "").strip().lower()
+            data["bank_account_name"] = f.get("bank_account_name", "").strip()[:80]
+            sort_code = re.sub(r"\D", "", f.get("bank_sort_code", ""))
+            account = re.sub(r"\D", "", f.get("bank_account_number", ""))
+            if (sort_code or account) and not (len(sort_code) == 6 and len(account) == 8):
+                errors["bank_sort_code"] = "Enter a 6-digit sort code and an 8-digit account number, or leave both empty."
+            data["bank_sort_code"] = f"{sort_code[:2]}-{sort_code[2:4]}-{sort_code[4:]}" if sort_code else ""
+            data["bank_account_number"] = account
+            data["payment_link"] = f.get("payment_link", "").strip()[:300]
+            if data["payment_link"] and not data["payment_link"].startswith("https://"):
+                errors["payment_link"] = "Enter a full web address starting with https://"
+            data["reminders_on"] = 1 if f.get("reminders_on") == "on" else 0
+            logo = request.files.get("logo")
+            if logo and logo.filename:
+                from documents import process_logo
+                try:
+                    data["logo"] = process_logo(logo)
+                except ValueError as e:
+                    errors["logo"] = str(e)
             if data["reply_to"] and not auth.valid_email(data["reply_to"]):
                 errors["reply_to"] = "Enter an email address, like hello@yourbusiness.co.uk."
             if not errors:
                 db = get_db()
                 db.execute("UPDATE workspaces SET name=?, legal_name=?, address=?, city=?, postcode=?, company_no=?,"
-                           " vat_registered=?, vat_no=?, monthly_target=?, invoice_prefix=?, payment_terms=?, reply_to=? WHERE id=?",
+                           " vat_registered=?, vat_no=?, monthly_target=?, invoice_prefix=?, payment_terms=?, reply_to=?,"
+                           " bank_account_name=?, bank_sort_code=?, bank_account_number=?, payment_link=?, reminders_on=?"
+                           " WHERE id=?",
                            (data["name"], data["legal_name"], data["address"], data["city"], data["postcode"],
                             data["company_no"], data["vat_registered"], data["vat_no"], data["monthly_target"],
-                            data["invoice_prefix"], data["payment_terms"], data["reply_to"] or None, ws()))
+                            data["invoice_prefix"], data["payment_terms"], data["reply_to"] or None,
+                            data["bank_account_name"] or None, data["bank_sort_code"] or None,
+                            data["bank_account_number"] or None, data["payment_link"] or None, data["reminders_on"], ws()))
+                if data.get("logo"):
+                    from core import now
+                    db.execute("UPDATE workspaces SET logo=?, logo_updated=? WHERE id=?",
+                               (data["logo"], now().strftime("%Y%m%d%H%M%S"), ws()))
+                elif f.get("remove_logo") == "on":
+                    db.execute("UPDATE workspaces SET logo=NULL, logo_updated=NULL WHERE id=?", (ws(),))
                 db.commit()
                 flash("Settings saved.", "ok")
                 return redirect(url_for("settings"))

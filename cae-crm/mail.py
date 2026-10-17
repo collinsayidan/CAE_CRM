@@ -34,8 +34,11 @@ def sender(display_name):
     return formataddr((name.strip() or "CAE CRM", address))
 
 
-def message(to, subject, html, text, from_name, reply_to=None, headers=None, tags=None):
+def message(to, subject, html, text, from_name, reply_to=None, headers=None, tags=None, attachments=None):
+    """attachments: [(filename, bytes)], for example an invoice PDF."""
     msg = {"from": sender(from_name), "to": [to], "subject": subject[:200], "html": html, "text": text}
+    if attachments:
+        msg["attachments"] = [{"filename": name, "content": base64.b64encode(data).decode()} for name, data in attachments]
     if reply_to:
         msg["reply_to"] = reply_to
     if headers:

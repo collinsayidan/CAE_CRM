@@ -57,7 +57,14 @@ CREATE TABLE IF NOT EXISTS workspaces (
     stripe_subscription_id TEXT,
     seats INTEGER,
     period_end TEXT,
-    cancel_at_period_end INTEGER NOT NULL DEFAULT 0
+    cancel_at_period_end INTEGER NOT NULL DEFAULT 0,
+    logo TEXT,
+    logo_updated TEXT,
+    bank_account_name TEXT,
+    bank_sort_code TEXT,
+    bank_account_number TEXT,
+    payment_link TEXT,
+    reminders_on INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS users (
     id {pk},
@@ -159,6 +166,8 @@ CREATE TABLE IF NOT EXISTS invoices (
     due_date TEXT NOT NULL,
     paid_date TEXT,
     xero_invoice_id TEXT,
+    sent_at TEXT,
+    sent_to TEXT,
     UNIQUE (workspace_id, number)
 );
 CREATE TABLE IF NOT EXISTS invoice_lines (
@@ -409,6 +418,14 @@ CREATE TABLE IF NOT EXISTS audit_events (
     ip TEXT,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS invoice_reminders (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    invoice_id INTEGER NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+    stage INTEGER NOT NULL,
+    sent_to TEXT,
+    sent_at TEXT NOT NULL
+);
 """
 
 # Columns added after the first release. Databases created by an earlier version gain them on start-up.
@@ -421,10 +438,12 @@ ADDED_COLUMNS = {
                  "email_bounced_at TEXT"],
     "workspaces": ["reply_to TEXT", "plan_status TEXT", "trial_ends TEXT", "stripe_customer_id TEXT",
                    "stripe_subscription_id TEXT", "seats INTEGER", "period_end TEXT",
-                   "cancel_at_period_end INTEGER NOT NULL DEFAULT 0"],
+                   "cancel_at_period_end INTEGER NOT NULL DEFAULT 0", "logo TEXT", "logo_updated TEXT",
+                   "bank_account_name TEXT", "bank_sort_code TEXT", "bank_account_number TEXT", "payment_link TEXT",
+                   "reminders_on INTEGER NOT NULL DEFAULT 0"],
     "deals": ["workspace_id INTEGER", "contact_id INTEGER"],
     "activities": ["workspace_id INTEGER", "contact_id INTEGER", "ticket_id INTEGER"],
-    "invoices": ["workspace_id INTEGER", "deal_id INTEGER", "xero_invoice_id TEXT"],
+    "invoices": ["workspace_id INTEGER", "deal_id INTEGER", "xero_invoice_id TEXT", "sent_at TEXT", "sent_to TEXT"],
     "projects": ["workspace_id INTEGER"],
 }
 SCOPED_TABLES = ["users", "companies", "contacts", "deals", "activities", "invoices", "projects"]

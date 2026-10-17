@@ -5,7 +5,7 @@
 {% block subtitle %}<p class="subtitle">Your business details appear on every invoice you send.</p>{% endblock %}
 
 {% block content %}
-<form method="post" action="{{ url_for('settings') }}" class="settings" novalidate>
+<form method="post" action="{{ url_for('settings') }}" class="settings" enctype="multipart/form-data" novalidate>
   <input type="hidden" name="csrf" value="{{ csrf_token }}">
   {% if errors %}<p class="form-alert" role="alert">Settings not saved. Check the highlighted fields.</p>{% endif %}
 
@@ -18,6 +18,16 @@
       {{ field('Town or city', 'city', form.city) }}
       {{ field('Postcode', 'postcode', form.postcode, errors=errors, placeholder='EH2 2AN') }}
       {{ field('Companies House number', 'company_no', form.company_no, errors=errors, placeholder='SC512345') }}
+    </div>
+    <div class="logo-field">
+      <span class="field-label">Logo <span class="optional">(optional)</span></span>
+      <div class="logo-row">
+        {% if logo_url(workspace) %}<img class="logo-preview" src="{{ logo_url(workspace) }}" alt="Your logo">{% else %}<span class="logo-empty">No logo yet</span>{% endif %}
+        <label class="btn ghost sm">{{ 'Change logo' if workspace.logo_updated else 'Upload a logo' }}<input type="file" name="logo" accept="image/png,image/jpeg,image/webp" class="sr-only"></label>
+        {% if workspace.logo_updated %}<label class="check small"><input type="checkbox" name="remove_logo"> Remove</label>{% endif %}
+      </div>
+      {% if errors.get('logo') %}<span class="field-error">{{ errors.logo }}</span>
+      {% else %}<span class="field-hint">Shown on your invoices, quotes, forms and emails. A PNG with a transparent background looks best.</span>{% endif %}
     </div>
   </section>
 
@@ -34,6 +44,20 @@
       {{ field('Payment terms in days', 'payment_terms', form.payment_terms, errors=errors, required=true, extra='inputmode=numeric') }}
       <div class="span-2">{{ field('Reply-to email', 'reply_to', form.reply_to, type='email', errors=errors, placeholder='hello@yourbusiness.co.uk', hint='Replies to your quotes and email campaigns go here.') }}</div>
     </div>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-title">Getting paid</h2>
+    <p class="form-hint">Shown on every invoice, its PDF and its email.</p>
+    <div class="form-grid">
+      {{ field('Account name', 'bank_account_name', form.bank_account_name, placeholder='Thistle Ltd') }}
+      {{ field('Sort code', 'bank_sort_code', form.bank_sort_code, errors=errors, placeholder='12-34-56', extra='inputmode=numeric') }}
+      {{ field('Account number', 'bank_account_number', form.bank_account_number, placeholder='12345678', extra='inputmode=numeric maxlength=8') }}
+      {{ field('Pay online link', 'payment_link', form.payment_link, errors=errors, placeholder='https://buy.stripe.com/...', hint='Optional. A payment page from Stripe, GoCardless or similar.') }}
+    </div>
+    <label class="check"><input type="checkbox" name="reminders_on" {{ 'checked' if form.reminders_on }}>
+      <span>Send polite reminders for overdue invoices, 3, 14 and 30 days after the due date</span></label>
+    <p class="form-hint">Only invoices you've emailed from CAE CRM are chased, to the address you sent them to. Reminders stop when an invoice is marked paid.</p>
   </section>
 
   <section class="panel">

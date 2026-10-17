@@ -23,7 +23,7 @@ LABELS = {
     "toggle_activity": "Ticked off or reopened a task", "log_engagement": "Logged a note, call, email or meeting",
     "delete_engagement": "Removed a timeline entry", "create_product": "Added a product", "update_product": "Changed a product",
     "update_project": "Updated a project", "create_invoice": "Raised an invoice", "invoice_deal": "Invoiced a deal",
-    "mark_paid": "Marked an invoice paid", "invoice_to_xero": "Sent an invoice to Xero", "xero_push_all": "Sent invoices to Xero",
+    "mark_paid": "Marked an invoice paid", "email_invoice": "Emailed an invoice", "remind_invoice": "Sent a payment reminder", "invoice_to_xero": "Sent an invoice to Xero", "xero_push_all": "Sent invoices to Xero",
     "quote_deal": "Drafted a quote", "edit_quote": "Edited a quote", "send_quote": "Marked a quote as sent",
     "email_quote": "Emailed a quote", "invoice_quote": "Invoiced a quote", "delete_quote": "Deleted a quote",
     "create_form": "Created a web form", "web_form": "Changed a web form", "delete_form": "Deleted a web form",

@@ -19,6 +19,7 @@ import dataio
 import finance
 import home
 import integrations
+import monitoring
 import mtd
 import quotes
 import sales
@@ -112,6 +113,7 @@ def create_app(config=None):
         NOW=None,
     )
     app.config.update(config or {})
+    app.config["MONITORING"] = monitoring.start(app)
     if not app.config["MISSING_SETTINGS"]:
         if not is_postgres(app.config["DATABASE"]):
             os.makedirs(os.path.dirname(os.path.abspath(app.config["DATABASE"])), exist_ok=True)
@@ -175,6 +177,8 @@ def create_app(config=None):
         if request.endpoint == "static":
             return None
         g.user = auth.load_user()
+        if app.config["MONITORING"]:
+            monitoring.identify(g.user)
         if g.user and request.endpoint not in PUBLIC_ENDPOINTS:
             return billing.guard_writes()
         if g.user or request.endpoint in PUBLIC_ENDPOINTS:

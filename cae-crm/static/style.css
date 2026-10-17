@@ -145,7 +145,7 @@ kbd { font-family: var(--body); font-size: 11.5px; padding: 2px 6px; border: 1px
 .search-trigger:hover { border-color: var(--muted); }
 .search-trigger span { flex: 1; }
 .top-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-main { padding: 28px 36px 64px; max-width: 1600px; }
+main { padding: 28px 36px 64px; }  /* full width: lists, boards and dashboards use big screens; forms set their own widths */
 
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 24px; }
 .page-head h1 { font-size: clamp(28px, 3.4vw, 38px); font-weight: 700; letter-spacing: -.025em; }
@@ -1047,6 +1047,12 @@ body.landing { background: var(--surface); }
   .record-right { order: 1; }
   .record-mid { order: 2; }
 }
+/* Very wide screens (a 4K monitor, a 1440p ultrawide): roomier side columns on record pages. */
+@media (min-width: 2200px) {
+  .record { grid-template-columns: 340px minmax(0, 1fr) 380px; gap: 24px; }
+  main { padding-left: 48px; padding-right: 48px; }
+}
+
 /* Settings hub and tabs ------------------------------------------------------ */
 .settings-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin: -6px 0 22px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .settings-tabs a { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: var(--r-md); font-size: 14px; font-weight: 700; color: var(--muted); text-decoration: none; }
@@ -1094,7 +1100,7 @@ body.landing { background: var(--surface); }
 }
 
 /* Billing ---------------------------------------------------------------- */
-.plan-banner { display: block; margin: 16px 36px 0; max-width: 1528px; padding: 10px 16px; border-radius: var(--r-md); background: var(--warn-soft); color: var(--warn-ink); font-size: 14px; text-decoration: none; }
+.plan-banner { display: block; margin: 16px 36px 0; padding: 10px 16px; border-radius: var(--r-md); background: var(--warn-soft); color: var(--warn-ink); font-size: 14px; text-decoration: none; }
 .plan-banner.bad { background: var(--bad-soft); color: var(--bad); }
 .plan-banner:hover { text-decoration: underline; }
 .billing-summary h2 { font-size: 22px; letter-spacing: -.01em; }

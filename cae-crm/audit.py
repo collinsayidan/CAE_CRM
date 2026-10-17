@@ -40,6 +40,8 @@ LABELS = {
     "auth.two_factor_setup": "Turned on two-factor sign-in", "auth.two_factor_off": "Turned off two-factor sign-in",
     "auth.two_factor_reset": "Reset a team member's two-factor sign-in",
     "auth.two_factor_check": "Signed in with two-factor",
+    "upload_file": "Attached a file", "delete_file": "Removed a file", "custom_fields_page": "Added a custom field",
+    "delete_custom_field": "Removed a custom field",
 }
 # Routine or high-volume actions that would bury the changes that matter.
 SKIP = {"auth.logout", "oauth_sync", "campaign_deliver", "auth.forgot"}

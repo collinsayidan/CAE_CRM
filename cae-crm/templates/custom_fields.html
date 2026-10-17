@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, field, select %}
+{% block title %}Custom fields{% endblock %}
+{% block heading %}Custom fields{% endblock %}
+{% block subtitle %}<p class="subtitle">Add the details your business tracks that CAE CRM doesn't, such as a contract end date or a customer number.</p>{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <h2 class="panel-title">Add a field</h2>
+  <form method="post" action="{{ url_for('custom_fields_page') }}" class="custom-field-form">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <div class="form-grid">
+      {{ field('Name', 'label', required=true, placeholder='Contract end date', extra='maxlength=60') }}
+      {{ select('Add it to', 'object', objects.values() | list, values=objects.keys() | list) }}
+      {{ select('Kind of field', 'field_type', types.values() | list, values=types.keys() | list) }}
+      {{ field('Dropdown options', 'options', hint='Only for dropdowns. Separate them with commas, for example: Bronze, Silver, Gold.') }}
+    </div>
+    <button class="btn primary">{{ icon('plus') }} Add field</button>
+  </form>
+</section>
+
+{% for obj, label in objects.items() %}
+<section class="panel flush panel-gap">
+  <h2 class="panel-title pad">{{ label }}</h2>
+  <ul class="field-list">
+    {% for f in grouped[obj] %}
+      <li>
+        <span><b>{{ f.label }}</b><small>{{ types[f.field_type] }}{% if f.options %}: {{ f.options | join(', ') }}{% endif %}</small></span>
+        <form method="post" action="{{ url_for('delete_custom_field', field_id=f.id) }}" data-confirm="Remove {{ f.label }}? Values already entered stay in each record but stop showing.">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}">
+          <button class="icon-btn sm" aria-label="Remove {{ f.label }}">{{ icon('trash') }}</button>
+        </form>
+      </li>
+    {% else %}
+      <li class="empty-line">No custom fields on {{ label | lower }} yet.</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endfor %}
+<p class="muted small panel-gap">Custom fields show in each record's About panel, can be filled in from its Edit window, and are included when you export to CSV.</p>
+{% endblock %}

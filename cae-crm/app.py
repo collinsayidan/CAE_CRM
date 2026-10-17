@@ -17,6 +17,8 @@ import billing
 import campaigns
 import crm
 import dataio
+import fields
+import files
 import documents
 import finance
 import home
@@ -48,7 +50,8 @@ NAV = [
 # Everything about running the workspace sits behind one Settings link: (endpoint, label, admins only).
 SETTINGS_TABS = [("settings", "Business details", True), ("auth.team", "Team", False),
                  ("integrations", "Integrations", False), ("imports", "Import", True), ("billing", "Billing", True),
-                 ("vat", "VAT returns", True), ("audit_trail", "Audit trail", True)]
+                 ("custom_fields_page", "Custom fields", True), ("vat", "VAT returns", True),
+                 ("audit_trail", "Audit trail", True)]
 # Which nav item lights up for pages that aren't in the nav themselves.
 NAV_PARENT = {"contact": "contacts", "company": "companies", "deal": "pipeline", "ticket": "tickets",
               "invoice": "invoices", "quote": "quotes", "web_form": "forms",
@@ -115,6 +118,10 @@ def create_app(config=None):
         VENDOR_PUBLIC_IP=os.environ.get("CAE_VENDOR_PUBLIC_IP", ""),
         TOKEN_KEY=os.environ.get("CAE_TOKEN_KEY", ""),
         CRON_SECRET=os.environ.get("CRON_SECRET", ""),
+        # File attachments in Supabase Storage (a private bucket); without these, files are kept in the database.
+        SUPABASE_URL=os.environ.get("SUPABASE_URL", ""),
+        SUPABASE_SERVICE_KEY=os.environ.get("SUPABASE_SERVICE_KEY", ""),
+        STORAGE_BUCKET=os.environ.get("CAE_STORAGE_BUCKET", "attachments"),
         TODAY=None,  # tests pin the date and time; otherwise the real ones are used
         NOW=None,
     )
@@ -205,7 +212,7 @@ def create_app(config=None):
 
     app.register_blueprint(auth.bp)
     for module in (home, crm, sales, service, finance, quotes, webforms, campaigns, billing, integrations, xero, mtd,
-                   documents, notifications, dataio, settings, audit):
+                   documents, notifications, files, fields, dataio, settings, audit):
         module.register(app)
     return app
 

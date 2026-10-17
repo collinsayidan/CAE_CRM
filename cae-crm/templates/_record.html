@@ -114,3 +114,56 @@
 {% macro prop(label, value, empty='Not set') -%}
 <div class="prop"><dt>{{ label }}</dt><dd>{% if value %}{{ value }}{% else %}<span class="muted">{{ empty }}</span>{% endif %}</dd></div>
 {%- endmacro %}
+
+{# Custom fields a business has added, shown in a record's About panel. #}
+{% macro custom_props(obj, record) -%}
+{% set saved = custom_values(record) %}
+{% for f in custom_fields(obj) %}{{ prop(f.label, custom_display(f, saved.get(f.id | string))) }}{% endfor %}
+{%- endmacro %}
+
+{# Inputs for custom fields in a record's Edit window. #}
+{% macro custom_inputs(obj, record) -%}
+{% set defs = custom_fields(obj) %}
+{% if defs %}
+<input type="hidden" name="cf_present" value="1">
+<div class="form-grid custom-inputs">
+  {% set saved = custom_values(record) %}
+  {% for f in defs %}
+    {% set v = saved.get(f.id | string) %}
+    {% if f.field_type == 'yes_no' %}
+      <label class="check span-2"><input type="checkbox" name="cf_{{ f.id }}" {{ 'checked' if v }}><span>{{ f.label }}</span></label>
+    {% elif f.field_type == 'choice' %}
+      <label class="field"><span class="field-label">{{ f.label }} <span class="optional">(optional)</span></span>
+        <select name="cf_{{ f.id }}"><option value="">Not set</option>{% for o in f.options %}<option {{ 'selected' if o == v }}>{{ o }}</option>{% endfor %}</select></label>
+    {% else %}
+      <label class="field"><span class="field-label">{{ f.label }} <span class="optional">(optional)</span></span>
+        <input name="cf_{{ f.id }}" value="{{ v if v is not none else '' }}" {% if f.field_type == 'number' %}inputmode="decimal"{% elif f.field_type == 'date' %}type="date"{% endif %} maxlength="500"></label>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+{%- endmacro %}
+
+{# Files attached to a record. #}
+{% macro files_panel(record_type, record_id) -%}
+{% set found = record_files(record_type, record_id) %}
+<section class="assoc files-panel">
+  <header><h3>Files <span>{{ found | length }}</span></h3></header>
+  {% for f in found %}
+    <div class="file-row">
+      <a class="file-link" href="{{ url_for('download_file', file_id=f.id) }}">{{ icon('download') }}<span><b>{{ f.filename }}</b><small>{{ f.size | filesize }} · {{ f.uploaded_by }} · {{ f.created_at | uk_date }}</small></span></a>
+      {% if f.uploaded_by == current_user.name or current_user.role == 'admin' %}
+        <form method="post" action="{{ url_for('delete_file', file_id=f.id) }}" data-confirm="Remove {{ f.filename }}?">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+          <button class="icon-btn sm" aria-label="Remove {{ f.filename }}">{{ icon('trash') }}</button></form>
+      {% endif %}
+    </div>
+  {% endfor %}
+  <form method="post" action="{{ url_for('upload_file') }}" enctype="multipart/form-data" class="file-upload">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+    <input type="hidden" name="record_type" value="{{ record_type }}"><input type="hidden" name="record_id" value="{{ record_id }}">
+    <label class="btn ghost sm">{{ icon('upload') }} Attach a file<input type="file" name="file" class="sr-only" data-autosubmit-file></label>
+    <small class="muted">Up to 4 MB. PDFs, images, Office documents.</small>
+  </form>
+</section>
+{%- endmacro %}

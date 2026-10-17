@@ -286,6 +286,8 @@ def register(app):
         c = get_or_404("contacts", contact_id)
         db = get_db()
         db.execute("DELETE FROM contacts WHERE id=? AND workspace_id=?", (contact_id, ws()))
+        from files import delete_for
+        delete_for("contact", contact_id)
         if c["company_id"]:
             log_event("A contact's personal data was erased", f"Erased by {g.user['name']}", company_id=c["company_id"])
         db.commit()
@@ -439,6 +441,8 @@ def register(app):
             return redirect(url_for("deal", deal_id=deal_id))
         db = get_db()
         db.execute("DELETE FROM deals WHERE id=? AND workspace_id=?", (deal_id, ws()))
+        from files import delete_for
+        delete_for("deal", deal_id)
         log_event(f"Deal deleted: {d['title']}", f"Deleted by {g.user['name']}", company_id=d["company_id"])
         db.commit()
         flash(f"Deleted the deal {d['title']}.", "ok")
@@ -542,6 +546,8 @@ def register(app):
                     skipped += 1
                 else:
                     db.execute(f"DELETE FROM {table} WHERE id=? AND workspace_id=?", (record_id, ws()))
+                    from files import RECORDS, delete_for
+                    delete_for(next(k for k, v in RECORDS.items() if v == table), record_id)
             message = f"Deleted {len(ids) - skipped}."
             if skipped:
                 message += f" Kept {skipped} with invoices, which UK law requires you to keep for 6 years."
@@ -580,6 +586,8 @@ def delete_company_records(company_id):
     db.execute("UPDATE engagements SET company_id=NULL WHERE workspace_id=? AND company_id=? AND contact_id IS NOT NULL",
                (ws(), company_id))
     db.execute("DELETE FROM companies WHERE id=? AND workspace_id=?", (company_id, ws()))
+    from files import delete_for
+    delete_for("company", company_id)
     return None
 
 

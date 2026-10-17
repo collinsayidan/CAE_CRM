@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon, avatar, logo, field, select, stage_chip with context %}
-{% from "_record.html" import composer, timeline, upcoming_tasks, assoc, prop with context %}
+{% from "_record.html" import composer, timeline, upcoming_tasks, assoc, prop, custom_props, custom_inputs, files_panel with context %}
 {% block title %}{{ c.name }}{% endblock %}
 
 {% block page %}
@@ -37,6 +37,7 @@
         {{ prop('Phone', c.phone) }}
         {{ prop('Owner', c.owner) }}
         {{ prop('Added', c.created_at | uk_date) }}
+        {{ custom_props('companies', c) }}
       </dl>
       {% if current_user.role == 'admin' %}
         <form method="post" action="{{ url_for('delete_company', company_id=c.id) }}" class="danger-zone"
@@ -79,6 +80,7 @@
           <small>{{ pennies(i.net + i.vat) }}, {% if i.paid_date %}paid{% elif i.due_date < today.isoformat() %}<span class="bad-text">overdue</span>{% else %}due {{ i.due_date | uk_date }}{% endif %}</small></span></a>
       {% else %}<p class="muted small">No invoices raised.</p>{% endfor %}
     {% endcall %}
+    {{ files_panel('company', c.id) }}
   </aside>
 </div>
 
@@ -101,6 +103,7 @@
       {{ select('Region', 'region', regions, c.region) }}
       {{ select('Owner', 'owner', owners, c.owner) }}
     </div>
+    {{ custom_inputs('companies', c) }}
     <footer><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Save changes</button></footer>
   </form>
 </dialog>

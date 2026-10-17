@@ -89,6 +89,9 @@
     sel.form.querySelector("[name=page]")?.remove();
     sel.form.requestSubmit ? sel.form.requestSubmit() : sel.form.submit();
   }));
+  $$("input[data-autosubmit-file]").forEach(input => input.addEventListener("change", () => {
+    if (input.files.length) input.form.requestSubmit ? input.form.requestSubmit() : input.form.submit();
+  }));
   $$("[data-print]").forEach(b => b.addEventListener("click", () => print()));
 
   // Live VAT preview in the invoice dialog.

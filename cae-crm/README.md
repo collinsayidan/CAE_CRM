@@ -14,6 +14,16 @@ Open http://127.0.0.1:5000. On first run the app creates `instance/cae_crm.sqlit
 
 For anything beyond local use, set a fixed secret key: `export CAE_SECRET_KEY=<random string>`.
 
+## Deploy to Vercel
+
+1. In the Vercel project, open **Settings → General** and set **Root Directory** to `cae-crm`.
+2. In **Settings → Environment Variables**, add `CAE_SECRET_KEY`. Use a long random value, for example the output of `python -c "import secrets; print(secrets.token_hex(32))"`.
+3. Redeploy.
+
+Vercel picks up the app from `wsgi.py`, which `pyproject.toml` points to with `[tool.vercel] entrypoint = "wsgi:app"`.
+
+On Vercel the SQLite file lives in `/tmp`, because that's the only place a Vercel function can write. That folder is cleared whenever an instance restarts, so the site falls back to the demo data. Separate instances can also show different data. That's fine for a demo. To keep real data, point the app at a hosted database such as Vercel Postgres or Neon.
+
 ## Pages
 
 | Page | What it does |
@@ -53,6 +63,7 @@ Across every page:
 ## Tests
 
 ```bash
+pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
@@ -60,6 +71,7 @@ python -m pytest -q
 
 ```
 app.py        Flask app factory and routes
+wsgi.py       hosting entrypoint (module-level `app`)
 db.py         schema, connection handling, demo seed data
 ukfmt.py      GBP/date/VAT/postcode/phone helpers and the UK financial year
 charts.py     server-side SVG quota ring and sparklines

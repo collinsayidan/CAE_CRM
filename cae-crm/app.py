@@ -35,13 +35,18 @@ UK_TZ = ZoneInfo("Europe/London")
 
 def create_app(config=None):
     app = Flask(__name__, instance_relative_config=True)
+    # Serverless hosts such as Vercel only allow writes under /tmp, which is wiped on cold starts.
+    data_dir = "/tmp" if os.environ.get("VERCEL") else app.instance_path
+    secret = os.environ.get("CAE_SECRET_KEY")
+    if not secret and os.environ.get("VERCEL"):
+        app.logger.warning("CAE_SECRET_KEY is not set; sessions will reset whenever a new instance starts.")
     app.config.update(
-        SECRET_KEY=os.environ.get("CAE_SECRET_KEY") or secrets.token_hex(32),
-        DATABASE=os.path.join(app.instance_path, "cae_crm.sqlite3"),
+        SECRET_KEY=secret or secrets.token_hex(32),
+        DATABASE=os.environ.get("CAE_DATABASE") or os.path.join(data_dir, "cae_crm.sqlite3"),
         TODAY=None,  # tests pin the date; otherwise the real date is used
     )
     app.config.update(config or {})
-    os.makedirs(app.instance_path, exist_ok=True)
+    os.makedirs(os.path.dirname(app.config["DATABASE"]), exist_ok=True)
     if not os.path.exists(app.config["DATABASE"]):
         init_db(app.config["DATABASE"], app.config["TODAY"] or date.today())
     app.teardown_appcontext(close_db)

@@ -1053,6 +1053,17 @@ body.landing { background: var(--surface); }
   main { padding-left: 48px; padding-right: 48px; }
 }
 
+/* Two-factor sign-in --------------------------------------------------------- */
+.code-input { font-size: 22px; letter-spacing: .25em; font-variant-numeric: tabular-nums; max-width: 220px; }
+.setup-steps { margin: 0 0 16px; padding-left: 22px; }
+.setup-steps li { padding-left: 4px; margin-bottom: 24px; }
+.two-factor-setup .inline-form { justify-content: flex-start; margin-top: 10px; }
+.two-factor-setup .inline-form .field { flex: 0 0 220px; }
+.qr { margin: 12px 0 8px; display: block; width: fit-content; border: 1px solid var(--line); border-radius: var(--r-md); line-height: 0; overflow: hidden; }
+.secret { word-break: break-all; }
+.recovery-codes { columns: 2; gap: 24px; margin: 16px 0; padding-left: 22px; font-size: 16px; line-height: 2; }
+.recovery-codes code { font-size: 16px; letter-spacing: .05em; }
+
 /* Settings hub and tabs ------------------------------------------------------ */
 .settings-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin: -6px 0 22px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .settings-tabs a { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: var(--r-md); font-size: 14px; font-weight: 700; color: var(--muted); text-decoration: none; }

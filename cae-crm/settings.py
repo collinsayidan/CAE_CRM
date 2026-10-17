@@ -17,6 +17,7 @@ HUB = [
     ("imports", "upload", "Import", "Bring in contacts and companies from a spreadsheet.", True),
     ("billing", "pound", "Billing", "Your plan, number of users and payments.", True),
     ("vat", "shield", "VAT returns", "Submit Making Tax Digital VAT returns to HMRC.", True),
+    ("audit_trail", "list", "Audit trail", "Who changed what, and when. Download it for your records.", True),
 ]
 
 

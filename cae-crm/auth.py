@@ -74,7 +74,8 @@ def load_user():
     user_id = session.get("user_id")
     if user_id is None:
         return None
-    user = get_db().execute("SELECT id, email, name, role, workspace_id, job_title, password_hash FROM users WHERE id=?",
+    user = get_db().execute("SELECT id, email, name, role, workspace_id, job_title, password_hash, totp_enabled_at "
+                            "FROM users WHERE id=?",
                             (user_id,)).fetchone()
     if user is None:
         return None
@@ -205,6 +206,11 @@ def login():
         elif user and check_password_hash(user["password_hash"], password):
             db.execute("UPDATE users SET failed_logins=0, locked_until=NULL WHERE id=?", (user["id"],))
             db.commit()
+            if user["totp_enabled_at"]:
+                # Password right; now the code from their authenticator app.
+                session.clear()
+                session["2fa_user"], session["2fa_next"], session["2fa_tries"] = user["id"], request.form.get("next"), 0
+                return redirect(url_for("auth.two_factor_check"))
             start_session(user["id"])
             return redirect(safe_next(request.form.get("next")))
         else:
@@ -373,7 +379,10 @@ def _account_page(**context):
     me = get_db().execute("SELECT * FROM users WHERE id=?", (g.user["id"],)).fetchone()
     context.setdefault("errors", {})
     context.setdefault("profile_errors", {})
-    return render_template("auth/account.html", me=me, profile=context.pop("profile", me), max_bio=MAX_BIO, **context)
+    import json
+    recovery_left = len(json.loads(me["recovery_codes"] or "[]"))
+    return render_template("auth/account.html", me=me, profile=context.pop("profile", me), max_bio=MAX_BIO,
+                           recovery_left=recovery_left, **context)
 
 
 @bp.post("/account/profile")
@@ -536,3 +545,9 @@ def remove_user(user_id):
     sync_seats(g.user["workspace_id"])
     flash("Team member removed. Their deals and activities keep their name.", "ok")
     return redirect(url_for("auth.team"))
+
+
+import twofactor  # noqa: E402  (its pages join this blueprint)
+
+twofactor.register(bp, dict(get_db=get_db, start_session=start_session, admin_required=admin_required,
+                            team_member=_team_member, now_utc=now_utc, safe_next=safe_next))

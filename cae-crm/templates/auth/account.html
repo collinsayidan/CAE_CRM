@@ -24,5 +24,24 @@
       <div><button class="btn primary">Change password</button></div>
     </form>
   </section>
+
+  <section class="panel">
+    <h2 class="panel-title">Two-factor sign-in</h2>
+    {% if me.totp_enabled_at %}
+      <p class="muted small panel-intro"><span class="chip ok">On</span> since {{ me.totp_enabled_at | uk_date }}. You have {{ recovery_left }} recovery {{ 'code' if recovery_left == 1 else 'codes' }} left.</p>
+      <div class="head-buttons">
+        <form method="post" action="{{ url_for('auth.two_factor_setup') }}" data-confirm="Make new recovery codes? Your old ones will stop working.">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="regenerate" value="1">
+          <button class="btn ghost sm">New recovery codes</button></form>
+        {% if current_user.role != 'admin' %}
+          <form method="post" action="{{ url_for('auth.two_factor_off') }}" data-confirm="Turn off two-factor sign-in?">
+            <input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn ghost sm danger">Turn off</button></form>
+        {% endif %}
+      </div>
+    {% else %}
+      <p class="muted small panel-intro">Protects your account even if someone learns your password: signing in also needs a code from your phone.</p>
+      <a class="btn primary sm" href="{{ url_for('auth.two_factor_setup') }}">Turn on</a>
+    {% endif %}
+  </section>
 </div>
 {% endblock %}

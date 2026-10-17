@@ -76,7 +76,11 @@ CREATE TABLE IF NOT EXISTS users (
     linkedin TEXT,
     bio TEXT,
     photo TEXT,
-    photo_updated TEXT
+    photo_updated TEXT,
+    totp_secret TEXT,
+    totp_enabled_at TEXT,
+    totp_last_step INTEGER,
+    recovery_codes TEXT
 );
 CREATE TABLE IF NOT EXISTS companies (
     id {pk},
@@ -393,12 +397,25 @@ CREATE TABLE IF NOT EXISTS password_resets (
     ip TEXT,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS audit_events (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    user_name TEXT,
+    action TEXT NOT NULL,
+    target_type TEXT,
+    target_id INTEGER,
+    summary TEXT,
+    ip TEXT,
+    created_at TEXT NOT NULL
+);
 """
 
 # Columns added after the first release. Databases created by an earlier version gain them on start-up.
 ADDED_COLUMNS = {
     "users": ["workspace_id INTEGER", "job_title TEXT", "department TEXT", "phone TEXT", "location TEXT",
-              "linkedin TEXT", "bio TEXT", "photo TEXT", "photo_updated TEXT"],
+              "linkedin TEXT", "bio TEXT", "photo TEXT", "photo_updated TEXT", "totp_secret TEXT", "totp_enabled_at TEXT",
+              "totp_last_step INTEGER", "recovery_codes TEXT"],
     "companies": ["workspace_id INTEGER", "website TEXT", "phone TEXT", "owner TEXT"],
     "contacts": ["workspace_id INTEGER", "lifecycle_stage TEXT", "lead_status TEXT", "owner TEXT", "unsubscribed_at TEXT",
                  "email_bounced_at TEXT"],
@@ -564,6 +581,7 @@ def migrate(db, today):
         "CREATE INDEX IF NOT EXISTS ix_recipients_campaign ON campaign_recipients (campaign_id, status)",
         "CREATE INDEX IF NOT EXISTS ix_recipients_provider ON campaign_recipients (provider_id)",
         "CREATE INDEX IF NOT EXISTS ix_connections_ws ON connections (workspace_id, provider)",
+        "CREATE INDEX IF NOT EXISTS ix_audit_ws ON audit_events (workspace_id, id)",
     ):
         db.execute(sql)
     if db.postgres:

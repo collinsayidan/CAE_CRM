@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Two-factor sign-in{% endblock %}
+{% block heading %}Two-factor sign-in{% endblock %}
+{% block subtitle %}<p class="subtitle">{% if done %}It's on. Keep your recovery codes safe.{% elif forced %}Admins need this before they can carry on. It takes two minutes.{% else %}An extra check at sign-in, using an app on your phone.{% endif %}</p>{% endblock %}
+
+{% block content %}
+{% if done %}
+<section class="panel narrow-wide">
+  <h2 class="panel-title">Your recovery codes</h2>
+  <p class="muted">If you lose your phone, each of these lets you sign in once. Save them in your password manager or print them. You won't see them again.</p>
+  <ol class="recovery-codes">{% for c in codes %}<li><code>{{ c }}</code></li>{% endfor %}</ol>
+  <div class="head-buttons panel-gap">
+    <button type="button" class="btn ghost" data-print>Print</button>
+    <a class="btn primary" href="{{ url_for('overview') }}">I've saved them</a>
+  </div>
+</section>
+{% else %}
+<section class="panel narrow-wide two-factor-setup">
+  <ol class="setup-steps">
+    <li><b>Install an authenticator app</b> on your phone if you don't have one: Google Authenticator, Microsoft Authenticator or 1Password all work.</li>
+    <li><b>Scan this QR code</b> with the app.
+      <div class="qr">{{ qr | safe }}</div>
+      <details><summary class="text-link sm">Can't scan it?</summary>
+        <p class="muted small">Add an account by hand and enter this key: <code class="secret">{{ secret }}</code></p></details></li>
+    <li><b>Type the 6-digit code</b> the app shows for CAE CRM.
+      {% if error %}<p class="form-alert" role="alert">{{ error }}</p>{% endif %}
+      <form method="post" action="{{ url_for('auth.two_factor_setup') }}" class="inline-form">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <label class="field"><span class="field-label">Code</span>
+          <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required class="code-input"></label>
+        <button class="btn primary">Turn on</button>
+      </form></li>
+  </ol>
+  {% if forced %}
+    <form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <button class="text-link sm">Sign out and do this later</button></form>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

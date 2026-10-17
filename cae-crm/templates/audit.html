@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Audit trail{% endblock %}
+{% block heading %}Audit trail{% endblock %}
+{% block subtitle %}<p class="subtitle">Every change made in {{ workspace.name }}: who, what and when. Times are UK time.</p>{% endblock %}
+{% block actions %}<a class="btn ghost" href="{{ url_for('audit_trail', person=person, action=action, format='csv') }}">{{ icon('download') }} Download CSV</a>{% endblock %}
+
+{% block content %}
+<section class="panel flush">
+  <form class="list-toolbar" method="get" action="{{ url_for('audit_trail') }}">
+    <label class="filter-select"><span class="sr-only">Person</span>
+      <select name="person" data-autosubmit><option value="">Everyone</option>
+        {% for p in people %}<option value="{{ p.user_id }}" {{ 'selected' if p.user_id | string == person }}>{{ p.user_name }}</option>{% endfor %}
+      </select></label>
+    <label class="filter-select"><span class="sr-only">Action</span>
+      <select name="action" data-autosubmit><option value="">Every kind of change</option>
+        {% for a in actions %}<option {{ 'selected' if a == action }}>{{ a }}</option>{% endfor %}
+      </select></label>
+    <noscript><button class="btn ghost sm">Filter</button></noscript>
+  </form>
+  <div class="table-wrap">
+    <table class="records">
+      <thead><tr><th>When</th><th>Who</th><th>Did</th><th>Record</th><th>IP address</th></tr></thead>
+      <tbody>
+        {% for e in events %}
+          <tr>
+            <td>{{ e.created_at | uk_datetime }}</td>
+            <td>{{ e.user_name or 'Someone since removed' }}</td>
+            <td><b>{{ e.action }}</b></td>
+            <td>{% if e.target_type %}{{ e.target_type }}{% if e.summary %}: {{ e.summary }}{% elif e.target_id %} #{{ e.target_id }}{% endif %}{% elif e.summary %}{{ e.summary }}{% endif %}</td>
+            <td><small>{{ e.ip or '' }}</small></td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="empty-line">Nothing recorded yet. Changes appear here as people use CAE CRM.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+<p class="muted small panel-gap">Shows the latest 500. Contacts appear by number rather than name, so erasing someone's data leaves no copy of their name here.</p>
+{% endblock %}

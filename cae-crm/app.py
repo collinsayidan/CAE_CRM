@@ -11,6 +11,7 @@ from urllib.parse import urlencode
 
 from flask import Flask, abort, g, jsonify, redirect, render_template, request, session, url_for
 
+import audit
 import auth
 import billing
 import campaigns
@@ -25,6 +26,7 @@ import quotes
 import sales
 import service
 import settings
+import twofactor
 import ukfmt
 import webforms
 import xero
@@ -44,7 +46,7 @@ NAV = [
 # Everything about running the workspace sits behind one Settings link: (endpoint, label, admins only).
 SETTINGS_TABS = [("settings", "Business details", True), ("auth.team", "Team", False),
                  ("integrations", "Integrations", False), ("imports", "Import", True), ("billing", "Billing", True),
-                 ("vat", "VAT returns", True)]
+                 ("vat", "VAT returns", True), ("audit_trail", "Audit trail", True)]
 # Which nav item lights up for pages that aren't in the nav themselves.
 NAV_PARENT = {"contact": "contacts", "company": "companies", "deal": "pipeline", "ticket": "tickets",
               "invoice": "invoices", "quote": "quotes", "web_form": "forms",
@@ -53,9 +55,11 @@ NAV_PARENT = {"contact": "contacts", "company": "companies", "deal": "pipeline",
 SETTINGS_PARENT = {"auth.member": "auth.team", "auth.edit_member": "auth.team", "import_map": "imports",
                    "vat_return": "vat"}
 # Pages anyone can reach without signing in.
-PUBLIC_ENDPOINTS = {"landing", "favicon", "auth.login", "auth.signup", "auth.setup", "auth.forgot", "auth.reset", "static",
+PUBLIC_ENDPOINTS = {"landing", "favicon", "auth.login", "auth.signup", "auth.setup", "auth.forgot", "auth.reset",
+                    "auth.two_factor_check", "static",
                     "public_form", "public_quote", "accept_quote", "decline_quote", "unsubscribe", "resend_webhook",
                     "stripe_webhook", "cron_sync"}
+TWO_FACTOR_SETUP_ALLOWED = {"auth.two_factor_setup", "auth.logout", "static", "favicon"}
 # Forms embedded on other websites can't carry our session's CSRF token; they have their own spam checks.
 # Mail apps' one-click unsubscribe and Resend's webhooks post from elsewhere too; the webhook is signed.
 CSRF_EXEMPT = {"public_form", "unsubscribe", "resend_webhook", "stripe_webhook"}
@@ -179,6 +183,9 @@ def create_app(config=None):
         g.user = auth.load_user()
         if app.config["MONITORING"]:
             monitoring.identify(g.user)
+        if (g.user and twofactor.required(g.user) and not g.user["totp_enabled_at"]
+                and request.endpoint not in TWO_FACTOR_SETUP_ALLOWED):
+            return redirect(url_for("auth.two_factor_setup"))  # admins set up two-factor sign-in before anything else
         if g.user and request.endpoint not in PUBLIC_ENDPOINTS:
             return billing.guard_writes()
         if g.user or request.endpoint in PUBLIC_ENDPOINTS:
@@ -196,7 +203,7 @@ def create_app(config=None):
 
     app.register_blueprint(auth.bp)
     for module in (home, crm, sales, service, finance, quotes, webforms, campaigns, billing, integrations, xero, mtd,
-                   dataio, settings):
+                   dataio, settings, audit):
         module.register(app)
     return app
 

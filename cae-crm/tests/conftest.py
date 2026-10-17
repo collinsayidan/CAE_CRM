@@ -37,8 +37,9 @@ def database(request, tmp_path):
 
 
 def make_app(database):
+    # Two-factor sign-in for admins has its own tests; elsewhere admins sign in with just a password.
     return create_app({"TESTING": True, "DATABASE": database, "TODAY": TODAY, "SECRET_KEY": "test",
-                       "MISSING_SETTINGS": []})
+                       "MISSING_SETTINGS": [], "ADMIN_2FA_REQUIRED": False})
 
 
 def add_workspace(app, name, admin, sample=True):

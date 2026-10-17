@@ -4,3 +4,4 @@ tzdata
 Pillow>=11.0
 cryptography>=43
 sentry-sdk[flask]>=2.0
+segno>=1.6

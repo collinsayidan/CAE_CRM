@@ -1,0 +1,15 @@
+{% extends "auth/_layout.html" %}
+{% block title %}Two-factor sign-in{% endblock %}
+{% block content %}
+<h1>Enter your code</h1>
+<p class="auth-lede">Open your authenticator app and type the 6-digit code for CAE CRM.</p>
+{% if error %}<p class="form-alert" role="alert">{{ error }}</p>{% endif %}
+<form method="post" action="{{ url_for('auth.two_factor_check') }}" class="auth-form">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <label class="field"><span class="field-label">Code</span>
+    <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="9" autofocus required class="code-input"></label>
+  <button class="btn primary wide">Sign in</button>
+</form>
+<p class="auth-note">Lost your phone? Type one of your recovery codes instead, like <code>a1b2-c3d4</code>, or ask another admin to reset your two-factor sign-in.</p>
+<p class="auth-note"><a class="text-link" href="{{ url_for('auth.login') }}">Start again</a></p>
+{% endblock %}

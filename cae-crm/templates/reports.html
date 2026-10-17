@@ -8,7 +8,7 @@
   <ul class="rank">
     {% for r in rows %}
       <li>
-        <span class="rank-name">{% if people %}{{ avatar(r.k, 'sm') }}{% endif %}{{ r.k or 'Not set' }}</span>
+        <span class="rank-name">{% if people %}{{ avatar(r.k, 'sm', team=true) }}{% endif %}{{ r.k or 'Not set' }}</span>
         <span class="rank-value">{{ r.won_value | money }}</span>
         <span class="rank-bar"><i style="width: {{ '%.1f' | format(r.share) }}%"></i></span>
         <span class="rank-meta">Wins {{ r.rate }}% of closed deals. {{ r.pipeline | money }} still open.</span>

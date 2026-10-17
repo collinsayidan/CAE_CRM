@@ -22,7 +22,7 @@
             <select name="status" aria-label="Status for {{ p.name }}">{% for s in statuses %}<option {{ 'selected' if s == p.status }}>{{ s }}</option>{% endfor %}</select>
             <noscript><button class="btn sm">Save</button></noscript>
           </form>
-          <p class="project-foot"><span>Due {{ p.due_date | uk_date }}</span>{{ avatar(p.owner, 'sm') }}</p>
+          <p class="project-foot"><span>Due {{ p.due_date | uk_date }}</span>{{ avatar(p.owner, 'sm', team=true) }}</p>
         </article>
       {% else %}
         <p class="col-empty">None</p>

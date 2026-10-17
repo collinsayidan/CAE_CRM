@@ -1,12 +1,17 @@
-"""Sign-up (a new workspace for a business), sign-in, team management and password changes."""
+"""Sign-up (a new workspace for a business), sign-in, the team and their profiles, and password changes."""
 
+import base64
 import hmac
+import io
 import secrets
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlsplit
 
-from flask import Blueprint, abort, current_app, flash, g, redirect, render_template, request, session, url_for
+from flask import (Blueprint, Response, abort, current_app, flash, g, redirect, render_template, request, session,
+                   url_for)
 from werkzeug.security import check_password_hash, generate_password_hash
 
+import ukfmt
 from db import DEFAULT_MONTHLY_TARGET, get_db
 
 bp = Blueprint("auth", __name__)
@@ -15,6 +20,14 @@ MIN_PASSWORD = 10  # NCSC guidance favours length over complexity rules
 MAX_FAILED = 5
 LOCKOUT = timedelta(minutes=15)
 ROLES = ("admin", "member")
+PROFILE_FIELDS = ("job_title", "department", "phone", "location", "linkedin", "bio")
+MAX_BIO = 500
+MAX_PHOTO_BYTES = 5 * 1024 * 1024
+MAX_PHOTO_PIXELS = 40_000_000  # refuse decompression bombs before decoding
+PHOTO_SIZE = 256
+# Records name their owner (or author) as text, so a renamed team member takes their records along.
+NAMED_COLUMNS = [("companies", "owner"), ("contacts", "owner"), ("deals", "owner"), ("activities", "owner"),
+                 ("projects", "owner"), ("tickets", "owner"), ("engagements", "author")]
 # Checked against when the email is unknown, so a miss takes as long as a wrong password.
 _DUMMY_HASH = generate_password_hash(secrets.token_hex(16))
 
@@ -54,7 +67,7 @@ def load_user():
     user_id = session.get("user_id")
     if user_id is None:
         return None
-    return get_db().execute("SELECT id, email, name, role, workspace_id FROM users WHERE id=?", (user_id,)).fetchone()
+    return get_db().execute("SELECT id, email, name, role, workspace_id, job_title FROM users WHERE id=?", (user_id,)).fetchone()
 
 
 def start_session(user_id):
@@ -66,6 +79,91 @@ def start_session(user_id):
 def admin_required():
     if not g.user or g.user["role"] != "admin":
         abort(403)
+
+
+def process_photo(upload):
+    """An uploaded image as a 256px square WebP (base64), with EXIF data such as GPS location stripped.
+    Raises ValueError with a message for the person when it isn't a usable image."""
+    from PIL import Image, ImageOps, UnidentifiedImageError
+
+    data = upload.read(MAX_PHOTO_BYTES + 1)
+    if len(data) > MAX_PHOTO_BYTES:
+        raise ValueError("That photo is over 5 MB. Choose a smaller one.")
+    try:
+        img = Image.open(io.BytesIO(data))
+        if img.width * img.height > MAX_PHOTO_PIXELS:
+            raise ValueError("That photo is too large. Choose one under 40 megapixels.")
+        img = ImageOps.exif_transpose(img).convert("RGB")
+        img = ImageOps.fit(img, (PHOTO_SIZE, PHOTO_SIZE), Image.Resampling.LANCZOS)
+        out = io.BytesIO()
+        img.save(out, "WEBP", quality=82)
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
+        raise ValueError("That file isn't a photo we can read. Use a JPG, PNG or WebP image.") from None
+    return base64.b64encode(out.getvalue()).decode()
+
+
+def read_profile(form):
+    """Validated profile values from a form, and any errors keyed by field."""
+    errors = {}
+    data = {"name": form.get("name", "").strip()}
+    if not data["name"]:
+        errors["name"] = "Enter a name."
+    for key in ("job_title", "department", "location"):
+        data[key] = form.get(key, "").strip()[:80]
+    data["phone"] = ukfmt.normalise_phone(form.get("phone"))
+    if data["phone"] is None:
+        errors["phone"] = "Enter a UK number, like 0131 496 0000 or +44 7700 900123."
+    linkedin = form.get("linkedin", "").strip()
+    if linkedin:
+        if "://" not in linkedin:
+            linkedin = "https://" + linkedin
+        host = (urlsplit(linkedin).hostname or "").lower()
+        if urlsplit(linkedin).scheme != "https" or not (host == "linkedin.com" or host.endswith(".linkedin.com")):
+            errors["linkedin"] = "Enter a LinkedIn profile link, like linkedin.com/in/your-name."
+    data["linkedin"] = linkedin
+    data["bio"] = form.get("bio", "").strip()
+    if len(data["bio"]) > MAX_BIO:
+        errors["bio"] = f"Keep it to {MAX_BIO} characters. It's {len(data['bio'])} at the moment."
+    return data, errors
+
+
+def save_profile(db, user, form, files):
+    """Update a team member's profile and photo. Returns errors, or {} once saved."""
+    data, errors = read_profile(form)
+    upload = files.get("photo")
+    photo = None
+    if upload and upload.filename:
+        try:
+            photo = process_photo(upload)
+        except ValueError as e:
+            errors["photo"] = str(e)
+    if errors:
+        return errors
+    db.execute(f"UPDATE users SET name=?, {', '.join(f'{k}=?' for k in PROFILE_FIELDS)} WHERE id=?",
+               (data["name"], *(data[k] for k in PROFILE_FIELDS), user["id"]))
+    if photo or form.get("remove_photo") == "on":
+        db.execute("UPDATE users SET photo=?, photo_updated=? WHERE id=?",
+                   (photo, now_utc().strftime("%Y%m%d%H%M%S") if photo else None, user["id"]))
+    old = user["name"]
+    namesake = db.execute("SELECT 1 FROM users WHERE workspace_id=? AND name=? AND id<>?",
+                          (user["workspace_id"], old, user["id"])).fetchone()
+    if data["name"] != old and not namesake:
+        for table, column in NAMED_COLUMNS:
+            db.execute(f"UPDATE {table} SET {column}=? WHERE workspace_id=? AND {column}=?",
+                       (data["name"], user["workspace_id"], old))
+    db.commit()
+    return {}
+
+
+def team_photo(name):
+    """URL of the photo of the team member with this name, or None. For avatars on owned records."""
+    if not g.get("user") or not name:
+        return None
+    if "team_photos" not in g:
+        found = get_db().execute("SELECT id, name, photo_updated FROM users WHERE workspace_id=? AND photo IS NOT NULL",
+                                 (g.user["workspace_id"],)).fetchall()
+        g.team_photos = {r["name"]: url_for("auth.photo", user_id=r["id"], v=r["photo_updated"]) for r in found}
+    return g.team_photos.get(name)
 
 
 def safe_next(target):
@@ -173,15 +271,38 @@ def account():
             db.commit()
             flash("Password changed.", "ok")
             return redirect(url_for("auth.account"))
-    return render_template("auth/account.html", errors=errors), (422 if errors else 200)
+    return _account_page(errors=errors), (422 if errors else 200)
+
+
+def _account_page(**context):
+    me = get_db().execute("SELECT * FROM users WHERE id=?", (g.user["id"],)).fetchone()
+    context.setdefault("errors", {})
+    context.setdefault("profile_errors", {})
+    return render_template("auth/account.html", me=me, profile=context.pop("profile", me), max_bio=MAX_BIO, **context)
+
+
+@bp.post("/account/profile")
+def account_profile():
+    db = get_db()
+    me = db.execute("SELECT * FROM users WHERE id=?", (g.user["id"],)).fetchone()
+    errors = save_profile(db, me, request.form, request.files)
+    if errors:
+        return _account_page(profile_errors=errors, profile=request.form), 422
+    flash("Profile saved.", "ok")
+    return redirect(url_for("auth.account"))
+
+
+TEAM_COLUMNS = ("id, name, email, role, locked_until, created_at, job_title, department, phone, location, linkedin, "
+                "bio, photo_updated")
 
 
 @bp.route("/team", methods=["GET", "POST"])
 def team():
-    admin_required()
+    """Everyone can see who's on the team; only admins can add people."""
     db = get_db()
     errors, form = {}, {}
     if request.method == "POST":
+        admin_required()
         form = request.form
         email = form.get("email", "").strip().lower()
         if not form.get("name", "").strip():
@@ -194,20 +315,81 @@ def team():
         if problem:
             errors["password"] = problem
         if not errors:
-            create_user(db, g.user["workspace_id"], form["name"], email, form["password"],
-                        form.get("role") if form.get("role") in ROLES else "member")
+            user_id = create_user(db, g.user["workspace_id"], form["name"], email, form["password"],
+                                  form.get("role") if form.get("role") in ROLES else "member")
+            job_title = form.get("job_title", "").strip()[:80]
+            if job_title:
+                db.execute("UPDATE users SET job_title=? WHERE id=?", (job_title, user_id))
+                db.commit()
             flash(f"{form['name'].strip()} can now sign in. Share their temporary password with them directly.", "ok")
             return redirect(url_for("auth.team"))
-    users = db.execute("SELECT id, name, email, role, locked_until, created_at FROM users WHERE workspace_id=? ORDER BY name",
+    users = db.execute(f"SELECT {TEAM_COLUMNS} FROM users WHERE workspace_id=? ORDER BY name",
                        (g.user["workspace_id"],)).fetchall()
     return render_template("auth/team.html", users=users, errors=errors, form=form, roles=ROLES,
                            now=now_utc().isoformat()), (422 if errors else 200)
 
 
 def _team_member(user_id):
-    row = get_db().execute("SELECT id FROM users WHERE id=? AND workspace_id=?", (user_id, g.user["workspace_id"])).fetchone()
+    row = get_db().execute("SELECT * FROM users WHERE id=? AND workspace_id=?", (user_id, g.user["workspace_id"])).fetchone()
     if row is None:
         abort(404)
+    return row
+
+
+@bp.get("/team/<int:user_id>")
+def member(user_id):
+    """A team member's profile: who they are, how to reach them, and what they're working on."""
+    from core import OPEN_SQL, rows, scalar, today
+    person = _team_member(user_id)
+    ws_id, name, t = g.user["workspace_id"], person["name"], today()
+    month_start = t.replace(day=1).isoformat()
+    stats = dict(
+        open_deals=scalar(f"SELECT COUNT(*) FROM deals WHERE workspace_id=? AND owner=? AND {OPEN_SQL}", ws_id, name),
+        pipeline=scalar(f"SELECT SUM(value) FROM deals WHERE workspace_id=? AND owner=? AND {OPEN_SQL}", ws_id, name),
+        won_month=scalar("SELECT SUM(value) FROM deals WHERE workspace_id=? AND owner=? AND stage='Won' "
+                         "AND substr(closed_at,1,10) >= ?", ws_id, name, month_start),
+        open_tickets=scalar("SELECT COUNT(*) FROM tickets WHERE workspace_id=? AND owner=? AND status <> 'Closed'",
+                            ws_id, name),
+        overdue_tasks=scalar("SELECT COUNT(*) FROM activities WHERE workspace_id=? AND owner=? AND done=0 "
+                             "AND substr(due_at,1,10) < ?", ws_id, name, t.isoformat()),
+    )
+    deals = rows(f"SELECT d.id, d.title, d.value, d.stage, d.close_date, c.name AS company FROM deals d "
+                 f"JOIN companies c ON c.id=d.company_id WHERE d.workspace_id=? AND d.owner=? AND d.{OPEN_SQL} "
+                 f"ORDER BY d.close_date LIMIT 6", ws_id, name)
+    tasks = rows("SELECT id, subject, kind, due_at FROM activities WHERE workspace_id=? AND owner=? AND done=0 "
+                 "ORDER BY due_at LIMIT 6", ws_id, name)
+    return render_template("auth/member.html", person=person, stats=stats, deals=deals, tasks=tasks, roles=ROLES,
+                           locked=bool(person["locked_until"] and person["locked_until"] > now_utc().isoformat()))
+
+
+@bp.route("/team/<int:user_id>/edit", methods=["GET", "POST"])
+def edit_member(user_id):
+    """Admins can fill in anyone's profile, for example to set job titles for the whole team."""
+    admin_required()
+    person = _team_member(user_id)
+    if user_id == g.user["id"]:
+        return redirect(url_for("auth.account"))
+    errors, form = {}, person
+    if request.method == "POST":
+        errors = save_profile(get_db(), person, request.form, request.files)
+        if not errors:
+            flash("Profile saved.", "ok")
+            return redirect(url_for("auth.member", user_id=user_id))
+        form = request.form
+    return render_template("auth/member_edit.html", person=person, profile=form, profile_errors=errors,
+                           max_bio=MAX_BIO), (422 if errors else 200)
+
+
+@bp.get("/team/<int:user_id>/photo")
+def photo(user_id):
+    row = get_db().execute("SELECT photo, photo_updated FROM users WHERE id=? AND workspace_id=? AND photo IS NOT NULL",
+                           (user_id, g.user["workspace_id"])).fetchone()
+    if row is None:
+        abort(404)
+    resp = Response(base64.b64decode(row["photo"]), mimetype="image/webp")
+    # The URL carries ?v=<when it changed>, so a cached copy is never stale.
+    resp.headers["Cache-Control"] = "private, max-age=31536000, immutable"
+    return resp
 
 
 @bp.post("/team/<int:user_id>/password")
@@ -217,13 +399,13 @@ def reset_password(user_id):
     problem = password_problem(request.form.get("password", ""))
     if problem:
         flash(f"Password not reset. {problem}", "error")
-        return redirect(url_for("auth.team"))
+        return redirect(url_for("auth.member", user_id=user_id))
     db = get_db()
     db.execute("UPDATE users SET password_hash=?, failed_logins=0, locked_until=NULL WHERE id=?",
                (generate_password_hash(request.form["password"]), user_id))
     db.commit()
     flash("Password reset and account unlocked.", "ok")
-    return redirect(url_for("auth.team"))
+    return redirect(url_for("auth.member", user_id=user_id))
 
 
 @bp.post("/team/<int:user_id>/role")
@@ -233,12 +415,12 @@ def change_role(user_id):
     role = request.form.get("role")
     if role not in ROLES or user_id == g.user["id"]:
         flash("You can't change your own role.", "error")
-        return redirect(url_for("auth.team"))
+        return redirect(url_for("auth.member", user_id=user_id))
     db = get_db()
     db.execute("UPDATE users SET role=? WHERE id=?", (role, user_id))
     db.commit()
     flash("Role updated.", "ok")
-    return redirect(url_for("auth.team"))
+    return redirect(url_for("auth.member", user_id=user_id))
 
 
 @bp.post("/team/<int:user_id>/remove")

@@ -47,7 +47,7 @@
             <div class="card-foot">
               <span class="card-value">{{ d.value | money }}</span>
               <span class="card-date" title="Expected close {{ d.close_date | uk_date }}">{{ d.close_date | uk_date_short }}</span>
-              {{ avatar(d.owner, 'sm') }}
+              {{ avatar(d.owner, 'sm', team=true) }}
             </div>
           </article>
         {% endfor %}

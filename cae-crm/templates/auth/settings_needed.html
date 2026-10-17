@@ -6,7 +6,7 @@
 <ul class="settings-list">
   {% if 'DATABASE_URL' in missing %}
     <li><b>DATABASE_URL</b>
-      <span>Where customers, deals and accounts are stored. On Vercel, open Storage, create a Neon Postgres database and connect it to this project. That adds DATABASE_URL for you.</span></li>
+      <span>Where customers, deals and accounts are stored. Use your Supabase Transaction pooler connection string (port 6543), with your database password in place of [YOUR-PASSWORD]. In Supabase, click Connect to copy it.</span></li>
   {% endif %}
   {% if 'CAE_SECRET_KEY' in missing %}
     <li><b>CAE_SECRET_KEY</b>

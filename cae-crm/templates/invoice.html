@@ -38,6 +38,7 @@
     <p><b>{{ company.name }}</b>{% if company.address %}<br>{{ company.address }}{% endif %}{% if company.city %}<br>{{ company.city }}{% endif %}<br>{{ company.postcode }}</p>
     {% if company.vat_no %}<p class="muted">VAT number {{ company.vat_no }}</p>{% endif %}
   </div>
+  <div class="invoice-lines-wrap">
   <table class="invoice-lines">
     <thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">VAT rate</th><th class="num">Net</th></tr></thead>
     <tbody>
@@ -57,6 +58,7 @@
       <tr class="total"><td colspan="4" class="num">Amount due in GBP</td><td class="num">{{ pennies(i.net + i.vat) }}</td></tr>
     </tfoot>
   </table>
+  </div>
   {% if not business.vat_registered and not i.vat %}<p class="muted small">{{ business.legal_name or business.name }} is not registered for VAT, so no VAT is charged.</p>{% endif %}
   <p class="muted small">Pay by bank transfer by {{ i.due_date | uk_date }}, quoting {{ i.number }}. Late payments may attract interest under the Late Payment of Commercial Debts (Interest) Act 1998.</p>
 </article>

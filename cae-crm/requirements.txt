@@ -1,3 +1,4 @@
 Flask>=3.0
 psycopg[binary]>=3.2
 tzdata
+Pillow>=11.0

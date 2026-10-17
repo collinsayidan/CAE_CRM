@@ -53,7 +53,7 @@
               {% else %}
                 <span class="sla sla-{{ t.sla_resolve[0] }}">{{ 'Within SLA' if t.sla_resolve[0] == 'met' else 'Missed SLA' }}</span>
               {% endif %}
-              {% if t.owner %}{{ avatar(t.owner, 'sm') }}{% endif %}
+              {% if t.owner %}{{ avatar(t.owner, 'sm', team=true) }}{% endif %}
             </div>
           </article>
         {% endfor %}

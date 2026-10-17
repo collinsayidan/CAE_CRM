@@ -1,0 +1,36 @@
+{% from "_macros.html" import icon, avatar, field %}
+
+{# Profile details and photo for a team member: used on Account (yourself) and by admins for anyone. #}
+{% macro profile_form(action, person, profile, errors, max_bio, button='Save profile') -%}
+<form method="post" action="{{ action }}" enctype="multipart/form-data" class="profile-form" novalidate>
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  {% if errors %}<p class="form-alert" role="alert">Profile not saved. Check the highlighted fields.</p>{% endif %}
+  <div class="photo-field">
+    <span class="photo-preview" data-photo-preview>{{ avatar(person.name, 'xxl', team=true) }}</span>
+    <div class="photo-controls">
+      <label class="btn ghost sm">{{ icon('upload') }} {{ 'Change photo' if person.photo_updated else 'Add a photo' }}
+        <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" class="sr-only" data-photo-input></label>
+      {% if person.photo_updated %}
+        <label class="check small photo-remove"><input type="checkbox" name="remove_photo"> Remove photo</label>
+      {% endif %}
+      <p class="field-hint">JPG, PNG or WebP, up to 5 MB. We crop it to a square and remove location data.</p>
+      {% if errors.get('photo') %}<p class="field-error">{{ errors.photo }}</p>{% endif %}
+    </div>
+  </div>
+  <div class="form-grid">
+    {{ field('Full name', 'name', profile.name, errors=errors, required=true, extra='autocomplete=name maxlength=80') }}
+    {{ field('Job title', 'job_title', profile.job_title, errors=errors, placeholder='Account manager', extra='maxlength=80') }}
+    {{ field('Team or department', 'department', profile.department, errors=errors, placeholder='Sales', extra='maxlength=80') }}
+    {{ field('Phone', 'phone', profile.phone, type='tel', errors=errors, placeholder='07700 900123', extra='autocomplete=tel') }}
+    {{ field('Location', 'location', profile.location, errors=errors, placeholder='Manchester', extra='maxlength=80') }}
+    {{ field('LinkedIn', 'linkedin', profile.linkedin, errors=errors, placeholder='linkedin.com/in/your-name', extra='inputmode=url') }}
+    <label class="field span-2">
+      <span class="field-label">About <span class="optional">(optional)</span></span>
+      <textarea name="bio" rows="4" maxlength="{{ max_bio }}" placeholder="What you look after, and how colleagues and customers can help you." {% if errors.get('bio') %}aria-invalid="true"{% endif %}>{{ profile.bio or '' }}</textarea>
+      {% if errors.get('bio') %}<span class="field-error">{{ errors.bio }}</span>
+      {% else %}<span class="field-hint">Up to {{ max_bio }} characters. Your team sees this on your profile.</span>{% endif %}
+    </label>
+  </div>
+  <div><button class="btn primary">{{ button }}</button></div>
+</form>
+{%- endmacro %}

@@ -60,7 +60,15 @@ CREATE TABLE IF NOT EXISTS users (
     role TEXT NOT NULL DEFAULT 'member',
     failed_logins INTEGER NOT NULL DEFAULT 0,
     locked_until TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    job_title TEXT,
+    department TEXT,
+    phone TEXT,
+    location TEXT,
+    linkedin TEXT,
+    bio TEXT,
+    photo TEXT,
+    photo_updated TEXT
 );
 CREATE TABLE IF NOT EXISTS companies (
     id {pk},
@@ -237,7 +245,8 @@ CREATE TABLE IF NOT EXISTS imports (
 
 # Columns added after the first release. Databases created by an earlier version gain them on start-up.
 ADDED_COLUMNS = {
-    "users": ["workspace_id INTEGER"],
+    "users": ["workspace_id INTEGER", "job_title TEXT", "department TEXT", "phone TEXT", "location TEXT",
+              "linkedin TEXT", "bio TEXT", "photo TEXT", "photo_updated TEXT"],
     "companies": ["workspace_id INTEGER", "website TEXT", "phone TEXT", "owner TEXT"],
     "contacts": ["workspace_id INTEGER", "lifecycle_stage TEXT", "lead_status TEXT", "owner TEXT"],
     "deals": ["workspace_id INTEGER", "contact_id INTEGER"],

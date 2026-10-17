@@ -40,7 +40,9 @@ Vercel finds the app through `wsgi.py`, which `pyproject.toml` names in `[tool.v
 
 ## What's in it
 
-The sidebar groups pages the way a business works: **CRM** (Contacts, Companies, Deals, Tickets), **Sales** (Tasks, Products), **Finance** (Invoices), **Delivery** (Projects) and **Insight** (Reports). Admins also get **Settings**, **Team** and **Import**.
+The sidebar groups pages the way a business works: **CRM** (Contacts, Companies, Deals, Tickets), **Sales** (Tasks, Products), **Finance** (Invoices), **Delivery** (Projects), **Insight** (Reports) and **Workspace** (Team). Admins also get **Settings** and **Import**.
+
+**Team and profiles.** Everyone has a profile with a photo, job title, team, phone, location, LinkedIn and a short bio, edited under **Profile and password**. Photos are cropped to a 256px square WebP, stripped of location data and stored in the database. The Team page lists everyone; a profile shows that person's open deals, tickets and tasks. Admins can edit anyone's profile, change roles, reset passwords and remove people from the profile page.
 
 | Page | What it does |
 |---|---|

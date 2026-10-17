@@ -13,7 +13,7 @@ UK_TZ = ZoneInfo("Europe/London")
 OPEN_SQL = f"stage IN ({','.join(repr(s) for s in OPEN_STAGES)})"
 # Tables whose rows carry a workspace_id, so a form can only point at the caller's own records.
 OWNED_TABLES = {"companies", "contacts", "deals", "tickets", "products", "invoices", "activities", "projects",
-                "engagements", "line_items", "saved_views", "imports", "users"}
+                "engagements", "line_items", "saved_views", "imports", "users", "quotes", "web_forms"}
 
 
 def today():
@@ -29,7 +29,9 @@ def now():
 
 
 def ws():
-    return g.user["workspace_id"]
+    """The signed-in user's workspace, or on a public page (a web form, a quote link) the workspace it belongs to."""
+    # A public page wins even when a signed-in user (perhaps from another business) opens it.
+    return g.public_workspace if g.get("public_workspace") else g.user["workspace_id"]
 
 
 def workspace():

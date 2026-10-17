@@ -60,10 +60,16 @@
       <header class="panel-head">
         <div><h2>Line items</h2><p class="panel-note">{% if lines %}The deal's amount is the total of its lines, excluding VAT.{% else %}Add products to build the deal's value.{% endif %}</p></div>
         {% if lines or d.value %}
-          <form method="post" action="{{ url_for('invoice_deal', deal_id=d.id) }}" data-confirm="Raise an invoice for {{ pennies(totals.gross if lines else d.value) }}{{ ' including VAT' if lines }}?">
-            <input type="hidden" name="csrf" value="{{ csrf_token }}">
-            <button class="btn primary sm">{{ icon('pound') }} Invoice this deal</button>
-          </form>
+          <div class="head-buttons">
+            <form method="post" action="{{ url_for('quote_deal', deal_id=d.id) }}">
+              <input type="hidden" name="csrf" value="{{ csrf_token }}">
+              <button class="btn ghost sm">{{ icon('note') }} Create quote</button>
+            </form>
+            <form method="post" action="{{ url_for('invoice_deal', deal_id=d.id) }}" data-confirm="Raise an invoice for {{ pennies(totals.gross if lines else d.value) }}{{ ' including VAT' if lines }}?">
+              <input type="hidden" name="csrf" value="{{ csrf_token }}">
+              <button class="btn primary sm">{{ icon('pound') }} Invoice this deal</button>
+            </form>
+          </div>
         {% endif %}
       </header>
       {% if lines %}
@@ -140,6 +146,13 @@
         <a class="assoc-item" href="{{ url_for('contact', contact_id=contact.id) }}">{{ avatar(contact.first_name ~ ' ' ~ contact.last_name, 'sm') }}
           <span><b>{{ contact.first_name }} {{ contact.last_name }}</b><small>{{ contact.role or contact.email or '' }}</small></span></a>
       {% else %}<p class="muted small">No contact yet. Edit the deal to choose one.</p>{% endif %}
+    {% endcall %}
+    {% set QCHIP = {'Draft': '', 'Sent': 'warn', 'Accepted': 'ok', 'Declined': 'bad', 'Expired': 'bad'} %}
+    {% call assoc('Quotes', quotes | length) %}
+      {% for q, state in quotes %}
+        <a class="assoc-item" href="{{ url_for('quote', quote_id=q.id) }}"><span><b>{{ q.number }} <span class="chip sm {{ QCHIP[state] }}">{{ state }}</span></b>
+          <small>{{ pennies(q.net + q.vat) }}, valid until {{ q.expiry_date | uk_date }}</small></span></a>
+      {% else %}<p class="muted small">No quotes yet. Use <b>Create quote</b> above.</p>{% endfor %}
     {% endcall %}
     {% call assoc('Invoices', invoices | length) %}
       {% for i in invoices %}

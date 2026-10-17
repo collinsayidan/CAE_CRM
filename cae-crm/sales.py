@@ -36,6 +36,27 @@ def parse_line(f):
     return name, int(qty), price, int(discount), int(rate)
 
 
+def set_stage(deal, stage, reason=None):
+    """Move a deal to a stage, with what follows from it (a delivery project when won). Returns a message. No commit."""
+    db = get_db()
+    closed = today().isoformat() if stage in ("Won", "Lost") else None
+    db.execute("UPDATE deals SET stage=?, probability=?, closed_at=? WHERE id=? AND workspace_id=?",
+               (stage, STAGE_PROBABILITY[stage], closed, deal["id"], ws()))
+    links = dict(deal_id=deal["id"], company_id=deal["company_id"], contact_id=deal["contact_id"])
+    if stage == "Won":
+        db.insert("projects", workspace_id=ws(), company_id=deal["company_id"], deal_id=deal["id"],
+                  name=f"Deliver: {deal['title']}", owner=deal["owner"], status="On track", progress=0,
+                  due_date=(today() + timedelta(days=60)).isoformat())
+        log_event("Deal won", reason or f"{money(deal['value'])}. Delivery project created.", **links)
+        advance_lifecycle(deal["contact_id"], "Customer", f"Won the deal {deal['title']}")
+        return f"Won: {deal['title']}, {money(deal['value'])}. Delivery project created."
+    if stage == "Lost":
+        log_event("Deal lost", reason, **links)
+        return f"Marked as lost: {deal['title']}."
+    log_event(f"Stage changed to {stage}", f"Was {deal['stage']}", **links)
+    return f"Moved to {stage}: {deal['title']}."
+
+
 def register(app):
 
     # --- Deals ----------------------------------------------------------------
@@ -84,29 +105,12 @@ def register(app):
 
     @app.post("/deals/<int:deal_id>/stage")
     def move_deal(deal_id):
-        db = get_db()
         deal = get_or_404("deals", deal_id)
         stage = request.form.get("stage")
         if stage not in STAGE_PROBABILITY:
             abort(400)
-        closed = today().isoformat() if stage in ("Won", "Lost") else None
-        db.execute("UPDATE deals SET stage=?, probability=?, closed_at=? WHERE id=? AND workspace_id=?",
-                   (stage, STAGE_PROBABILITY[stage], closed, deal_id, ws()))
-        links = dict(deal_id=deal_id, company_id=deal["company_id"], contact_id=deal["contact_id"])
-        if stage == "Won":
-            db.insert("projects", workspace_id=ws(), company_id=deal["company_id"], deal_id=deal_id,
-                      name=f"Deliver: {deal['title']}", owner=deal["owner"], status="On track", progress=0,
-                      due_date=(today() + timedelta(days=60)).isoformat())
-            log_event("Deal won", f"{money(deal['value'])}. Delivery project created.", **links)
-            advance_lifecycle(deal["contact_id"], "Customer", f"Won the deal {deal['title']}")
-            message = f"Won: {deal['title']}, {money(deal['value'])}. Delivery project created."
-        elif stage == "Lost":
-            log_event("Deal lost", **links)
-            message = f"Marked as lost: {deal['title']}."
-        else:
-            log_event(f"Stage changed to {stage}", f"Was {deal['stage']}", **links)
-            message = f"Moved to {stage}: {deal['title']}."
-        db.commit()
+        message = set_stage(deal, stage)
+        get_db().commit()
         if wants_json():
             return jsonify(ok=True, stage=stage, probability=STAGE_PROBABILITY[stage], message=message)
         flash(message, "ok")

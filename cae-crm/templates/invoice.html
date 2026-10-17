@@ -44,8 +44,8 @@
     <tbody>
       {% for li in lines %}
         <tr><td>{{ li.description }}{% if li.discount_pct %}<small>{{ li.discount_pct }}% discount</small>{% endif %}</td>
-          <td class="num">{{ li.quantity }}</td><td class="num">{{ pennies(li.unit_price) }}</td>
-          <td class="num">{{ li.vat_rate }}%</td><td class="num">{{ pennies(li.net) }}</td></tr>
+          <td class="num" data-label="Qty">{{ li.quantity }}</td><td class="num" data-label="Unit price">{{ pennies(li.unit_price) }}</td>
+          <td class="num" data-label="VAT rate">{{ li.vat_rate }}%</td><td class="num" data-label="Net">{{ pennies(li.net) }}</td></tr>
       {% endfor %}
     </tbody>
     <tfoot>

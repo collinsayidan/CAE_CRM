@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, field, select %}
+{% set admin = current_user.role == 'admin' %}
+{% set origin = public_url.split('/f/')[0] %}
+{% block title %}{{ form.name }}{% endblock %}
+{% block crumbs %}<nav class="crumbs" aria-label="Breadcrumb"><a href="{{ url_for('forms') }}">Forms</a> <span aria-hidden="true">/</span> <span>{{ form.name }}</span></nav>{% endblock %}
+{% block heading %}{{ form.name }} {% if form.active %}<span class="chip ok heading-chip">Live</span>{% else %}<span class="chip heading-chip">Paused</span>{% endif %}{% endblock %}
+{% block subtitle %}<p class="subtitle">{{ total }} {{ 'submission' if total == 1 else 'submissions' }} so far</p>{% endblock %}
+{% block actions %}<a class="btn ghost" href="{{ public_url }}" target="_blank" rel="noopener">{{ icon('external') }} Open the form</a>{% endblock %}
+
+{% block content %}
+<div class="quote-layout">
+  <div class="quote-main">
+    <section class="panel">
+      <header class="panel-head"><div><h2>Form settings</h2><p class="panel-note">{% if admin %}Changes show on your website as soon as you save.{% else %}Only admins can change this form.{% endif %}</p></div></header>
+      {% if errors %}<p class="form-alert" role="alert">Form not saved. Check the highlighted fields.</p>{% endif %}
+      <form method="post" action="{{ url_for('web_form', form_id=form.id) }}" novalidate>
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <fieldset class="plain" {{ 'disabled' if not admin }}>
+          <div class="form-grid">
+            {{ field('Form name (only your team sees this)', 'name', values.name, errors=errors, required=true, extra='maxlength=80') }}
+            {{ field('Heading', 'heading', values.heading, errors=errors, required=true, extra='maxlength=120') }}
+            {{ field('Button text', 'button_label', values.button_label, errors=errors, required=true, extra='maxlength=40') }}
+            <label class="field span-2"><span class="field-label">Introduction <span class="optional">(optional)</span></span>
+              <textarea name="intro" rows="2" maxlength="600">{{ values.intro or '' }}</textarea></label>
+          </div>
+
+          <h3 class="form-section">Fields</h3>
+          <p class="muted small">Every form asks for first name, last name and email.</p>
+          <div class="field-modes">
+            {% for key, label in fields %}
+              <div class="field-mode">
+                <span>{{ label }}</span>
+                <div class="segmented compact" role="radiogroup" aria-label="{{ label }}">
+                  {% for m in field_modes %}
+                    <label><input type="radio" name="field_{{ key }}" value="{{ m }}" {{ 'checked' if modes[key] == m }}><span>{{ {'off': 'Off', 'optional': 'Optional', 'required': 'Required'}[m] }}</span></label>
+                  {% endfor %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+
+          <h3 class="form-section">What happens next</h3>
+          <div class="form-grid">
+            {{ select('New contacts are owned by', 'owner', owners, values.owner) }}
+            {{ select('Lifecycle stage for new contacts', 'lifecycle_stage', stages, values.lifecycle_stage) }}
+            <label class="field span-2"><span class="field-label">Thank-you message</span>
+              <textarea name="thank_you" rows="2" maxlength="600">{{ values.thank_you or '' }}</textarea></label>
+          </div>
+          <label class="check"><input type="checkbox" name="follow_up_task" {{ 'checked' if values.follow_up_task in (1, 'on') }}>
+            <span>Create a task for the owner to reply by 10:00 the next working day</span></label>
+
+          <h3 class="form-section">Privacy and consent</h3>
+          <label class="check"><input type="checkbox" name="ask_consent" {{ 'checked' if values.ask_consent in (1, 'on') }}>
+            <span>Ask for marketing consent with an unticked box (PECR requires opt-in)</span></label>
+          <div class="form-grid">
+            <label class="field span-2"><span class="field-label">Consent wording</span>
+              <input name="consent_text" value="{{ values.consent_text or '' }}" maxlength="300"><span class="field-hint">Saved with each person's consent as evidence.</span></label>
+            <div class="span-2">{{ field('Privacy notice link', 'privacy_url', values.privacy_url, errors=errors, placeholder='https://www.example.co.uk/privacy', hint='Shown under the form. Strongly recommended under UK GDPR.') }}</div>
+          </div>
+
+          <label class="check"><input type="checkbox" name="active" {{ 'checked' if values.active in (1, 'on') }}><span>Form is live and taking submissions</span></label>
+          {% if admin %}<div class="form-footer-row"><button class="btn primary">Save form</button></div>{% endif %}
+        </fieldset>
+      </form>
+    </section>
+
+    <section class="panel">
+      <header class="panel-head"><h2>Latest submissions</h2></header>
+      <ul class="profile-list">
+        {% for s, d in submissions %}
+          <li>
+            {% if s.contact_id %}<a href="{{ url_for('contact', contact_id=s.contact_id) }}">{% else %}<span>{% endif %}
+              <b>{{ d.first_name }} {{ d.last_name }}</b>
+              <small>{{ s.created_at | uk_datetime }}{% if d.company %} · {{ d.company }}{% endif %}{% if d.marketing_consent %} · opted in to marketing{% endif %}</small>
+              {% if d.message %}<small class="submission-message">{{ d.message | truncate(160) }}</small>{% endif %}
+            {% if s.contact_id %}</a>{% else %}</span>{% endif %}
+          </li>
+        {% else %}
+          <li class="empty-line">Nothing yet. Share the link or embed the form to start collecting enquiries.</li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+
+  <aside class="quote-side">
+    <section class="panel">
+      <header class="panel-head"><h2>Share a link</h2></header>
+      <p class="muted small">Use it in emails, social posts or a QR code.</p>
+      <div class="copy-field">
+        <input id="form-link" value="{{ public_url }}" readonly aria-label="Link to the form">
+        <button type="button" class="btn ghost sm" data-copy="#form-link">Copy</button>
+      </div>
+    </section>
+    <section class="panel">
+      <header class="panel-head"><h2>Embed on your website</h2></header>
+      <p class="muted small">Paste this into your website where the form should appear. It resizes itself to fit.</p>
+      <textarea id="embed-code" class="code-box" rows="7" readonly aria-label="Embed code">&lt;iframe src="{{ public_url }}?embed=1" title="{{ form.heading }}" style="width:100%;border:0;min-height:640px" loading="lazy" data-cae-form&gt;&lt;/iframe&gt;
+&lt;script&gt;addEventListener("message",function(e){if(e.origin!=="{{ origin }}"||!e.data||!e.data.caeFormHeight)return;document.querySelectorAll("iframe[data-cae-form]").forEach(function(f){if(f.contentWindow===e.source)f.style.height=e.data.caeFormHeight+"px"})});&lt;/script&gt;</textarea>
+      <button type="button" class="btn ghost sm" data-copy="#embed-code">Copy embed code</button>
+    </section>
+    {% if admin %}
+      <form method="post" action="{{ url_for('delete_form', form_id=form.id) }}" data-confirm="Delete the form {{ form.name }} and its submission history? Contacts it created are kept. Embedded copies will stop working.">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <button class="btn ghost sm danger">{{ icon('trash') }} Delete form</button>
+      </form>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

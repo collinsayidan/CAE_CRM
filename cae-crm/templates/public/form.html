@@ -1,0 +1,58 @@
+{% extends "public/_layout.html" %}
+{% block title %}{{ form.heading }}{% endblock %}
+{% block main_class %}is-narrow{% endblock %}
+
+{% macro input(name, label, required, type='text', autocomplete='', extra='') -%}
+<label class="field">
+  <span class="field-label">{{ label }}{% if not required %} <span class="optional">(optional)</span>{% endif %}</span>
+  <input type="{{ type }}" name="{{ name }}" value="{{ values.get(name, '') }}" {{ 'required' if required }}
+         {% if autocomplete %}autocomplete="{{ autocomplete }}"{% endif %} {{ extra | safe }}
+         {% if errors.get(name) %}aria-invalid="true"{% endif %}>
+  {% if errors.get(name) %}<span class="field-error">{{ errors[name] }}</span>{% endif %}
+</label>
+{%- endmacro %}
+
+{% block content %}
+<section class="panel public-form-card">
+  {% if closed %}
+    <h1>{{ form.heading }}</h1>
+    <p class="muted">This form isn't taking new messages at the moment. Please contact {{ business.name }} another way.</p>
+  {% elif done %}
+    <div class="public-done" role="status">
+      <span class="done-tick" aria-hidden="true">✓</span>
+      <h1>Thank you</h1>
+      <p>{{ form.thank_you }}</p>
+    </div>
+  {% else %}
+    <h1>{{ form.heading }}</h1>
+    {% if form.intro %}<p class="muted public-intro">{{ form.intro }}</p>{% endif %}
+    {% if errors.get('form') %}<p class="form-alert" role="alert">{{ errors.form }}</p>
+    {% elif errors %}<p class="form-alert" role="alert">Please check the highlighted fields.</p>{% endif %}
+    <form method="post" action="{{ url_for('public_form', token=form.token, embed='1' if embed else None) }}" novalidate>
+      <input type="hidden" name="stamp" value="{{ stamp }}">
+      <div class="hp" aria-hidden="true"><label>Leave this empty <input name="website" tabindex="-1" autocomplete="off"></label></div>
+      <div class="form-grid">
+        {{ input('first_name', 'First name', true, autocomplete='given-name', extra='maxlength=60') }}
+        {{ input('last_name', 'Last name', true, autocomplete='family-name', extra='maxlength=60') }}
+        {% if errors.get('name') %}<p class="field-error span-2">{{ errors.name }}</p>{% endif %}
+        <div class="span-2">{{ input('email', 'Email', true, type='email', autocomplete='email', extra='maxlength=200') }}</div>
+        {% if fields.phone != 'off' %}{{ input('phone', 'Phone', fields.phone == 'required', type='tel', autocomplete='tel') }}{% endif %}
+        {% if fields.company != 'off' %}{{ input('company', 'Company', fields.company == 'required', autocomplete='organization', extra='maxlength=120') }}{% endif %}
+        {% if fields.job_title != 'off' %}{{ input('job_title', 'Job title', fields.job_title == 'required', autocomplete='organization-title', extra='maxlength=80') }}{% endif %}
+        {% if fields.message != 'off' %}
+          <label class="field span-2">
+            <span class="field-label">How can we help?{% if fields.message != 'required' %} <span class="optional">(optional)</span>{% endif %}</span>
+            <textarea name="message" rows="5" maxlength="3000" {{ 'required' if fields.message == 'required' }} {% if errors.get('message') %}aria-invalid="true"{% endif %}>{{ values.get('message', '') }}</textarea>
+            {% if errors.get('message') %}<span class="field-error">{{ errors.message }}</span>{% endif %}
+          </label>
+        {% endif %}
+      </div>
+      {% if form.ask_consent %}
+        <label class="check"><input type="checkbox" name="marketing_consent" {{ 'checked' if values.get('marketing_consent') }}><span>{{ form.consent_text }}</span></label>
+      {% endif %}
+      <p class="muted small public-privacy">{{ business.name }} will use your details to reply to you.{% if form.privacy_url %} See our <a href="{{ form.privacy_url }}" target="_blank" rel="noopener">privacy notice</a>.{% endif %}</p>
+      <div class="public-actions"><button class="btn primary">{{ form.button_label }}</button></div>
+    </form>
+  {% endif %}
+</section>
+{% endblock %}

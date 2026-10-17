@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Quotes{% endblock %}
+{% block heading %}Quotes{% endblock %}
+{% block subtitle %}<p class="subtitle">Draft a quote from any deal, share the link, and your customer can accept it online.</p>{% endblock %}
+{% block actions %}<a class="btn ghost" href="{{ url_for('pipeline') }}">{{ icon('pipeline') }} Go to deals</a>{% endblock %}
+
+{% set CHIP = {'Draft': '', 'Sent': 'warn', 'Accepted': 'ok', 'Declined': 'bad', 'Expired': 'bad'} %}
+{% block content %}
+<section class="stats" aria-label="Quote figures">
+  <div class="stat"><p class="stat-label">Awaiting a decision</p><p class="stat-value">{{ counts.Sent }}</p>
+    <p class="stat-note">{{ open_value | money }} excluding VAT</p></div>
+  <div class="stat"><p class="stat-label">Accepted</p><p class="stat-value">{{ counts.Accepted }}</p></div>
+  <div class="stat"><p class="stat-label">Declined or expired</p><p class="stat-value">{{ counts.Declined + counts.Expired }}</p></div>
+  <div class="stat"><p class="stat-label">Drafts</p><p class="stat-value">{{ counts.Draft }}</p></div>
+</section>
+
+<section class="panel flush">
+  <header class="panel-head pad">
+    <h2>All quotes</h2>
+    <nav class="segmented" aria-label="Show quotes">
+      <a href="{{ url_for('quotes') }}" {% if not status %}aria-current="page"{% endif %}>All</a>
+      {% for s in statuses %}<a href="{{ url_for('quotes', status=s) }}" {% if status == s %}aria-current="page"{% endif %}>{{ s }}</a>{% endfor %}
+    </nav>
+  </header>
+  <div class="table-wrap">
+    <table class="records">
+      <thead><tr><th>Quote</th><th>Customer</th><th>Deal</th><th>Valid until</th><th class="num">Total</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for q, state in rows %}
+          <tr>
+            <td><a class="row-link" href="{{ url_for('quote', quote_id=q.id) }}"><span><b>{{ q.number }}</b><small>{{ q.title }}</small></span></a></td>
+            <td>{{ q.company }}</td>
+            <td>{% if q.deal_id %}<a href="{{ url_for('deal', deal_id=q.deal_id) }}">{{ q.deal }}</a>{% endif %}</td>
+            <td>{{ q.expiry_date | uk_date }}</td>
+            <td class="num"><b>{{ pennies(q.net + q.vat) }}</b></td>
+            <td><span class="chip {{ CHIP[state] }}">{{ state }}</span>{% if state == 'Sent' and q.viewed_at %} <small>Opened</small>{% endif %}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6" class="empty-line">{% if status %}No {{ status | lower }} quotes.{% else %}No quotes yet. Open a deal and choose <b>Create quote</b>.{% endif %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, field %}
+{% from "_quote_doc.html" import quote_doc with context %}
+{% set CHIP = {'Draft': '', 'Sent': 'warn', 'Accepted': 'ok', 'Declined': 'bad', 'Expired': 'bad'} %}
+{% block title %}Quote {{ q.number }}{% endblock %}
+{% block crumbs %}<nav class="crumbs" aria-label="Breadcrumb"><a href="{{ url_for('quotes') }}">Quotes</a> <span aria-hidden="true">/</span> <span>{{ q.number }}</span></nav>{% endblock %}
+{% block heading %}Quote {{ q.number }} <span class="chip {{ CHIP[state] }} heading-chip">{{ state }}</span>{% endblock %}
+{% block subtitle %}<p class="subtitle">For {{ company.name }}{% if deal %}, from the deal <a class="text-link" href="{{ url_for('deal', deal_id=deal.id) }}">{{ deal.title }}</a>{% endif %}</p>{% endblock %}
+{% block actions %}
+  {% if state == 'Draft' %}
+    <form method="post" action="{{ url_for('send_quote', quote_id=q.id) }}" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <button class="btn primary">{{ icon('check') }} Mark as sent</button>
+    </form>
+  {% elif state == 'Accepted' and not invoice %}
+    <form method="post" action="{{ url_for('invoice_quote', quote_id=q.id) }}" class="inline" data-confirm="Raise an invoice for {{ pennies(q.net + q.vat) }} including VAT?">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <button class="btn primary">{{ icon('pound') }} Turn into invoice</button>
+    </form>
+  {% elif invoice %}
+    <a class="btn ghost" href="{{ url_for('invoice', invoice_id=invoice.id) }}">{{ icon('pound') }} Invoice {{ invoice.number }}</a>
+  {% endif %}
+  <button class="btn ghost" data-print>{{ icon('printer') }} Print or PDF</button>
+{% endblock %}
+
+{% block content %}
+<div class="quote-layout">
+  <div class="quote-main">{{ quote_doc(q, state, lines, by_rate, company, business, pennies) }}</div>
+
+  <aside class="quote-side">
+    <section class="panel">
+      <header class="panel-head"><h2>Customer link</h2></header>
+      {% if state == 'Draft' %}
+        <p class="muted small">The link works once you mark the quote as sent. Until then only your team can see it.</p>
+      {% else %}
+        <p class="muted small">Send this private link to {{ contact.first_name if contact else 'your customer' }}. They can read, accept or decline the quote, without signing in.</p>
+      {% endif %}
+      <div class="copy-field">
+        <input id="quote-link" value="{{ public_url }}" readonly aria-label="Link to the quote" {{ 'disabled' if state == 'Draft' }}>
+        <button type="button" class="btn ghost sm" data-copy="#quote-link" {{ 'disabled' if state == 'Draft' }}>Copy</button>
+      </div>
+      {% if state != 'Draft' %}<p class="small"><a class="text-link sm" href="{{ public_url }}" target="_blank" rel="noopener">{{ icon('external') }} Preview what they see</a></p>{% endif %}
+    </section>
+
+    <section class="panel">
+      <header class="panel-head"><h2>Progress</h2></header>
+      <ol class="quote-steps">
+        <li class="done"><b>Drafted</b><small>{{ q.created_at | uk_datetime }} by {{ q.created_by }}</small></li>
+        <li class="{{ 'done' if q.sent_at }}"><b>Sent</b><small>{{ (q.sent_at | uk_datetime) if q.sent_at else 'Not yet' }}</small></li>
+        <li class="{{ 'done' if q.viewed_at }}"><b>Opened by the customer</b><small>{{ (q.viewed_at | uk_datetime) if q.viewed_at else 'Not yet' }}</small></li>
+        <li class="{{ 'done' if state == 'Accepted' else 'bad' if state in ('Declined', 'Expired') }}">
+          <b>{{ 'Accepted' if state == 'Accepted' else 'Declined' if state == 'Declined' else 'Expired' if state == 'Expired' else 'Decision' }}</b>
+          <small>{% if q.decided_at %}{{ q.decided_at | uk_datetime }}{% if q.signer_name %} by {{ q.signer_name }}{% endif %}{% elif state == 'Expired' %}On {{ q.expiry_date | uk_date }}{% else %}Valid until {{ q.expiry_date | uk_date }}{% endif %}</small>
+          {% if q.decline_reason %}<small class="quote-reason">“{{ q.decline_reason }}”</small>{% endif %}
+        </li>
+        {% if state == 'Accepted' %}<li class="{{ 'done' if invoice }}"><b>Invoiced</b><small>{{ invoice.number if invoice else 'Not yet' }}</small></li>{% endif %}
+      </ol>
+      {% if state == 'Accepted' %}
+        <p class="muted small">Signature record: IP address {{ q.signer_ip or 'not recorded' }}. Kept as evidence of acceptance.</p>
+      {% endif %}
+    </section>
+
+    {% if state in ('Draft', 'Sent', 'Expired') %}
+    <section class="panel">
+      <header class="panel-head"><h2>Details</h2></header>
+      <form method="post" action="{{ url_for('edit_quote', quote_id=q.id) }}" class="auth-form">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        {{ field('Title', 'title', q.title, required=true, extra='maxlength=140') }}
+        {{ field('Valid until', 'expiry_date', q.expiry_date, type='date', required=true, hint='Move it on to reopen an expired quote.') }}
+        <label class="field"><span class="field-label">Addressed to</span>
+          <select name="contact_id"><option value="">No contact</option>
+            {% for c in contacts %}<option value="{{ c.id }}" {{ 'selected' if c.id == q.contact_id }}>{{ c.name }}</option>{% endfor %}
+          </select></label>
+        <label class="field"><span class="field-label">Terms</span><textarea name="terms" rows="5" maxlength="4000">{{ q.terms or '' }}</textarea></label>
+        <div><button class="btn ghost">Save details</button></div>
+      </form>
+      <p class="muted small panel-gap">To change prices or items, edit the deal's line items and create a new quote.</p>
+    </section>
+    {% endif %}
+
+    {% if state != 'Accepted' %}
+      <form method="post" action="{{ url_for('delete_quote', quote_id=q.id) }}" data-confirm="Delete quote {{ q.number }}? The customer's link will stop working.">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <button class="btn ghost sm danger">{{ icon('trash') }} Delete quote</button>
+      </form>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

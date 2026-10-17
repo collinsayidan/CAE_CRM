@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% from "auth/_profile_form.html" import profile_form with context %}
+{% block title %}Edit {{ person.name }}{% endblock %}
+{% block crumbs %}<nav class="crumbs" aria-label="Breadcrumb"><a href="{{ url_for('auth.team') }}">Team</a> <span aria-hidden="true">/</span> <a href="{{ url_for('auth.member', user_id=person.id) }}">{{ person.name }}</a> <span aria-hidden="true">/</span> <span>Edit</span></nav>{% endblock %}
+{% block heading %}Edit {{ person.name }}'s profile{% endblock %}
+{% block subtitle %}<p class="subtitle">{{ person.email }}. They can also change this themselves.</p>{% endblock %}
+
+{% block content %}
+<section class="panel narrow-wide">
+  {{ profile_form(url_for('auth.edit_member', user_id=person.id), person, profile, profile_errors, max_bio) }}
+</section>
+{% endblock %}

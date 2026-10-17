@@ -33,10 +33,12 @@ NAV = [
     ("Finance", [("invoices", "Invoices", "pound")]),
     ("Delivery", [("projects", "Projects", "flag")]),
     ("Insight", [("reports", "Reports", "trend")]),
+    ("Workspace", [("auth.team", "Team", "users")]),
 ]
 # Which nav item lights up for pages that aren't in the nav themselves.
 NAV_PARENT = {"contact": "contacts", "company": "companies", "deal": "pipeline", "ticket": "tickets",
-              "invoice": "invoices", "import_map": "imports"}
+              "invoice": "invoices", "import_map": "imports",
+              "auth.member": "auth.team", "auth.edit_member": "auth.team"}
 # Pages anyone can reach without signing in.
 PUBLIC_ENDPOINTS = {"landing", "auth.login", "auth.signup", "auth.setup", "static"}
 
@@ -76,6 +78,7 @@ def create_app(config=None):
                             "initials")
     app.add_template_filter(lambda n: sum(map(ord, n or "")) * 37 % 360, "hue")
     app.add_template_filter(lambda s: (s or "").lower().replace(" ", "-"), "slug")
+    app.add_template_global(auth.team_photo, "team_photo")
     app.add_template_filter(days_until, "days_until")
     app.add_template_filter(relative_time, "relative_time")
     app.add_template_filter(lambda args, page: urlencode({**args, "page": page}), "pager_query")

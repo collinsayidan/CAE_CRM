@@ -1,4 +1,4 @@
-{% from "_macros.html" import icon %}
+{% from "_macros.html" import icon, avatar %}
 <!doctype html>
 <html lang="en-GB">
 <head>
@@ -38,16 +38,15 @@
       {% if current_user.role == 'admin' %}
         <nav class="admin-links" aria-label="Administration">
           <a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}aria-current="page"{% endif %}>{{ icon('cog') }}<span>Settings</span></a>
-          <a href="{{ url_for('auth.team') }}" {% if request.endpoint == 'auth.team' %}aria-current="page"{% endif %}>{{ icon('users') }}<span>Team</span></a>
           <a href="{{ url_for('imports') }}" {% if request.endpoint in ('imports', 'import_map') %}aria-current="page"{% endif %}>{{ icon('upload') }}<span>Import</span></a>
         </nav>
       {% endif %}
-      <div class="me">
-        <span class="avatar" style="--h: {{ current_user.name | hue }}" aria-hidden="true">{{ current_user.name | initials }}</span>
-        <div><p class="me-name">{{ current_user.name }}</p><p class="me-role">{{ current_user.role | capitalize }}</p></div>
-      </div>
+      <a class="me" href="{{ url_for('auth.member', user_id=current_user.id) }}" title="Your profile">
+        {{ avatar(current_user.name, team=true) }}
+        <div><p class="me-name">{{ current_user.name }}</p><p class="me-role">{{ current_user.job_title or (current_user.role | capitalize) }}</p></div>
+      </a>
       <nav class="me-links" aria-label="Your account">
-        <a href="{{ url_for('auth.account') }}" {% if request.endpoint == 'auth.account' %}aria-current="page"{% endif %}>Account</a>
+        <a href="{{ url_for('auth.account') }}" {% if request.endpoint == 'auth.account' %}aria-current="page"{% endif %}>Profile and password</a>
         <form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button>Sign out</button></form>
       </nav>
     </div>

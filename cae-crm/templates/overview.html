@@ -151,7 +151,7 @@
           {{ stage_chip(d.stage) }}
           <span class="deal-when {{ 'soon' if d.close_date <= soon_cutoff }}">Closes {{ d.close_date | days_until }}</span>
           <span class="deal-value">{{ d.value | money }}</span>
-          {{ avatar(d.owner, 'sm') }}
+          {{ avatar(d.owner, 'sm', team=true) }}
         </li>
       {% else %}
         <li class="empty-line">No deals are due to close in the next 30 days.</li>

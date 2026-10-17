@@ -40,8 +40,11 @@
 </svg>
 {%- endmacro %}
 
-{% macro avatar(name, size='') -%}
-<span class="avatar {{ size }}" style="--h: {{ name | hue }}" title="{{ name }}">{{ name | initials }}</span>
+{# team=true for people on the team (record owners), who may have a profile photo. #}
+{% macro avatar(name, size='', team=false) -%}
+{%- set photo = team_photo(name) if team else None -%}
+{%- if photo -%}<img class="avatar {{ size }}" src="{{ photo }}" alt="" title="{{ name }}" loading="lazy" decoding="async">
+{%- else -%}<span class="avatar {{ size }}" style="--h: {{ name | hue }}" title="{{ name }}">{{ name | initials }}</span>{%- endif -%}
 {%- endmacro %}
 
 {% macro logo(name, size='') -%}

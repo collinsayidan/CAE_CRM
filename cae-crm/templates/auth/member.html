@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, avatar, stage_chip with context %}
+{% from "_record.html" import prop with context %}
+{% set me = person.id == current_user.id %}
+{% block title %}{{ person.name }}{% endblock %}
+
+{% block page %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="{{ url_for('auth.team') }}">Team</a> <span aria-hidden="true">/</span> <span>{{ person.name }}</span></nav>
+<div class="profile-layout">
+  <aside class="profile-side">
+    <section class="panel record-card profile-card">
+      {{ avatar(person.name, 'xxl', team=true) }}
+      <h1>{{ person.name }}</h1>
+      <p class="muted">{{ person.job_title or 'Job title not set' }}{% if person.department %} · {{ person.department }}{% endif %}</p>
+      <p class="record-chips">
+        {% if person.role == 'admin' %}<span class="chip ok">Admin</span>{% else %}<span class="chip">Member</span>{% endif %}
+        {% if locked and current_user.role == 'admin' %}<span class="chip bad">Locked</span>{% endif %}
+      </p>
+      <div class="quick-actions">
+        <a href="mailto:{{ person.email }}">{{ icon('mail') }}<span>Email</span></a>
+        {% if person.phone %}<a href="tel:{{ person.phone | replace(' ', '') }}">{{ icon('phone') }}<span>Call</span></a>{% endif %}
+        {% if person.linkedin %}<a href="{{ person.linkedin }}" target="_blank" rel="noopener noreferrer">{{ icon('external') }}<span>LinkedIn</span></a>{% endif %}
+        {% if me %}<a href="{{ url_for('auth.account') }}">{{ icon('edit') }}<span>Edit</span></a>
+        {% elif current_user.role == 'admin' %}<a href="{{ url_for('auth.edit_member', user_id=person.id) }}">{{ icon('edit') }}<span>Edit</span></a>{% endif %}
+      </div>
+    </section>
+
+    <section class="panel">
+      <header class="panel-head"><h2>About</h2></header>
+      {% if person.bio %}<p class="profile-bio">{{ person.bio }}</p>
+      {% elif me %}<p class="muted small profile-bio">Add a few lines about what you look after. <a href="{{ url_for('auth.account') }}">Edit your profile</a></p>{% endif %}
+      <dl class="props">
+        {{ prop('Email', person.email) }}
+        {{ prop('Phone', person.phone) }}
+        {{ prop('Location', person.location) }}
+        {{ prop('Team or department', person.department) }}
+        {{ prop('On CAE CRM since', person.created_at | uk_date) }}
+      </dl>
+    </section>
+
+    {% if current_user.role == 'admin' and not me %}
+    <section class="panel">
+      <header class="panel-head"><h2>Manage access</h2><span class="muted small">Admins only</span></header>
+      <form method="post" action="{{ url_for('auth.change_role', user_id=person.id) }}" class="inline-form">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <label class="field"><span class="field-label">Role</span>
+          <select name="role">{% for r in roles %}<option value="{{ r }}" {{ 'selected' if r == person.role }}>{{ r | capitalize }}</option>{% endfor %}</select></label>
+        <button class="btn ghost sm">Update role</button>
+      </form>
+      <form method="post" action="{{ url_for('auth.reset_password', user_id=person.id) }}" class="inline-form">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <label class="field"><span class="field-label">New temporary password</span>
+          <input type="password" name="password" autocomplete="new-password" minlength="10" required></label>
+        <button class="btn ghost sm">{{ 'Reset and unlock' if locked else 'Reset password' }}</button>
+      </form>
+      <div class="danger-zone">
+        <form method="post" action="{{ url_for('auth.remove_user', user_id=person.id) }}" data-confirm="Remove {{ person.name }}? They won't be able to sign in. Their records keep their name.">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}">
+          <button class="btn ghost sm danger">{{ icon('trash') }} Remove from team</button>
+        </form>
+      </div>
+    </section>
+    {% endif %}
+  </aside>
+
+  <div class="profile-main">
+    <section class="stats profile-stats" aria-label="{{ person.name }}'s numbers">
+      <div class="stat"><p class="stat-label">Open deals</p><p class="stat-value">{{ stats.open_deals }}</p><p class="stat-note">{{ stats.pipeline | money }} in pipeline</p></div>
+      <div class="stat"><p class="stat-label">Won this month</p><p class="stat-value">{{ stats.won_month | money }}</p></div>
+      <div class="stat"><p class="stat-label">Open tickets</p><p class="stat-value">{{ stats.open_tickets }}</p></div>
+      <div class="stat"><p class="stat-label">Overdue tasks</p><p class="stat-value {{ 'is-bad' if stats.overdue_tasks }}">{{ stats.overdue_tasks }}</p></div>
+    </section>
+
+    <section class="panel">
+      <header class="panel-head"><h2>Open deals</h2><a class="text-link sm" href="{{ url_for('pipeline', owner=person.name) }}">See all</a></header>
+      <ul class="profile-list">
+        {% for d in deals %}
+          <li><a href="{{ url_for('deal', deal_id=d.id) }}"><b>{{ d.title }}</b><small>{{ d.company }} · closes {{ d.close_date | uk_date }}</small></a>
+            <span class="profile-list-end">{{ stage_chip(d.stage) }}<b>{{ d.value | money }}</b></span></li>
+        {% else %}
+          <li class="empty-line">No open deals.</li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="panel">
+      <header class="panel-head"><h2>Tasks to do</h2><a class="text-link sm" href="{{ url_for('tasks') }}">All tasks</a></header>
+      <ul class="profile-list">
+        {% for a in tasks %}
+          <li class="{{ 'late' if a.due_at[:10] < today.isoformat() }}"><span><b>{{ a.subject }}</b><small>{{ a.kind }}, {{ a.due_at | uk_datetime }}</small></span></li>
+        {% else %}
+          <li class="empty-line">Nothing to do. All caught up.</li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+</div>
+{% endblock %}

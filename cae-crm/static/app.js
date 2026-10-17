@@ -610,4 +610,36 @@
       if (e.dataTransfer.files.length) { input.files = e.dataTransfer.files; input.dispatchEvent(new Event("change")); }
     });
   });
+
+  /* Profile photo preview ------------------------------------------------ */
+  $$("[data-photo-input]").forEach(input => {
+    const preview = $("[data-photo-preview]", input.form);
+    input.addEventListener("change", () => {
+      const file = input.files[0];
+      if (!file || !preview || !file.type.startsWith("image/")) return;
+      const img = document.createElement("img");
+      img.className = "avatar xxl"; img.alt = "Your new photo";
+      img.src = URL.createObjectURL(file);
+      preview.replaceChildren(img);
+      const remove = input.form.remove_photo;
+      if (remove) remove.checked = false;
+    });
+  });
+
+  /* Lists become cards on phones ------------------------------------------ */
+  // Each cell is labelled with its column heading, so CSS can show "Owner  Priya Shah" when rows stack.
+  $$("table.records:not(.mapping), table#invoices").forEach(table => {
+    if (!table.tHead) return;
+    const heads = [...table.tHead.rows[0].cells].map(th => th.textContent.trim());
+    table.classList.add("stack-sm");
+    for (const body of table.tBodies) for (const tr of body.rows) {
+      if (tr.cells.length === 1) continue;  // an empty-state row
+      let main = false;
+      [...tr.cells].forEach((td, i) => {
+        td.dataset.label = heads[i] || "";
+        if (!td.textContent.trim() && !td.querySelector("input, img, svg, button, a")) td.dataset.empty = "";
+        if (!main && !td.classList.contains("pick")) { td.classList.add("cell-main"); main = true; }
+      });
+    }
+  });
 })();

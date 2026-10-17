@@ -88,8 +88,12 @@ def test_login_redirects_to_next_but_not_offsite(app, anon):
 
 def test_members_cannot_administer(app, member_client):
     contact = first_id(app, "contacts", app.ws)
-    for path in ("/team", "/settings", "/import", "/export/contacts"):
+    for path in ("/settings", "/import", "/export/contacts"):
         assert member_client.get(path).status_code == 403, path
+    # Everyone can see the team, but only admins can add people.
+    assert member_client.get("/team").status_code == 200
+    assert member_client.post("/team", data={"csrf": member_client.csrf, "name": "Sneaky", "email": "s@example.co.uk",
+                                             "password": "long enough password"}).status_code == 403
     assert member_client.post(f"/contacts/{contact}/erase", data={"csrf": member_client.csrf}).status_code == 403
     assert "Erase" not in member_client.get(f"/contacts/{contact}").get_data(as_text=True)
     # Members still do the everyday work.

@@ -65,7 +65,7 @@
                 <p class="tl-title">{{ a.subject }}</p>
                 <p class="tl-meta">{{ a.kind }}{% if a.contact %} with <a href="{{ url_for('contact', contact_id=a.contact_id) }}">{{ a.contact }}</a>{% endif %}{% if a.company %}{{ ',' if a.contact else ' with' }} <a href="{{ url_for('company', company_id=a.company_id) }}">{{ a.company }}</a>{% endif %}{% if a.deal %}, for <a href="{{ url_for('deal', deal_id=a.deal_id) }}">{{ a.deal }}</a>{% endif %}</p>
               </div>
-              {{ avatar(a.owner, 'sm') }}
+              {{ avatar(a.owner, 'sm', team=true) }}
             </li>
           {% endfor %}
         </ul>

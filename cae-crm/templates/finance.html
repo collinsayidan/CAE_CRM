@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, kpi %}
+{% block title %}Finance{% endblock %}
+{% block heading %}Finance{% endblock %}
+{% block actions %}
+  <div class="kpis">
+    {{ kpi('pound', pennies(totals.outstanding), 'Outstanding (inc. VAT)') }}
+    {{ kpi('clock', pennies(totals.overdue), totals.overdue_n ~ ' overdue invoices') }}
+    {{ kpi('trophy', pennies(totals.paid_fy), 'Received ' ~ fy_label) }}
+    {{ kpi('bars', pennies(totals.vat_quarter), 'Output VAT ' ~ (vq_start | uk_date_short) ~ '–' ~ (vq_end | uk_date_short)) }}
+  </div>
+{% endblock %}
+
+{% block content %}
+<details class="card form-card">
+  <summary>{{ icon('plus') }} Raise invoice</summary>
+  <form method="post" action="{{ url_for('create_invoice') }}" class="grid-form">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <label>Customer
+      <select name="company_id" required>{% for c in companies %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select>
+    </label>
+    <label>Description<input name="description" required maxlength="140"></label>
+    <label>Net amount (£)<input name="net" required inputmode="decimal" placeholder="12,500.00"></label>
+    <label>VAT rate
+      <select name="vat_rate">
+        {% for r in vat_rates %}<option value="{{ r }}">{{ r }}% {{ {20: 'standard', 5: 'reduced', 0: 'zero-rated'}[r] }}</option>{% endfor %}
+      </select>
+    </label>
+    <div class="form-end"><span class="muted small">Payment terms: 30 days</span><button class="btn">Raise invoice</button></div>
+  </form>
+</details>
+
+<section class="card flush">
+  <div class="card-head pad">
+    <h2>Invoices</h2>
+    <div class="seg">
+      {% for s in ['', 'Due', 'Overdue', 'Paid'] %}
+        <a href="{{ url_for('finance', status=s) if s else url_for('finance') }}" class="{{ 'on' if status == s }}">{{ s or 'All' }}</a>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>No.</th><th>Customer</th><th>Issued</th><th>Due</th><th class="num">Net</th>
+                 <th class="num">VAT</th><th class="num">Gross</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for i, state in rows %}
+          <tr>
+            <td><a href="{{ url_for('invoice', invoice_id=i.id) }}"><b>{{ i.number }}</b></a></td>
+            <td>{{ i.company }}<div class="muted small">{{ i.description }}</div></td>
+            <td>{{ i.issue_date | uk_date }}</td>
+            <td>{{ i.due_date | uk_date }}</td>
+            <td class="num">{{ pennies(i.net) }}</td>
+            <td class="num">{{ pennies(i.vat) }}<div class="muted small">{{ i.vat_rate }}%</div></td>
+            <td class="num"><b>{{ pennies(i.net + i.vat) }}</b></td>
+            <td>
+              {% if state == 'Paid' %}<span class="pill won">Paid {{ i.paid_date | uk_date_short }}</span>
+              {% else %}
+                <form method="post" action="{{ url_for('mark_paid', invoice_id=i.id) }}" class="inline">
+                  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+                  <input type="hidden" name="next" value="{{ request.full_path }}">
+                  <span class="pill {{ 'lost' if state == 'Overdue' }}">{{ state }}</span>
+                  <button class="link small">Mark paid</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="8" class="empty">No invoices.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

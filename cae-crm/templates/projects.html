@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar %}
+{% block title %}Projects{% endblock %}
+{% block heading %}Projects{% endblock %}
+
+{% block content %}
+<p class="muted">Delivery projects are created automatically when a deal is marked as won.</p>
+<div class="project-grid">
+  {% for p in projects %}
+    <article class="card project {{ p.status | lower | replace(' ', '-') }}">
+      <div class="row-between">
+        <span class="pill {{ p.status | lower | replace(' ', '-') }}">{{ p.status }}</span>
+        {{ avatar(p.owner) }}
+      </div>
+      <h3>{{ p.name }}</h3>
+      <a class="muted" href="{{ url_for('company', company_id=p.company_id) }}">{{ p.company }}</a>
+      <div class="bar"><span style="width: {{ p.progress }}%"></span></div>
+      <div class="row-between small"><span>{{ p.progress }}% complete</span><span class="muted">Due {{ p.due_date | uk_date }}</span></div>
+      <form method="post" action="{{ url_for('update_project', project_id=p.id) }}" class="project-form">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <input type="range" name="progress" min="0" max="100" step="5" value="{{ p.progress }}" aria-label="Progress">
+        <select name="status" aria-label="Status">{% for s in statuses %}<option {{ 'selected' if s == p.status }}>{{ s }}</option>{% endfor %}</select>
+        <button class="btn small">Save</button>
+      </form>
+    </article>
+  {% else %}
+    <p class="empty card">No projects yet — win a deal to start one.</p>
+  {% endfor %}
+</div>
+{% endblock %}

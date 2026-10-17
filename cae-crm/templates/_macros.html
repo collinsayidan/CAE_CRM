@@ -1,0 +1,39 @@
+{% macro icon(name) -%}
+<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+{%- if name == 'search' -%}<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+{%- elif name == 'plus' -%}<path d="M12 5v14M5 12h14"/>
+{%- elif name == 'star' -%}<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/>
+{%- elif name == 'calendar' -%}<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>
+{%- elif name == 'pound' -%}<path d="M16 6.5A4 4 0 0 0 8.5 8v12M6 13h8M6 20h12"/>
+{%- elif name == 'moon' -%}<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>
+{%- elif name == 'trophy' -%}<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8"/>
+{%- elif name == 'bars' -%}<path d="M5 20V10M10 20V4M15 20v-7M20 20v-4"/>
+{%- elif name == 'pie' -%}<path d="M12 3a9 9 0 1 0 9 9h-9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/>
+{%- elif name == 'arrow' -%}<path d="M7 17 17 7M9 7h8v8"/>
+{%- elif name == 'check' -%}<path d="m5 12 5 5 9-10"/>
+{%- elif name == 'phone' -%}<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>
+{%- elif name == 'users' -%}<circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3 6"/>
+{%- elif name == 'clock' -%}<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+{%- endif -%}
+</svg>
+{%- endmacro %}
+
+{% macro avatar(name) -%}
+<span class="avatar" style="--h: {{ name | hue }}" title="{{ name }}">{{ name | initials }}</span>
+{%- endmacro %}
+
+{% macro kpi(icon_name, value, label, badge=None, badge_class='') -%}
+<div class="kpi">
+  <span class="kpi-icon">{{ icon(icon_name) }}</span>
+  <div>
+    <div class="kpi-value">{{ value }}{% if badge %} <span class="badge {{ badge_class }}">{{ badge }}</span>{% endif %}</div>
+    <div class="kpi-label">{{ label }}</div>
+  </div>
+</div>
+{%- endmacro %}
+
+{% macro error(errors, key) -%}
+{% if errors.get(key) %}<span class="field-error">{{ errors[key] }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro csrf() -%}<input type="hidden" name="csrf" value="{{ csrf_token }}">{%- endmacro %}

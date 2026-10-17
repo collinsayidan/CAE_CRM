@@ -1,0 +1,69 @@
+{% from "_macros.html" import icon %}
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% endblock %} · CAE CRM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script>
+    try { const t = localStorage.getItem("cae-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+</head>
+<body>
+  <aside class="rail" aria-label="Quick actions">
+    <a class="brand" href="{{ url_for('overview') }}" title="CAE CRM">CAE</a>
+    <a href="{{ url_for('customers') }}#search" title="Search customers">{{ icon('search') }}</a>
+    <a href="{{ url_for('pipeline') }}#new-deal" title="New deal">{{ icon('plus') }}</a>
+    <a href="{{ url_for('growth') }}" title="Growth">{{ icon('star') }}</a>
+    <a href="{{ url_for('schedule') }}" title="Schedule">{{ icon('calendar') }}</a>
+    <a href="{{ url_for('finance') }}" title="Finance">{{ icon('pound') }}</a>
+    <span class="rail-gap"></span>
+    <button type="button" id="theme-toggle" title="Toggle dark mode">{{ icon('moon') }}</button>
+  </aside>
+
+  <div class="shell">
+    <header class="topbar">
+      <nav class="tabs" aria-label="Main">
+        {% for endpoint, label in nav %}
+          <a href="{{ url_for(endpoint) }}" class="{{ 'active' if request.endpoint == endpoint or (endpoint == 'customers' and request.endpoint == 'company') }}">{{ label }}</a>
+        {% endfor %}
+      </nav>
+      <div class="today" title="Today">{{ today | uk_date }}</div>
+    </header>
+
+    <main>
+      <div class="page-head">
+        <h1>{% block heading %}{% endblock %}</h1>
+        <div class="page-actions">{% block actions %}{% endblock %}</div>
+      </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}" role="status">{{ message }}</div>
+        {% endfor %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="foot">
+      CAE CRM · Amounts in GBP (£) · VAT at UK rates · Dates DD/MM/YYYY · Personal data handled under UK GDPR &amp; DPA 2018
+    </footer>
+  </div>
+
+  <script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+      const root = document.documentElement;
+      const dark = root.dataset.theme ? root.dataset.theme === "dark"
+                                      : matchMedia("(prefers-color-scheme: dark)").matches;
+      root.dataset.theme = dark ? "light" : "dark";
+      try { localStorage.setItem("cae-theme", root.dataset.theme); } catch (e) {}
+    });
+    document.querySelectorAll("form[data-confirm]").forEach(f =>
+      f.addEventListener("submit", e => { if (!confirm(f.dataset.confirm)) e.preventDefault(); }));
+  </script>
+</body>
+</html>

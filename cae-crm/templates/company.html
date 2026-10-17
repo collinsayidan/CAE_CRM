@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, avatar, error %}
+{% block title %}{{ c.name }}{% endblock %}
+{% block heading %}{{ c.name }}{% endblock %}
+{% block actions %}
+  <a class="btn ghost" href="{{ url_for('customers') }}">← All customers</a>
+{% endblock %}
+
+{% block content %}
+<div class="split two">
+  <section class="card">
+    <div class="card-head"><h2>Company details</h2></div>
+    <dl class="facts">
+      <dt>Registered address</dt><dd>{{ c.address }}<br>{{ c.city }}<br>{{ c.postcode }}</dd>
+      <dt>Region</dt><dd>{{ c.region or '—' }}</dd>
+      <dt>Companies House no.</dt>
+      <dd>{% if c.company_no %}<a href="https://find-and-update.company-information.service.gov.uk/company/{{ c.company_no }}" target="_blank" rel="noopener">{{ c.company_no }} ↗</a>{% else %}—{% endif %}</dd>
+      <dt>VAT no.</dt><dd>{{ c.vat_no or '—' }}</dd>
+      <dt>Industry</dt><dd>{{ c.industry or '—' }}</dd>
+    </dl>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Contacts</h2><span class="muted">UK GDPR</span></div>
+    <ul class="contacts">
+      {% for p in contacts %}
+        <li>
+          {{ avatar(p.first_name ~ ' ' ~ p.last_name) }}
+          <div class="grow">
+            <b>{{ p.first_name }} {{ p.last_name }}</b> <span class="muted">· {{ p.role or 'Contact' }}</span>
+            <div class="small"><a href="mailto:{{ p.email }}">{{ p.email }}</a> · {{ p.phone or 'no phone' }}</div>
+            <div class="tags">
+              <span class="tag">Basis: {{ p.lawful_basis }}</span>
+              {% if p.marketing_consent %}<span class="tag ok">Marketing opt-in {{ p.consent_date | uk_date }}</span>
+              {% else %}<span class="tag">No marketing consent</span>{% endif %}
+            </div>
+          </div>
+          <div class="contact-actions">
+            <a class="link small" href="{{ url_for('export_contact', contact_id=p.id) }}" title="Subject access request export">Export (SAR)</a>
+            <form method="post" action="{{ url_for('erase_contact', contact_id=p.id) }}"
+                  data-confirm="Permanently erase {{ p.first_name }} {{ p.last_name }}'s personal data?">
+              <input type="hidden" name="csrf" value="{{ csrf_token }}">
+              <button class="link danger small">Erase</button>
+            </form>
+          </div>
+        </li>
+      {% else %}
+        <li class="empty">No contacts recorded.</li>
+      {% endfor %}
+    </ul>
+
+    <details class="inline-form" {{ 'open' if errors }}>
+      <summary>{{ icon('plus') }} Add contact</summary>
+      <form method="post" action="{{ url_for('create_contact', company_id=c.id) }}" class="grid-form" novalidate>
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <label>First name<input name="first_name" value="{{ form.first_name }}" required></label>
+        <label>Last name<input name="last_name" value="{{ form.last_name }}" required>{{ error(errors, 'name') }}</label>
+        <label>Job title<input name="role" value="{{ form.role }}"></label>
+        <label>Email<input type="email" name="email" value="{{ form.email }}">{{ error(errors, 'email') }}</label>
+        <label>Phone<input type="tel" name="phone" value="{{ form.phone }}" placeholder="0131 496 0000">{{ error(errors, 'phone') }}</label>
+        <label>Lawful basis
+          <select name="lawful_basis">
+            {% for b in lawful_bases %}<option {{ 'selected' if form.lawful_basis == b }}>{{ b }}</option>{% endfor %}
+          </select>{{ error(errors, 'lawful_basis') }}
+        </label>
+        <label class="check"><input type="checkbox" name="marketing_consent" {{ 'checked' if form.marketing_consent }}>
+          Opted in to marketing emails (PECR)</label>
+        <div class="form-end"><button class="btn">Add contact</button></div>
+      </form>
+    </details>
+  </section>
+</div>
+
+<div class="split two">
+  <section class="card flush">
+    <div class="card-head pad"><h2>Deals</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Deal</th><th>Stage</th><th>Close</th><th class="num">Value</th></tr></thead>
+        <tbody>
+          {% for d in deals %}
+            <tr><td>{{ d.title }}<div class="muted small">{{ d.owner }}</div></td>
+                <td><span class="pill {{ d.stage | lower }}">{{ d.stage }}</span></td>
+                <td>{{ (d.closed_at or d.close_date) | uk_date }}</td>
+                <td class="num">{{ d.value | money }}</td></tr>
+          {% else %}<tr><td colspan="4" class="empty">No deals.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card flush">
+    <div class="card-head pad"><h2>Invoices</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>No.</th><th>Issued</th><th>Status</th><th class="num">Gross</th></tr></thead>
+        <tbody>
+          {% for i in invoices %}
+            <tr><td><a href="{{ url_for('invoice', invoice_id=i.id) }}">{{ i.number }}</a></td>
+                <td>{{ i.issue_date | uk_date }}</td>
+                <td>{% if i.paid_date %}<span class="pill won">Paid</span>{% elif i.due_date < today.isoformat() %}<span class="pill lost">Overdue</span>{% else %}<span class="pill">Due {{ i.due_date | uk_date }}</span>{% endif %}</td>
+                <td class="num">{{ pennies(i.net + i.vat) }}</td></tr>
+          {% else %}<tr><td colspan="4" class="empty">No invoices.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -1,131 +1,107 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon, avatar, logo, field, select, stage_chip with context %}
+{% from "_record.html" import composer, timeline, upcoming_tasks, assoc, prop with context %}
 {% block title %}{{ c.name }}{% endblock %}
-{% block heading %}<span class="company-heading">{{ logo(c.name, 'lg') }}{{ c.name }}</span>{% endblock %}
-{% block subtitle %}
-  <p class="subtitle">{{ c.industry or 'Industry not set' }}, {{ c.city }}</p>
-{% endblock %}
-{% block actions %}
-  <a class="btn ghost" href="{{ url_for('customers') }}">All customers</a>
-  <button class="btn primary" data-open="dlg-contact">{{ icon('plus') }} Add contact</button>
-{% endblock %}
 
-{% block content %}
-<section class="stats compact" aria-label="Account figures">
-  <div class="stat"><p class="stat-label">Lifetime revenue</p><p class="stat-value">{{ stats.lifetime | money }}</p></div>
-  <div class="stat"><p class="stat-label">Open pipeline</p><p class="stat-value">{{ stats.pipeline | money }}</p></div>
-  <div class="stat"><p class="stat-label">Unpaid invoices</p><p class="stat-value">{{ pennies(stats.outstanding) }}</p></div>
-</section>
+{% block page %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="{{ url_for('companies') }}">Companies</a> <span aria-hidden="true">/</span> <span>{{ c.name }}</span></nav>
+<div class="record">
+  <aside class="record-left">
+    <section class="panel record-card">
+      {{ logo(c.name, 'xl') }}
+      <h1>{{ c.name }}</h1>
+      <p class="muted">{{ c.industry or 'Industry not set' }}{% if c.city %}, {{ c.city }}{% endif %}</p>
+      {% if c.website %}<p><a class="text-link sm" href="{{ c.website }}" target="_blank" rel="noopener">{{ c.website | replace('https://', '') | replace('http://', '') }} {{ icon('external') }}</a></p>{% endif %}
+      <div class="quick-actions">
+        <button type="button" data-compose="note">{{ icon('note') }}<span>Note</span></button>
+        <button type="button" data-compose="email">{{ icon('mail') }}<span>Email</span></button>
+        {% if c.phone %}<a href="tel:{{ c.phone | replace(' ', '') }}" data-compose="call">{{ icon('phone') }}<span>Call</span></a>{% else %}<button type="button" data-compose="call">{{ icon('phone') }}<span>Call</span></button>{% endif %}
+        <button type="button" data-compose="task">{{ icon('task') }}<span>Task</span></button>
+        <button type="button" data-compose="meeting">{{ icon('meeting') }}<span>Meeting</span></button>
+      </div>
+    </section>
 
-<div class="layout-aside">
-  <aside class="panel">
-    <h2 class="panel-title">Registered details</h2>
-    <dl class="facts">
-      <dt>Address</dt><dd>{{ c.address }}<br>{{ c.city }}<br>{{ c.postcode }}</dd>
-      <dt>Region</dt><dd>{{ c.region or 'Not set' }}</dd>
-      <dt>Companies House</dt>
-      <dd>{% if c.company_no %}<a class="text-link" href="https://find-and-update.company-information.service.gov.uk/company/{{ c.company_no }}" target="_blank" rel="noopener">{{ c.company_no }} {{ icon('external') }}</a>{% else %}Not registered{% endif %}</dd>
-      <dt>VAT number</dt><dd>{{ c.vat_no or 'Not VAT registered' }}</dd>
-    </dl>
+    <section class="stats compact stacked" aria-label="Account figures">
+      <div class="stat"><p class="stat-label">Lifetime revenue</p><p class="stat-value">{{ stats.lifetime | money }}</p></div>
+      <div class="stat"><p class="stat-label">Open pipeline</p><p class="stat-value">{{ stats.pipeline | money }}</p></div>
+      <div class="stat"><p class="stat-label">Unpaid invoices</p><p class="stat-value {{ 'is-bad' if stats.outstanding }}">{{ pennies(stats.outstanding) }}</p></div>
+    </section>
+
+    <section class="panel">
+      <header class="panel-head"><h2>About</h2><button type="button" class="btn ghost sm" data-open="dlg-edit-company">{{ icon('edit') }} Edit</button></header>
+      <dl class="props">
+        {{ prop('Registered address', (c.address ~ ', ' ~ c.city ~ ' ' ~ c.postcode) if c.address else c.postcode) }}
+        {{ prop('Region', c.region) }}
+        <div class="prop"><dt>Companies House</dt><dd>{% if c.company_no %}<a class="text-link" href="https://find-and-update.company-information.service.gov.uk/company/{{ c.company_no }}" target="_blank" rel="noopener">{{ c.company_no }} {{ icon('external') }}</a>{% else %}<span class="muted">Not registered</span>{% endif %}</dd></div>
+        {{ prop('VAT number', c.vat_no, 'Not VAT registered') }}
+        {{ prop('Phone', c.phone) }}
+        {{ prop('Owner', c.owner) }}
+        {{ prop('Added', c.created_at | uk_date) }}
+      </dl>
+      {% if current_user.role == 'admin' %}
+        <form method="post" action="{{ url_for('delete_company', company_id=c.id) }}" class="danger-zone"
+              data-confirm="Delete {{ c.name }}? Its deals, tasks and projects go too. Its people are kept as contacts.">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}">
+          <button class="btn ghost sm danger">{{ icon('trash') }} Delete company</button>
+        </form>
+      {% endif %}
+    </section>
   </aside>
 
-  <section class="panel">
-    <div class="tabs" role="tablist" aria-label="Account records">
-      <button role="tab" aria-selected="true" aria-controls="tab-contacts" id="t-contacts">People <span>{{ contacts | length }}</span></button>
-      <button role="tab" aria-selected="false" aria-controls="tab-deals" id="t-deals">Deals <span>{{ deals | length }}</span></button>
-      <button role="tab" aria-selected="false" aria-controls="tab-invoices" id="t-invoices">Invoices <span>{{ invoices | length }}</span></button>
-      <button role="tab" aria-selected="false" aria-controls="tab-activity" id="t-activity">Activity <span>{{ activities | length }}</span></button>
-    </div>
-
-    <div role="tabpanel" id="tab-contacts" aria-labelledby="t-contacts">
-      <ul class="people">
-        {% for p in contacts %}
-          <li>
-            {{ avatar(p.first_name ~ ' ' ~ p.last_name) }}
-            <div class="person">
-              <p><b>{{ p.first_name }} {{ p.last_name }}</b> <span class="muted">{{ p.role or 'Contact' }}</span></p>
-              <p class="person-links">
-                {% if p.email %}<a href="mailto:{{ p.email }}">{{ icon('mail') }}{{ p.email }}</a>{% endif %}
-                {% if p.phone %}<a href="tel:{{ p.phone | replace(' ', '') }}">{{ icon('phone') }}{{ p.phone }}</a>{% endif %}
-              </p>
-              <p class="consent">
-                <span class="chip">Lawful basis: {{ p.lawful_basis }}</span>
-                {% if p.marketing_consent %}<span class="chip ok">Marketing opt-in {{ p.consent_date | uk_date }}</span>
-                {% else %}<span class="chip">No marketing consent</span>{% endif %}
-              </p>
-            </div>
-            <div class="person-actions">
-              <a class="btn ghost sm" href="{{ url_for('export_contact', contact_id=p.id) }}" title="Download everything held about this person">{{ icon('download') }} Export data</a>
-              {% if current_user.role == 'admin' %}
-              <form method="post" action="{{ url_for('erase_contact', contact_id=p.id) }}"
-                    data-confirm="Erase {{ p.first_name }} {{ p.last_name }}? This permanently deletes their personal data.">
-                <input type="hidden" name="csrf" value="{{ csrf_token }}">
-                <button class="btn ghost sm danger">Erase</button>
-              </form>
-              {% endif %}
-            </div>
-          </li>
-        {% else %}
-          <li class="empty-line">No people recorded. <button class="text-link" data-open="dlg-contact">Add the first contact</button></li>
-        {% endfor %}
-      </ul>
-    </div>
-
-    <div role="tabpanel" id="tab-deals" aria-labelledby="t-deals" hidden>
-      <table>
-        <thead><tr><th>Deal</th><th>Stage</th><th>Close date</th><th class="num">Value</th></tr></thead>
-        <tbody>
-          {% for d in deals %}
-            <tr><td>{{ d.title }}<small>{{ d.owner }}</small></td>
-                <td>{% if d.stage == 'Won' %}<span class="chip ok">Won</span>{% elif d.stage == 'Lost' %}<span class="chip bad">Lost</span>{% else %}{{ stage_chip(d.stage) }}{% endif %}</td>
-                <td>{{ (d.closed_at or d.close_date) | uk_date }}</td>
-                <td class="num">{{ d.value | money }}</td></tr>
-          {% else %}<tr><td colspan="4" class="empty-line">No deals with this customer yet.</td></tr>{% endfor %}
-        </tbody>
-      </table>
-    </div>
-
-    <div role="tabpanel" id="tab-invoices" aria-labelledby="t-invoices" hidden>
-      <table>
-        <thead><tr><th>Invoice</th><th>Issued</th><th>Status</th><th class="num">Total</th></tr></thead>
-        <tbody>
-          {% for i in invoices %}
-            <tr><td><a class="text-link" href="{{ url_for('invoice', invoice_id=i.id) }}">{{ i.number }}</a><small>{{ i.description }}</small></td>
-                <td>{{ i.issue_date | uk_date }}</td>
-                <td>{% if i.paid_date %}<span class="chip ok">Paid</span>{% elif i.due_date < today.isoformat() %}<span class="chip bad">Overdue</span>{% else %}<span class="chip">Due {{ i.due_date | uk_date }}</span>{% endif %}</td>
-                <td class="num">{{ pennies(i.net + i.vat) }}</td></tr>
-          {% else %}<tr><td colspan="4" class="empty-line">No invoices raised.</td></tr>{% endfor %}
-        </tbody>
-      </table>
-    </div>
-
-    <div role="tabpanel" id="tab-activity" aria-labelledby="t-activity" hidden>
-      <ol class="timeline">
-        {% for a in activities %}
-          <li class="{{ 'done' if a.done }}"><time>{{ a.due_at | uk_date_short }}</time>
-            <div><p class="tl-title">{{ a.subject }}</p><p class="tl-meta">{{ a.kind }} with {{ a.owner }}</p></div></li>
-        {% else %}<li class="empty-line">No activity logged.</li>{% endfor %}
-      </ol>
-    </div>
+  <section class="record-mid">
+    {{ composer(record, call_outcomes, owners) }}
+    {{ upcoming_tasks(upcoming) }}
+    {{ timeline(entries) }}
   </section>
+
+  <aside class="record-right">
+    {% call assoc('People', contacts | length, 'dlg-contact', 'Add contact') %}
+      {% for p in contacts %}
+        <a class="assoc-item" href="{{ url_for('contact', contact_id=p.id) }}">{{ avatar(p.first_name ~ ' ' ~ p.last_name, 'sm') }}
+          <span><b>{{ p.first_name }} {{ p.last_name }}</b><small>{{ p.role or p.email or '' }}</small></span></a>
+      {% else %}<p class="muted small">No people yet.</p>{% endfor %}
+    {% endcall %}
+    {% call assoc('Deals', deals | length, 'dlg-deal', 'Add deal') %}
+      {% for d in deals %}
+        <a class="assoc-item" href="{{ url_for('deal', deal_id=d.id) }}"><span><b>{{ d.title }}</b>
+          <small>{{ d.value | money }}, {{ d.stage }}{% if d.stage not in ('Won', 'Lost') %}, closes {{ d.close_date | uk_date }}{% endif %}</small></span></a>
+      {% else %}<p class="muted small">No deals yet.</p>{% endfor %}
+    {% endcall %}
+    {% call assoc('Tickets', tickets | length, 'dlg-ticket', 'Add ticket') %}
+      {% for t in tickets %}
+        <a class="assoc-item" href="{{ url_for('ticket', ticket_id=t.id) }}"><span><b>{{ t.subject }}</b>
+          <small>#{{ t.id }}, {{ t.status }}, {{ t.priority }} priority</small></span></a>
+      {% else %}<p class="muted small">No tickets.</p>{% endfor %}
+    {% endcall %}
+    {% call assoc('Invoices', invoices | length, 'dlg-invoice', 'Raise') %}
+      {% for i in invoices %}
+        <a class="assoc-item" href="{{ url_for('invoice', invoice_id=i.id) }}"><span><b>{{ i.number }}</b>
+          <small>{{ pennies(i.net + i.vat) }}, {% if i.paid_date %}paid{% elif i.due_date < today.isoformat() %}<span class="bad-text">overdue</span>{% else %}due {{ i.due_date | uk_date }}{% endif %}</small></span></a>
+      {% else %}<p class="muted small">No invoices raised.</p>{% endfor %}
+    {% endcall %}
+  </aside>
 </div>
 
-<dialog class="sheet" id="dlg-contact" aria-labelledby="dlg-contact-title" {% if errors %}data-autoopen{% endif %}>
-  <form method="post" action="{{ url_for('create_contact', company_id=c.id) }}" novalidate>
+<span hidden data-prefill-page='{"company_id": "{{ c.id }}"}'></span>
+
+<dialog class="sheet" id="dlg-edit-company" aria-labelledby="dlg-edit-company-title">
+  <form method="post" action="{{ url_for('edit_company', company_id=c.id) }}" novalidate>
     <input type="hidden" name="csrf" value="{{ csrf_token }}">
-    <header><h2 id="dlg-contact-title">Add a contact at {{ c.name }}</h2><button type="button" class="icon-btn" data-close aria-label="Close">{{ icon('x') }}</button></header>
-    {% if errors %}<p class="form-alert" role="alert">Contact not added. Check the highlighted fields.</p>{% endif %}
+    <header><h2 id="dlg-edit-company-title">Edit {{ c.name }}</h2><button type="button" class="icon-btn" data-close aria-label="Close">{{ icon('x') }}</button></header>
     <div class="form-grid">
-      {{ field('First name', 'first_name', form.first_name, required=true) }}
-      {{ field('Last name', 'last_name', form.last_name, errors={'last_name': errors.get('name')} if errors.get('name') else {}, required=true) }}
-      {{ field('Job title', 'role', form.role) }}
-      {{ field('Email', 'email', form.email, type='email', errors=errors) }}
-      {{ field('Phone', 'phone', form.phone, type='tel', errors=errors, placeholder='0131 496 0000') }}
-      {{ select('Lawful basis for holding their data', 'lawful_basis', lawful_bases, form.lawful_basis, errors=errors) }}
+      {{ field('Company name', 'name', c.name, required=true) }}
+      {{ field('Companies House number', 'company_no', c.company_no) }}
+      {{ field('VAT registration number', 'vat_no', c.vat_no) }}
+      {{ field('Industry', 'industry', c.industry) }}
+      {{ field('Website', 'website', c.website) }}
+      {{ field('Phone', 'phone', c.phone, type='tel') }}
+      {{ field('Address', 'address', c.address) }}
+      {{ field('Town or city', 'city', c.city) }}
+      {{ field('Postcode', 'postcode', c.postcode, required=true) }}
+      {{ select('Region', 'region', regions, c.region) }}
+      {{ select('Owner', 'owner', owners, c.owner) }}
     </div>
-    <label class="check"><input type="checkbox" name="marketing_consent" {{ 'checked' if form.marketing_consent }}>
-      <span>They've agreed to receive marketing emails</span></label>
-    <footer><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Add contact</button></footer>
+    <footer><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Save changes</button></footer>
   </form>
 </dialog>
 {% endblock %}

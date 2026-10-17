@@ -1,19 +1,25 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon, avatar %}
-{% block title %}Schedule{% endblock %}
-{% block heading %}Schedule{% endblock %}
+{% block title %}Tasks{% endblock %}
+{% block heading %}Tasks{% endblock %}
 {% block subtitle %}
   <p class="subtitle">{% if overdue %}<span class="delta down">{{ overdue }} overdue</span> Tick them off or reschedule.{% else %}Everything is up to date.{% endif %}</p>
 {% endblock %}
-{% block actions %}<button class="btn primary" data-open="dlg-activity">{{ icon('plus') }} Schedule activity</button>{% endblock %}
+{% block actions %}
+  <nav class="filter-chips" aria-label="Whose tasks">
+    <a href="{{ url_for('tasks', month=month.strftime('%Y-%m')) }}" {% if not mine %}aria-current="true"{% endif %}>Everyone</a>
+    <a href="{{ url_for('tasks', month=month.strftime('%Y-%m'), mine=1) }}" {% if mine %}aria-current="true"{% endif %}>Mine</a>
+  </nav>
+  <button class="btn primary" data-open="dlg-activity">{{ icon('plus') }} New task</button>
+{% endblock %}
 
 {% block content %}
 <div class="layout-aside">
   <aside class="panel calendar">
     <header class="cal-head">
-      <a class="icon-btn sm" href="{{ url_for('schedule', month=prev_month.strftime('%Y-%m')) }}" aria-label="Previous month">{{ icon('chevron-left') }}</a>
+      <a class="icon-btn sm" href="{{ url_for('tasks', month=prev_month.strftime('%Y-%m'), mine=1 if mine else None) }}" aria-label="Previous month">{{ icon('chevron-left') }}</a>
       <h2>{{ month.strftime('%B %Y') }}</h2>
-      <a class="icon-btn sm" href="{{ url_for('schedule', month=next_month.strftime('%Y-%m')) }}" aria-label="Next month">{{ icon('chevron-right') }}</a>
+      <a class="icon-btn sm" href="{{ url_for('tasks', month=next_month.strftime('%Y-%m'), mine=1 if mine else None) }}" aria-label="Next month">{{ icon('chevron-right') }}</a>
     </header>
     <table class="cal-grid">
       <thead><tr>{% for d in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}<th scope="col" abbr="{{ d }}">{{ d[0] }}</th>{% endfor %}</tr></thead>
@@ -57,7 +63,7 @@
               <time>{{ a.due_at[11:16] }}</time>
               <div class="task-main">
                 <p class="tl-title">{{ a.subject }}</p>
-                <p class="tl-meta">{{ a.kind }}{% if a.company %} with <a href="{{ url_for('company', company_id=a.company_id) }}">{{ a.company }}</a>{% endif %}{% if a.deal %}, for {{ a.deal }}{% endif %}</p>
+                <p class="tl-meta">{{ a.kind }}{% if a.contact %} with <a href="{{ url_for('contact', contact_id=a.contact_id) }}">{{ a.contact }}</a>{% endif %}{% if a.company %}{{ ',' if a.contact else ' with' }} <a href="{{ url_for('company', company_id=a.company_id) }}">{{ a.company }}</a>{% endif %}{% if a.deal %}, for <a href="{{ url_for('deal', deal_id=a.deal_id) }}">{{ a.deal }}</a>{% endif %}</p>
               </div>
               {{ avatar(a.owner, 'sm') }}
             </li>
@@ -65,7 +71,7 @@
         </ul>
       </section>
     {% else %}
-      <p class="panel empty-line">Nothing scheduled in {{ month.strftime('%B') }}. <button class="text-link" data-open="dlg-activity">Schedule an activity</button></p>
+      <p class="panel empty-line">Nothing scheduled in {{ month.strftime('%B') }}. <button class="text-link" data-open="dlg-activity">Add a task</button></p>
     {% endfor %}
   </section>
 </div>

@@ -1,0 +1,116 @@
+{% from "_macros.html" import icon, avatar, field, select %}
+
+{% set KIND_ICON = {'note': 'note', 'email': 'mail', 'call': 'phone', 'meeting': 'meeting', 'task': 'task', 'system': 'bolt'} %}
+{% set KIND_LABEL = {'note': 'Note', 'email': 'Email', 'call': 'Call', 'meeting': 'Meeting', 'task': 'Task', 'system': 'Update'} %}
+
+{# Log a note, email, call or meeting, or create a task, against the record on this page. #}
+{% macro composer(record, call_outcomes, owners) -%}
+<section class="panel composer" aria-label="Log activity">
+  <form method="post" action="{{ url_for('log_engagement') }}">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <input type="hidden" name="next" value="{{ request.full_path }}">
+    {% for k, v in record.items() if v %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+    <div class="composer-tabs" role="radiogroup" aria-label="What are you logging?">
+      {% for kind, label in [('note', 'Note'), ('email', 'Email'), ('call', 'Call'), ('meeting', 'Meeting'), ('task', 'Task')] %}
+        <label class="composer-tab"><input type="radio" name="kind" value="{{ kind }}" {{ 'checked' if loop.first }}>{{ icon(KIND_ICON[kind]) }}<span>{{ label }}</span></label>
+      {% endfor %}
+    </div>
+    <div class="composer-body">
+      <label class="field c-subject"><span class="field-label">Subject</span><input name="subject" maxlength="140" placeholder="What was it about?"></label>
+      <label class="field c-outcome"><span class="field-label">Outcome</span>
+        <select name="outcome">{% for o in call_outcomes %}<option>{{ o }}</option>{% endfor %}</select></label>
+      <label class="field c-tasktype"><span class="field-label">Type</span>
+        <select name="task_type">{% for k in ['Task', 'Call', 'Email', 'Meeting'] %}<option>{{ k }}</option>{% endfor %}</select></label>
+      <label class="field c-body"><span class="field-label">Details</span>
+        <textarea name="body" rows="3" placeholder="Start typing…"></textarea></label>
+      <div class="composer-row">
+        <label class="field"><span class="field-label c-when-label">When</span><input type="date" name="date" value="{{ today.isoformat() }}"></label>
+        <label class="field"><span class="field-label">Time</span><input type="time" name="time" value="{{ '%02d:%02d' | format(10, 0) }}"></label>
+        <label class="field c-owner"><span class="field-label">Assign to</span>
+          <select name="owner">{% for o in owners %}<option {{ 'selected' if o == current_user.name }}>{{ o }}</option>{% endfor %}</select></label>
+        <button class="btn primary composer-save">Save</button>
+      </div>
+    </div>
+  </form>
+</section>
+{%- endmacro %}
+
+{# Everything that has happened on the record, newest first, grouped by month. #}
+{% macro timeline(entries) -%}
+<section class="panel timeline-panel" aria-label="Activity">
+  <header class="panel-head">
+    <h2>Activity</h2>
+    <div class="segmented" role="group" aria-label="Show" data-timeline-filter>
+      <button type="button" data-kind="" aria-pressed="true">All</button>
+      <button type="button" data-kind="note">Notes</button>
+      <button type="button" data-kind="email">Emails</button>
+      <button type="button" data-kind="call">Calls</button>
+      <button type="button" data-kind="meeting">Meetings</button>
+      <button type="button" data-kind="task">Tasks</button>
+      <button type="button" data-kind="system">Updates</button>
+    </div>
+  </header>
+  {% set ns = namespace(month='') %}
+  <ol class="feed">
+    {% for e in entries %}
+      {% set m = e.when[:7] %}
+      {% if m != ns.month %}{% set ns.month = m %}<li class="feed-month" data-month>{{ (m ~ '-01') | month_name }}</li>{% endif %}
+      <li class="feed-item kind-{{ e.kind }}" data-kind="{{ e.kind }}">
+        <span class="feed-icon">{{ icon(KIND_ICON.get(e.kind, 'note')) }}</span>
+        <div class="feed-main">
+          <p class="feed-title">
+            <b>{{ e.subject or KIND_LABEL[e.kind] }}</b>
+            {% if e.kind == 'call' and e.outcome %}<span class="chip">{{ e.outcome }}</span>{% endif %}
+            {% if e.kind == 'task' %}<span class="chip ok">Done</span>{% endif %}
+          </p>
+          {% if e.body %}<p class="feed-body">{{ e.body }}</p>{% endif %}
+          <p class="feed-meta">{{ KIND_LABEL[e.kind] }}{% if e.kind != 'system' %} by {{ e.author }}{% endif %}, {{ e.when | uk_datetime }}</p>
+        </div>
+        {% if e.kind in ('note', 'email', 'call', 'meeting') and (e.author == current_user.name or current_user.role == 'admin') %}
+          <form method="post" action="{{ url_for('delete_engagement', engagement_id=e.id) }}" data-confirm="Remove this {{ KIND_LABEL[e.kind] | lower }} from the timeline?">
+            <input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+            <button class="icon-btn sm" aria-label="Remove">{{ icon('trash') }}</button>
+          </form>
+        {% endif %}
+      </li>
+    {% else %}
+      <li class="empty-line">Nothing logged yet. Use the box above to add a note or log a call.</li>
+    {% endfor %}
+  </ol>
+</section>
+{%- endmacro %}
+
+{% macro upcoming_tasks(tasks) -%}
+{% if tasks %}
+<section class="panel upcoming" aria-label="Upcoming">
+  <header class="panel-head"><h2>Upcoming</h2><span class="muted">{{ tasks | length }} to do</span></header>
+  <ul class="tasks compact">
+    {% for a in tasks %}
+      <li class="{{ 'late' if a.due_at[:10] < today.isoformat() }}">
+        <form method="post" action="{{ url_for('toggle_activity', activity_id=a.id) }}" class="js-toggle">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+          <button class="tick" aria-pressed="false" aria-label="Done: {{ a.subject }}">{{ icon('check') }}</button>
+        </form>
+        <div class="task-main"><p class="tl-title">{{ a.subject }}</p>
+          <p class="tl-meta">{{ a.kind }} for {{ a.owner }}, {{ a.due_at | uk_datetime }}</p></div>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{%- endmacro %}
+
+{# A card listing linked records, HubSpot's right-hand column. #}
+{% macro assoc(title, count, add_dialog=None, add_label='Add') -%}
+<section class="assoc">
+  <header><h3>{{ title }} <span>{{ count }}</span></h3>
+    {% if add_dialog %}<button type="button" class="text-link sm" data-open="{{ add_dialog }}">{{ icon('plus') }} {{ add_label }}</button>{% endif %}
+  </header>
+  {{ caller() }}
+</section>
+{%- endmacro %}
+
+{# A label and value in the About panel. #}
+{% macro prop(label, value, empty='Not set') -%}
+<div class="prop"><dt>{{ label }}</dt><dd>{% if value %}{{ value }}{% else %}<span class="muted">{{ empty }}</span>{% endif %}</dd></div>
+{%- endmacro %}

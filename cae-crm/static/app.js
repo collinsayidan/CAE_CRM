@@ -47,26 +47,48 @@
 
   /* Menus: close <details> menus on outside click or Escape ---------------- */
   document.addEventListener("click", e => {
-    $$("details.new-menu[open], details.card-menu[open]").forEach(d => { if (!d.contains(e.target)) d.open = false; });
+    $$("details.new-menu[open], details.card-menu[open], details.save-view[open]").forEach(d => { if (!d.contains(e.target)) d.open = false; });
   });
 
   /* Dialogs --------------------------------------------------------------- */
-  function openDialog(id) {
+  // On a record page, quick-create dialogs start linked to that record.
+  const pagePrefill = (() => {
+    try { return JSON.parse($("[data-prefill-page]")?.dataset.prefillPage || "{}"); } catch (e) { return {}; }
+  })();
+  function prefill(dlg, values) {
+    for (const [name, value] of Object.entries(values)) {
+      const input = dlg.querySelector(`[name="${name}"]`);
+      if (input && value !== "" && value != null && (input.tagName !== "SELECT" || $(`option[value="${value}"]`, input))) input.value = value;
+    }
+  }
+  $$("dialog.sheet:not([id^=dlg-edit])").forEach(dlg => prefill(dlg, pagePrefill));
+
+  function openDialog(id, values) {
     const dlg = document.getElementById(id);
     if (!dlg) return;
     $$("details[open]").forEach(d => { d.open = false; });
+    if (values) prefill(dlg, values);
     dlg.showModal();
     (dlg.querySelector("[aria-invalid=true]") || dlg.querySelector("input:not([type=hidden]), select"))?.focus();
   }
   document.addEventListener("click", e => {
     const opener = e.target.closest("[data-open]");
-    if (opener) { e.preventDefault(); openDialog(opener.dataset.open); }
+    if (opener) {
+      e.preventDefault();
+      let values = null;
+      try { values = opener.dataset.prefill ? JSON.parse(opener.dataset.prefill) : null; } catch (err) { /* ignore */ }
+      openDialog(opener.dataset.open, values);
+    }
     const closer = e.target.closest("[data-close]");
     if (closer) closer.closest("dialog")?.close();
   });
   $$("dialog").forEach(dlg => dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); }));
   $$("dialog[data-autoopen]").forEach(dlg => openDialog(dlg.id));
   $$("form[data-confirm]").forEach(f => f.addEventListener("submit", e => { if (!confirm(f.dataset.confirm)) e.preventDefault(); }));
+  $$("select[data-autosubmit]").forEach(sel => sel.addEventListener("change", () => {
+    sel.form.querySelector("[name=page]")?.remove();
+    sel.form.requestSubmit ? sel.form.requestSubmit() : sel.form.submit();
+  }));
   $$("[data-print]").forEach(b => b.addEventListener("click", () => print()));
 
   // Live VAT preview in the invoice dialog.
@@ -74,15 +96,16 @@
   if (netInput) {
     const form = netInput.form;
     const preview = $("[data-invoice-preview]", form);
+    const terms = `Payment due in ${preview.dataset.terms || 30} days.`;
     const update = () => {
       const net = parseFloat(netInput.value.replace(/[£,\s]/g, ""));
-      const rate = parseInt(form.vat_rate.value, 10);
+      const rate = parseInt(form.vat_rate?.value || "0", 10);
       preview.textContent = net > 0
-        ? `${gbp2.format(net)} plus ${gbp2.format(net * rate / 100)} VAT makes ${gbp2.format(net * (1 + rate / 100))}. Payment due in 30 days.`
-        : "Payment due in 30 days.";
+        ? `${gbp2.format(net)} plus ${gbp2.format(net * rate / 100)} VAT makes ${gbp2.format(net * (1 + rate / 100))}. ${terms}`
+        : terms;
     };
     netInput.addEventListener("input", update);
-    form.vat_rate.addEventListener("change", update);
+    form.vat_rate?.addEventListener("change", update);
   }
 
   /* Command palette ------------------------------------------------------- */
@@ -90,16 +113,21 @@
   const pInput = palette && $("input", palette);
   const pList = $("#palette-results");
   const jumps = [
-    { kind: "Go to", title: "Overview", url: "/" },
-    { kind: "Go to", title: "Pipeline", url: "/pipeline" },
-    { kind: "Go to", title: "Customers", url: "/customers" },
-    { kind: "Go to", title: "Schedule", url: "/schedule" },
-    { kind: "Go to", title: "Finance", url: "/finance" },
-    { kind: "Go to", title: "Growth", url: "/growth" },
+    { kind: "Go to", title: "Home", url: "/" },
+    { kind: "Go to", title: "Contacts", url: "/contacts" },
+    { kind: "Go to", title: "Companies", url: "/companies" },
+    { kind: "Go to", title: "Deals", url: "/pipeline" },
+    { kind: "Go to", title: "Tickets", url: "/tickets" },
+    { kind: "Go to", title: "Tasks", url: "/tasks" },
+    { kind: "Go to", title: "Products", url: "/products" },
+    { kind: "Go to", title: "Invoices", url: "/invoices" },
     { kind: "Go to", title: "Projects", url: "/projects" },
+    { kind: "Go to", title: "Reports", url: "/reports" },
+    { kind: "Create", title: "New contact", dialog: "dlg-contact" },
+    { kind: "Create", title: "New company", dialog: "dlg-customer" },
     { kind: "Create", title: "New deal", dialog: "dlg-deal" },
-    { kind: "Create", title: "New customer", dialog: "dlg-customer" },
-    { kind: "Create", title: "Schedule an activity", dialog: "dlg-activity" },
+    { kind: "Create", title: "New ticket", dialog: "dlg-ticket" },
+    { kind: "Create", title: "New task", dialog: "dlg-activity" },
     { kind: "Create", title: "Raise an invoice", dialog: "dlg-invoice" },
   ];
   let items = [], active = 0, searchTimer;
@@ -111,7 +139,7 @@
       const li = document.createElement("li");
       if (!item) {
         li.className = "none";
-        li.textContent = "No matches. Try a company name, town or postcode.";
+        li.textContent = "No matches. Try a name, email, company or postcode.";
         return li;
       }
       li.setAttribute("role", "option");
@@ -389,7 +417,8 @@
 
   /* Tabs ----------------------------------------------------------------- */
   $$("[role=tablist]").forEach(list => {
-    const tabs = $$("[role=tab]", list);
+    const tabs = $$("[role=tab][aria-controls]", list);
+    if (!tabs.length) return;
     const show = tab => tabs.forEach(t => {
       const on = t === tab;
       t.setAttribute("aria-selected", on);
@@ -436,5 +465,149 @@
     };
     range.addEventListener("change", () => save(false));
     form.status.addEventListener("change", () => save(true));
+  });
+
+  /* Ticket board drag and drop ------------------------------------------ */
+  const ticketBoard = $("[data-ticket-board]");
+  if (ticketBoard) {
+    let dragged = null;
+    const recount = () => $$(".column", ticketBoard).forEach(col => { $("[data-col-count]", col).textContent = $$(".card", col).length; });
+    ticketBoard.addEventListener("dragstart", e => {
+      dragged = e.target.closest(".card");
+      if (!dragged) return;
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", dragged.dataset.ticket);
+      requestAnimationFrame(() => dragged.classList.add("dragging"));
+    });
+    document.addEventListener("dragend", () => {
+      dragged?.classList.remove("dragging");
+      dragged = null;
+      $$(".over", ticketBoard).forEach(z => z.classList.remove("over"));
+    });
+    $$("[data-dropzone]", ticketBoard).forEach(zone => {
+      zone.addEventListener("dragover", e => { if (dragged) { e.preventDefault(); zone.classList.add("over"); } });
+      zone.addEventListener("dragleave", e => { if (!zone.contains(e.relatedTarget)) zone.classList.remove("over"); });
+      zone.addEventListener("drop", async e => {
+        e.preventDefault();
+        zone.classList.remove("over");
+        const card = dragged;
+        if (!card) return;
+        const status = zone.closest("[data-status]").dataset.status;
+        if (status === card.closest("[data-status]").dataset.status) return;
+        const home = card.parentElement, next = card.nextSibling;
+        zone.prepend(card);
+        recount();
+        try {
+          const res = await post(`/tickets/${card.dataset.ticket}/status`, { status });
+          toast(res.message);
+          $$(".menu button[name=status]", card).forEach(b => { b.hidden = b.value === status; });
+        } catch (err) {
+          home.insertBefore(card, next);
+          recount();
+          toast("That move didn't save. Check your connection and try again.", "error");
+        }
+      });
+    });
+  }
+
+  /* Bulk actions on list pages ------------------------------------------ */
+  $$("form[data-bulk]").forEach(form => {
+    const bar = $("[data-bulk-bar]", form);
+    const count = $("[data-bulk-count]", form);
+    const all = $("[data-select-all]", form);
+    const action = $("[data-bulk-action]", form);
+    const value = $("[data-bulk-value]", form);
+    const boxes = () => $$("input[name=ids]", form);
+    const update = () => {
+      const n = boxes().filter(b => b.checked).length;
+      bar.hidden = n === 0;
+      count.textContent = n;
+      if (all) {
+        all.checked = n > 0 && n === boxes().length;
+        all.indeterminate = n > 0 && n < boxes().length;
+      }
+      boxes().forEach(b => b.closest("tr")?.classList.toggle("is-picked", b.checked));
+    };
+    form.addEventListener("change", e => {
+      if (e.target === all) boxes().forEach(b => { b.checked = all.checked; });
+      if (e.target === all || e.target.name === "ids") update();
+    });
+    action.addEventListener("change", () => {
+      const options = $(`template[data-bulk-options="${action.value}"]`, form);
+      value.replaceChildren(...(options ? options.content.cloneNode(true).children : []));
+      value.hidden = !options;
+    });
+    form.addEventListener("submit", e => {
+      const n = boxes().filter(b => b.checked).length;
+      if (!action.value || !n) { e.preventDefault(); toast("Choose an action first.", "error"); return; }
+      if (action.value === "delete" && !confirm(`Delete ${n} selected? This can't be undone.`)) e.preventDefault();
+    });
+    update();
+  });
+
+  /* Activity composer ---------------------------------------------------- */
+  const composer = $(".composer form");
+  if (composer) {
+    const setKind = kind => {
+      composer.dataset.kind = kind;
+      const label = $(".c-when-label", composer);
+      if (label) label.textContent = kind === "task" ? "Due" : "When";
+    };
+    composer.addEventListener("change", e => { if (e.target.name === "kind") setKind(e.target.value); });
+    setKind($("input[name=kind]:checked", composer)?.value || "note");
+    document.addEventListener("click", e => {
+      const b = e.target.closest("[data-compose]");
+      if (!b) return;
+      const radio = $(`input[name=kind][value="${b.dataset.compose}"]`, composer);
+      if (!radio) return;
+      radio.checked = true;
+      setKind(radio.value);
+      composer.closest(".composer").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+      // mailto: and tel: links still open the mail or phone app.
+      const field = $(radio.value === "note" ? "textarea" : "input[name=subject]", composer);
+      setTimeout(() => field?.focus({ preventScroll: true }), 250);
+    });
+  }
+
+  /* Timeline filter ------------------------------------------------------ */
+  $$("[data-timeline-filter]").forEach(group => {
+    const feed = $(".feed", group.closest(".timeline-panel"));
+    group.addEventListener("click", e => {
+      const b = e.target.closest("[data-kind]");
+      if (!b) return;
+      $$("[data-kind]", group).forEach(o => o.setAttribute("aria-pressed", o === b));
+      let monthHead = null, shown = 0, any = false;
+      for (const li of feed.children) {
+        if (li.hasAttribute("data-month")) {
+          if (monthHead) monthHead.hidden = shown === 0;
+          monthHead = li; shown = 0;
+          continue;
+        }
+        if (!li.dataset.kind) continue;
+        li.hidden = Boolean(b.dataset.kind) && li.dataset.kind !== b.dataset.kind;
+        if (!li.hidden) { shown++; any = true; }
+      }
+      if (monthHead) monthHead.hidden = shown === 0;
+      let empty = $(".feed-none", feed);
+      if (!any && !empty) {
+        empty = document.createElement("li");
+        empty.className = "empty-line feed-none";
+        empty.textContent = "Nothing of this kind yet.";
+        feed.append(empty);
+      }
+      if (empty) empty.hidden = any;
+    });
+  });
+
+  /* CSV file picker ------------------------------------------------------ */
+  $$("[data-file-drop]").forEach(label => {
+    const input = $("input[type=file]", label), name = $("[data-file-name]", label);
+    input.addEventListener("change", () => { if (input.files[0]) { name.textContent = input.files[0].name; label.classList.add("has-file"); } });
+    ["dragenter", "dragover"].forEach(t => label.addEventListener(t, e => { e.preventDefault(); label.classList.add("over"); }));
+    ["dragleave", "drop"].forEach(t => label.addEventListener(t, () => label.classList.remove("over")));
+    label.addEventListener("drop", e => {
+      e.preventDefault();
+      if (e.dataTransfer.files.length) { input.files = e.dataTransfer.files; input.dispatchEvent(new Event("change")); }
+    });
   });
 })();

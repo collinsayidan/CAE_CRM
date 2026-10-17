@@ -1,6 +1,8 @@
 # CAE CRM
 
-A UK-standard sales CRM built in Python with **Flask**. It uses SQLite locally and PostgreSQL in production, with plain JavaScript for the interactive parts. It doesn't use a front-end framework or a build step.
+A CRM for UK businesses, built in Python with **Flask**. Many businesses can use one installation: each signs up for its own workspace, and nobody sees another business's records. It covers contacts, companies, deals with products and line items, a help desk with service levels, tasks, VAT invoices, delivery projects and reports.
+
+It uses SQLite locally and PostgreSQL in production, with plain JavaScript for the interactive parts. There's no front-end framework or build step.
 
 ## Run it
 
@@ -10,14 +12,15 @@ pip install -r requirements.txt
 python app.py            # or: flask --app app run
 ```
 
-Open http://127.0.0.1:5000. The first time you open it, the app asks you to create an admin account. Locally it uses an SQLite file at `instance/cae_crm.sqlite3`, filled with fictional UK demo data. To start again, delete that file.
+Open http://127.0.0.1:5000 and choose **Create a workspace**. Leave the sample data box ticked to look around with fictional UK companies, deals and tickets, or leave it empty and import your own. Locally the data lives in `instance/cae_crm.sqlite3`. Delete that file to start again.
 
-## Accounts
+## Workspaces and accounts
 
-- Every page needs you to sign in. The first account is an **admin**, created on the setup page, which closes once that account exists.
-- Admins add team members from **Team**, with a temporary password, and can reset passwords or remove people. Only admins can erase a contact's personal data.
-- Passwords need at least 10 characters and are stored as scrypt hashes. After 5 wrong attempts an account locks for 15 minutes. An admin resetting the password unlocks it.
-- Sign-ins last 12 hours. Session cookies are HTTP-only and SameSite=Lax, and are marked Secure when the app is hosted.
+- **Sign-up:** whoever creates a workspace becomes its first **admin**. Set `CAE_SETUP_CODE` and sign-up asks for that code, so only people you invite can open a workspace.
+- **Teams:** admins add people from **Team** with a temporary password, and can reset passwords, change roles or remove people.
+- **Roles:** members do the everyday work. Only admins can change settings, manage the team, import, export lists, delete records or erase a contact's personal data.
+- **Separation:** every record carries its workspace. Every query is filtered by it, and links between records are checked against it, so one business can't read or reference another's data. `tests/test_isolation.py` checks this page by page.
+- **Passwords:** at least 10 characters, stored as scrypt hashes. After 5 wrong attempts an account locks for 15 minutes. Sign-ins last 12 hours, and session cookies are HTTP-only, SameSite=Lax and Secure when hosted.
 
 ## Deploy to Vercel
 
@@ -25,53 +28,78 @@ Open http://127.0.0.1:5000. The first time you open it, the app asks you to crea
 2. **Database.** Open **Storage**, create a **Neon Postgres** database and connect it to the project. This adds `DATABASE_URL` for you. Any PostgreSQL connection string works.
 3. **Environment variables.** In **Settings → Environment Variables**, add:
    - `CAE_SECRET_KEY`: a long random value. `python -c "import secrets; print(secrets.token_hex(32))"` makes one.
-   - `CAE_SETUP_CODE`: any phrase you choose. The setup page asks for it, so nobody else can claim the admin account before you.
-4. **Redeploy.** Then open the site and create your admin account.
+   - `CAE_SETUP_CODE`: an invite code of your choosing. People need it to create a workspace.
+4. **Redeploy.** Then open the site and create your workspace.
 
-The app creates its tables on first start. A Postgres database starts empty. Set `CAE_DEMO_DATA=1` if you want the demo companies and deals in it. If a required setting is missing, the site shows a "Finish setting up" page naming it, rather than running without it.
+The app creates and upgrades its tables when it starts. A database from the first release is upgraded in place, and its records move into a workspace called "My business". If a required setting is missing, the site shows a "Finish setting up" page naming it, rather than running without it.
 
 Vercel finds the app through `wsgi.py`, which `pyproject.toml` names in `[tool.vercel] entrypoint = "wsgi:app"`.
 
-## Pages
+## What's in it
+
+The sidebar groups pages the way a business works: **CRM** (Contacts, Companies, Deals, Tickets), **Sales** (Tasks, Products), **Finance** (Invoices), **Delivery** (Projects) and **Insight** (Reports). Admins also get **Settings**, **Team** and **Import**.
 
 | Page | What it does |
 |---|---|
-| **Overview** | Opens with the month track: won revenue against target, with a tick for each UK working day and a pace marker showing where you'd be at an even rate. Below that are the key figures with trend lines, a hoverable revenue chart (6 or 12 months), what's coming up next, deals closing in the next 30 days, pipeline by stage and the quarterly quota. |
-| **Pipeline** | Drag deals between stages, or drop them on Won or Lost. Each card also has a menu, so you can move deals without dragging. You can filter by owner. Winning a deal creates a delivery project. |
-| **Customers** | A sortable list that filters as you type. Each company page has its registered details, account figures, and tabs for people, deals, invoices and activity. |
-| **Schedule** | A month calendar (weeks start on Monday, bank holidays marked) next to a day-by-day agenda. You can tick activities off without the page reloading. |
-| **Finance** | Unpaid, overdue and received totals, output VAT for the quarter, and an aged-debt breakdown. Invoices can be sorted and filtered. Raising an invoice shows a live VAT preview. Each invoice can be printed. |
-| **Growth** | Won revenue and win rate by lead source and by sales rep. |
-| **Projects** | A board grouped by status. Progress and status save as you change them. |
+| **Home** | The month track (won revenue against target, paced by UK working days), key figures including open tickets and service-level breaches, the revenue chart, what's next, deals closing soon, pipeline by stage and the quarterly quota. |
+| **Contacts** | People, with lifecycle stage (Subscriber → Lead → MQL → SQL → Opportunity → Customer → Evangelist), lead status, owner and consent. Lifecycle moves on automatically when a contact joins a deal or a deal is won. |
+| **Companies** | Businesses, with Companies House and VAT numbers, lifetime revenue, open pipeline and open tickets. |
+| **Deals** | A drag-and-drop board by stage, or a list you can filter and sort. Winning a deal starts a delivery project. |
+| **Tickets** | A help desk board (New, Waiting on us, Waiting on contact, Closed) and list. Each priority has a first-response and resolution target counted in UK working hours. |
+| **Tasks** | Calls, emails, meetings and to-dos on a month calendar with bank holidays, for everyone or just you. |
+| **Products** | Your price list with SKU, billing period (one-off, monthly, annual) and VAT rate. Archive what you no longer sell. |
+| **Invoices** | Aged debt, VAT for the quarter and every invoice. Each invoice prints with your business details. |
+| **Projects** | Delivery work from won deals, by status. |
+| **Reports** | Lifecycle funnel, service levels and tickets by category, won revenue by source, the leaderboard and products in the open pipeline. |
 
-Across every page:
-- **Search and jump:** press <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd> (or <kbd>/</kbd>) to search customers, deals and people, or go straight to a page or form.
-- **Quick create:** the **New** button opens a deal, customer, activity or invoice form from anywhere.
-- **Display:** light and dark themes, and a mobile layout with a slide-out menu.
+### Record pages
+
+Contacts, companies, deals and tickets each open as a three-column record page:
+- **Left:** the record's key details, with quick actions for Note, Email, Call, Task and Meeting.
+- **Middle:** a box for logging notes, emails, calls (with an outcome) and meetings, or setting a task. Below it is one timeline of everything that happened, grouped by month, which you can filter by type. Changes such as a stage move or a new owner are logged on the timeline automatically.
+- **Right:** the linked records.
+
+Deal pages add a **stage path** and **line items**. Add products from your list or a custom line with quantity, discount and VAT rate. The deal's amount is the total of its lines, and **Invoice this deal** raises an invoice from them with VAT summarised by rate.
+
+Ticket pages add the status path and the two service-level clocks.
+
+### Lists, views and data
+
+- **Views:** filter any list, then save the filters as a view tab. Built-in views include My contacts, New leads, Open tickets and Urgent.
+- **Bulk actions:** tick rows to assign an owner, set a lifecycle stage or ticket status, or delete.
+- **Import:** upload a CSV of contacts or companies, match its columns (common headings are matched for you), then choose whether duplicates are skipped or updated. Files saved by Excel in Windows-1252 are read correctly.
+- **Export:** any filtered list downloads as CSV that opens cleanly in Excel. Cells that could run as spreadsheet formulas are neutralised.
+- **Search:** press <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd> (or <kbd>/</kbd>) to search contacts, companies, deals and tickets, or jump to any page or form.
+- **New:** create a contact, company, deal, ticket, task or invoice from any page. On a record page the form is already linked to that record.
 
 ## Design
 
-- **Colours:** navy and teal on white cards and a light grey background. Amber marks things due soon, and red is used only for overdue items.
-- **Stat cards:** each key figure sits on a card with an icon, a change badge and a filled trend line.
-- **Charts:**
-  - **Revenue:** rounded bars. Months that met the £156,700 target are solid teal, months below it are pale, and the current month is hatched. The target line is labelled, and hovering a bar shows the month's figure.
-  - **Pipeline by stage:** a donut on one colour ramp, from light teal (earliest stage) to navy (latest).
-  - **Quota:** a teal ring.
+- **Colours:** navy and teal on white cards and a light grey background, with light and dark themes. Amber marks things due soon, and red marks only what is overdue or breached.
 - **Typeface:** Plus Jakarta Sans throughout.
-- **Contrast:** text meets WCAG AA in both light and dark themes.
-- **Motion:** the month track fills once when the page loads. If your system asks for reduced motion, it doesn't animate.
-- **Without JavaScript:** every page still works. Forms post normally, and the pipeline menus stand in for drag and drop.
+- **Contrast:** text meets WCAG AA in both themes.
+- **Layout:** works down to phone width. Boards scroll sideways a column at a time, and record pages stack.
+- **Without JavaScript:** every page still works. Forms post normally, and card menus stand in for drag and drop.
 
 ## UK standards built in
 
-- **Currency:** GBP (£). Money is stored as integer pence, so there are no floating-point rounding errors.
+- **Currency:** GBP (£), stored as integer pence so there are no rounding errors.
 - **Dates:** DD/MM/YYYY throughout (the page language is en-GB).
-- **VAT:** 20% standard, 5% reduced and 0% zero-rated. VAT is calculated per invoice. Invoices show the tax point, VAT numbers, 30-day terms and a note on the Late Payment of Commercial Debts Act.
+- **VAT:** 20% standard, 5% reduced and 0% zero-rated, set per line.
+  - Invoices summarise VAT by rate, show the tax point and both parties' VAT numbers, use your payment terms and refer to the Late Payment of Commercial Debts Act.
+  - A business that isn't VAT registered charges no VAT, and its invoices say so.
+- **Record keeping:** companies and deals with invoices can't be deleted, because HMRC requires records to be kept for six years.
 - **Financial year:** runs 1 April to 31 March (labelled FY2026/27), with quarters for quota tracking. VAT quarters follow the calendar.
-- **Working days:** the month track and calendar skip weekends and England and Wales bank holidays from 2025 to 2027.
-- **Validation:** UK postcodes (normalised, e.g. `eh22an` → `EH2 2AN`), Companies House numbers (including the SC, NI and OC prefixes, with a link to the Companies House register), GB VAT numbers and UK phone numbers (normalised to +44).
-- **UK GDPR / DPA 2018:** every contact records a lawful basis. Marketing opt-in is recorded separately with a date, as PECR requires. Each contact has a one-click subject access request export (JSON) and a right-to-erasure action.
-- **Security:** every page needs a sign-in, forms are CSRF-protected, and redirects are checked so they cannot be used as open redirects.
+- **Working hours:** ticket service levels count 09:00 to 17:00, Monday to Friday, skipping England and Wales bank holidays from 2025 to 2027.
+- **Validation:**
+  - UK postcodes are normalised, e.g. `eh22an` becomes `EH2 2AN`.
+  - Companies House numbers are checked, including the SC, NI and OC prefixes, and link to the register.
+  - GB VAT numbers are checked.
+  - UK phone numbers are normalised to +44.
+- **UK GDPR / DPA 2018:**
+  - Every contact records a lawful basis.
+  - Marketing opt-in is recorded separately with a date, as PECR requires.
+  - Each contact has a subject access export (JSON) and a right-to-erasure action.
+- **Security:** sign-in on every page, CSRF protection on every form, and redirects that can't send people off-site.
 
 ## Tests
 
@@ -85,13 +113,22 @@ To run every test against PostgreSQL as well, point `CAE_TEST_POSTGRES_URL` at a
 ## Project layout
 
 ```
-app.py        Flask app factory and routes
-auth.py       sign-in, first-run setup, team and password management
+app.py        app factory, navigation, filters and request guard
+core.py       workspace-scoped query helpers, timeline logging, service-level states
+auth.py       sign-up, sign-in, team and password management
+home.py       landing page, Home dashboard, search and Reports
+crm.py        contacts, companies, deal pages, timeline, list views and bulk actions
+sales.py      deals board, line items, products, tasks and projects
+service.py    tickets and service levels
+finance.py    invoices, VAT and aged debt
+dataio.py     CSV import and export, saved views
+settings.py   business details, VAT and invoice settings
+db.py         schema, migrations, SQLite/PostgreSQL connection wrapper
+seed.py       sample data for a new workspace
+ukfmt.py      GBP, dates, VAT, postcodes, phone numbers, working hours, financial year
+charts.py     server-side SVG charts
 wsgi.py       hosting entrypoint (module-level `app`)
-db.py         schema, SQLite/PostgreSQL connection wrapper, demo seed data
-ukfmt.py      GBP/date/VAT/postcode/phone helpers and the UK financial year
-charts.py     server-side SVG quota ring and sparklines
-templates/    Jinja templates (shared dialogs in _dialogs.html)
-static/       style.css (light and dark themes) and app.js (interactions)
-tests/        pytest suite
+templates/    Jinja templates
+static/       style.css and app.js
+tests/        pytest suite, including cross-workspace isolation tests
 ```

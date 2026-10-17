@@ -2,19 +2,68 @@
 {% set companies = all_companies() %}
 {% set company_ids = companies | map(attribute='id') | list %}
 {% set company_names = companies | map(attribute='name') | list %}
+{% set people = all_contacts() %}
+{% set people_ids = people | map(attribute='id') | list %}
+{% set people_names = people | map(attribute='name') | list %}
 {% set cf = customer_form or {} %}
 {% set ce = customer_errors or {} %}
+
+{# Buttons anywhere can open these with fields filled in: data-open="dlg-contact" data-prefill='{"company_id": 5}'. #}
+
+<dialog class="sheet" id="dlg-contact" aria-labelledby="dlg-contact-title">
+  <form method="post" action="{{ url_for('create_contact') }}" novalidate>
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <input type="hidden" name="next" value="{{ request.full_path }}">
+    <header><h2 id="dlg-contact-title">New contact</h2><button type="button" class="icon-btn" data-close aria-label="Close">{{ icon('x') }}</button></header>
+    <div class="form-grid">
+      {{ field('First name', 'first_name', required=true, extra='autocomplete=off') }}
+      {{ field('Last name', 'last_name', required=true, extra='autocomplete=off') }}
+      {{ field('Email', 'email', type='email') }}
+      {{ field('Phone', 'phone', type='tel', placeholder='0131 496 0000') }}
+      {{ field('Job title', 'role') }}
+      {{ select('Company', 'company_id', company_names, values=company_ids, blank='No company') }}
+      {{ select('Lifecycle stage', 'lifecycle_stage', lifecycle_stages, 'Lead') }}
+      {{ select('Owner', 'owner', owners, current_user.name) }}
+      {{ select('Lawful basis for holding their data', 'lawful_basis', lawful_bases, 'Legitimate interests') }}
+    </div>
+    <label class="check"><input type="checkbox" name="marketing_consent"><span>They've agreed to receive marketing emails</span></label>
+    <footer><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Add contact</button></footer>
+  </form>
+</dialog>
+
+<dialog class="sheet" id="dlg-customer" aria-labelledby="dlg-customer-title" {% if ce %}data-autoopen{% endif %}>
+  <form method="post" action="{{ url_for('create_company') }}" novalidate>
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <header><h2 id="dlg-customer-title">New company</h2><button type="button" class="icon-btn" data-close aria-label="Close">{{ icon('x') }}</button></header>
+    {% if ce %}<p class="form-alert" role="alert">Company not added. Check the highlighted fields.</p>{% endif %}
+    <div class="form-grid">
+      {{ field('Company name', 'name', cf.name, errors=ce, required=true) }}
+      {{ field('Companies House number', 'company_no', cf.company_no, errors=ce, placeholder='08451236', hint='Leave blank for sole traders.') }}
+      {{ field('VAT registration number', 'vat_no', cf.vat_no, errors=ce, placeholder='GB123456789') }}
+      {{ field('Industry', 'industry', cf.industry) }}
+      {{ field('Website', 'website', cf.website, placeholder='example.co.uk') }}
+      {{ field('Phone', 'phone', cf.phone, errors=ce, type='tel') }}
+      {{ field('Address', 'address', cf.address, extra='autocomplete=address-line1') }}
+      {{ field('Town or city', 'city', cf.city, extra='autocomplete=address-level2') }}
+      {{ field('Postcode', 'postcode', cf.postcode, errors=ce, required=true, placeholder='EH2 2AN', extra='autocomplete=postal-code') }}
+      {{ select('Region', 'region', regions, cf.region) }}
+      {{ select('Owner', 'owner', owners, cf.owner or current_user.name) }}
+    </div>
+    <footer><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Add company</button></footer>
+  </form>
+</dialog>
 
 <dialog class="sheet" id="dlg-deal" aria-labelledby="dlg-deal-title">
   <form method="post" action="{{ url_for('create_deal') }}">
     <input type="hidden" name="csrf" value="{{ csrf_token }}">
     <input type="hidden" name="next" value="{{ request.full_path }}">
     <header><h2 id="dlg-deal-title">New deal</h2><button type="button" class="icon-btn" data-close aria-label="Close">{{ icon('x') }}</button></header>
-    {% if not companies %}<p class="form-alert" role="alert">Add a customer first. <button type="button" class="text-link" data-open="dlg-customer">Add customer</button></p>{% endif %}
+    {% if not companies %}<p class="form-alert" role="alert">Add a company first. <button type="button" class="text-link" data-open="dlg-customer">Add company</button></p>{% endif %}
     <div class="form-grid">
-      {{ field('What are you selling?', 'title', required=true, placeholder='Multi-site rollout', extra='maxlength=120 autofocus') }}
-      {{ select('Customer', 'company_id', company_names, values=company_ids) }}
-      {{ field('Value, excluding VAT', 'value', required=true, placeholder='£25,000', extra='inputmode=decimal') }}
+      {{ field('Deal name', 'title', required=true, placeholder='Multi-site rollout', extra='maxlength=120 autofocus') }}
+      {{ select('Company', 'company_id', company_names, values=company_ids) }}
+      {{ select('Main contact', 'contact_id', people_names, values=people_ids, blank='No contact yet') }}
+      {{ field('Value, excluding VAT', 'value', placeholder='£25,000', hint='Or leave blank and add products to the deal.', extra='inputmode=decimal') }}
       {{ field('Expected close date', 'close_date', type='date', required=true) }}
       {{ select('Stage', 'stage', stages | map('first') | list) }}
       {{ select('Owner', 'owner', owners, current_user.name) }}
@@ -24,22 +73,23 @@
   </form>
 </dialog>
 
-<dialog class="sheet" id="dlg-customer" aria-labelledby="dlg-customer-title" {% if ce %}data-autoopen{% endif %}>
-  <form method="post" action="{{ url_for('create_company') }}" novalidate>
+<dialog class="sheet" id="dlg-ticket" aria-labelledby="dlg-ticket-title">
+  <form method="post" action="{{ url_for('create_ticket') }}">
     <input type="hidden" name="csrf" value="{{ csrf_token }}">
-    <header><h2 id="dlg-customer-title">New customer</h2><button type="button" class="icon-btn" data-close aria-label="Close">{{ icon('x') }}</button></header>
-    {% if ce %}<p class="form-alert" role="alert">Customer not added. Check the highlighted fields.</p>{% endif %}
+    <input type="hidden" name="next" value="{{ request.full_path }}">
+    <header><h2 id="dlg-ticket-title">New ticket</h2><button type="button" class="icon-btn" data-close aria-label="Close">{{ icon('x') }}</button></header>
     <div class="form-grid">
-      {{ field('Company name', 'name', cf.name, errors=ce, required=true) }}
-      {{ field('Companies House number', 'company_no', cf.company_no, errors=ce, placeholder='08451236', hint='Leave blank for sole traders.') }}
-      {{ field('VAT registration number', 'vat_no', cf.vat_no, errors=ce, placeholder='GB123456789') }}
-      {{ field('Industry', 'industry', cf.industry) }}
-      {{ field('Address', 'address', cf.address, extra='autocomplete=address-line1') }}
-      {{ field('Town or city', 'city', cf.city, extra='autocomplete=address-level2') }}
-      {{ field('Postcode', 'postcode', cf.postcode, errors=ce, required=true, placeholder='EH2 2AN', extra='autocomplete=postal-code') }}
-      {{ select('Region', 'region', regions, cf.region) }}
+      {{ field('Subject', 'subject', required=true, placeholder='Invoice shows the wrong PO number', extra='maxlength=140') }}
+      {{ select('Priority', 'priority', ticket_priorities, 'Medium') }}
+      {{ select('Category', 'category', ticket_categories) }}
+      {{ select('Company', 'company_id', company_names, values=company_ids, blank='No company') }}
+      {{ select('Contact', 'contact_id', people_names, values=people_ids, blank='No contact') }}
+      {{ select('Came in by', 'source', ticket_sources) }}
+      {{ select('Owner', 'owner', owners, current_user.name) }}
     </div>
-    <footer><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Add customer</button></footer>
+    <label class="field"><span class="field-label">Description <span class="optional">(optional)</span></span><textarea name="description" rows="3"></textarea></label>
+    <p class="form-hint">Response and resolution deadlines are set from the priority, counted in UK working hours (09:00 to 17:00, Monday to Friday, excluding bank holidays).</p>
+    <footer><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Open ticket</button></footer>
   </form>
 </dialog>
 
@@ -47,16 +97,17 @@
   <form method="post" action="{{ url_for('create_activity') }}">
     <input type="hidden" name="csrf" value="{{ csrf_token }}">
     <input type="hidden" name="next" value="{{ request.full_path }}">
-    <header><h2 id="dlg-activity-title">Schedule an activity</h2><button type="button" class="icon-btn" data-close aria-label="Close">{{ icon('x') }}</button></header>
+    <header><h2 id="dlg-activity-title">New task</h2><button type="button" class="icon-btn" data-close aria-label="Close">{{ icon('x') }}</button></header>
     <div class="form-grid">
-      {{ select('Type', 'kind', kinds) }}
       {{ field('Subject', 'subject', required=true, placeholder='Pricing follow-up', extra='maxlength=140') }}
-      {{ field('Date', 'date', today.isoformat(), type='date', required=true) }}
+      {{ select('Type', 'kind', kinds, 'Task') }}
+      {{ select('Assign to', 'owner', owners, current_user.name) }}
+      {{ field('Due date', 'date', today.isoformat(), type='date', required=true) }}
       {{ field('Time', 'time', '09:00', type='time', required=true) }}
-      {{ select('Customer', 'company_id', company_names, values=company_ids, blank='No customer') }}
-      {{ select('Owner', 'owner', owners, current_user.name) }}
+      {{ select('Company', 'company_id', company_names, values=company_ids, blank='No company') }}
+      {{ select('Contact', 'contact_id', people_names, values=people_ids, blank='No contact') }}
     </div>
-    <footer><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Schedule</button></footer>
+    <footer><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Create task</button></footer>
   </form>
 </dialog>
 
@@ -65,14 +116,15 @@
     <input type="hidden" name="csrf" value="{{ csrf_token }}">
     <input type="hidden" name="next" value="{{ request.full_path }}">
     <header><h2 id="dlg-invoice-title">Raise an invoice</h2><button type="button" class="icon-btn" data-close aria-label="Close">{{ icon('x') }}</button></header>
-    {% if not companies %}<p class="form-alert" role="alert">Add a customer first. <button type="button" class="text-link" data-open="dlg-customer">Add customer</button></p>{% endif %}
+    {% if not companies %}<p class="form-alert" role="alert">Add a company first. <button type="button" class="text-link" data-open="dlg-customer">Add company</button></p>{% endif %}
     <div class="form-grid">
-      {{ select('Customer', 'company_id', company_names, values=company_ids) }}
       {{ field('Description', 'description', required=true, placeholder='Onboarding package', extra='maxlength=140') }}
+      {{ select('Customer', 'company_id', company_names, values=company_ids) }}
       {{ field('Net amount', 'net', required=true, placeholder='£12,500.00', extra='inputmode=decimal data-net') }}
-      {{ select('VAT rate', 'vat_rate', ['20% standard', '5% reduced', '0% zero-rated'], values=vat_rates) }}
+      {{ select('VAT rate', 'vat_rate', vat_labels, values=vat_rates) }}
     </div>
-    <p class="invoice-preview" data-invoice-preview>Payment due in 30 days.</p>
+    <p class="invoice-preview" data-invoice-preview data-terms="{{ workspace.payment_terms }}">Payment due in {{ workspace.payment_terms }} days.</p>
+    <p class="form-hint">To invoice a deal's products line by line, open the deal and choose Invoice this deal.</p>
     <footer><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Raise invoice</button></footer>
   </form>
 </dialog>

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, avatar, logo, stage_chip with context %}
+{% from "_lists.html" import view_tabs, bulk_bar, pagination, filter_select with context %}
+{% block title %}Deals{% endblock %}
+{% block heading %}Deals{% endblock %}
+{% block subtitle %}<p class="subtitle">Every deal, open and closed. Filter, sort and save the view you use most.</p>{% endblock %}
+{% block actions %}
+  <nav class="layout-switch" aria-label="Layout">
+    <a href="{{ url_for('pipeline') }}">{{ icon('columns') }}<span>Board</span></a>
+    <a href="{{ url_for('pipeline', view='list') }}" aria-current="true">{{ icon('list') }}<span>List</span></a>
+  </nav>
+  {% if current_user.role == 'admin' %}
+    <a class="btn ghost" href="{{ url_for('export', obj='deals', **request.args) }}">{{ icon('download') }} Export</a>
+  {% endif %}
+  <button class="btn primary" data-open="dlg-deal">{{ icon('plus') }} Add deal</button>
+{% endblock %}
+
+{% block content %}
+{{ view_tabs(tabs, 'deals', url_for('pipeline', view='list'), current_query) }}
+
+<section class="panel flush">
+  <form class="list-toolbar" method="get" role="search">
+    <input type="hidden" name="view" value="list">
+    <label class="search-field">{{ icon('search') }}<input type="search" name="q" value="{{ active.q }}" placeholder="Search deal or company" aria-label="Search deals"></label>
+    {{ filter_select('owner', 'Any owner', owners_all, active.owner) }}
+    {{ filter_select('stage', 'Any stage', all_stages, active.stage) }}
+    {{ filter_select('source', 'Any source', sources, active.source) }}
+    {{ filter_select('sort', 'Sort', ['Close date', 'Largest first', 'Newest first'], active.sort, values=['close', 'value', 'newest']) }}
+    {% if current_query %}<a class="text-link sm" href="{{ url_for('pipeline', view='list') }}">Clear filters</a>{% endif %}
+    <noscript><button class="btn sm">Apply</button></noscript>
+  </form>
+
+  <form method="post" action="{{ url_for('bulk', obj='deals') }}" data-bulk>
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <input type="hidden" name="next" value="{{ request.full_path }}">
+    {{ bulk_bar('deals', owners_all) }}
+    <div class="table-wrap">
+      <table class="records">
+        <thead><tr>
+          <th class="pick"><input type="checkbox" data-select-all aria-label="Select all"></th>
+          <th>Deal</th><th>Stage</th><th>Owner</th><th>Source</th><th>Close date</th><th class="num">Amount</th><th class="num">Weighted</th>
+        </tr></thead>
+        <tbody>
+          {% for d in records %}
+            <tr>
+              <td class="pick"><input type="checkbox" name="ids" value="{{ d.id }}" aria-label="Select {{ d.title }}"></td>
+              <td><a class="row-link" href="{{ url_for('deal', deal_id=d.id) }}">{{ logo(d.company, 'sm') }}<span><b>{{ d.title }}</b>
+                <small>{{ d.company }}</small></span></a></td>
+              <td>{% if d.stage == 'Won' %}<span class="chip ok">Won</span>{% elif d.stage == 'Lost' %}<span class="chip bad">Lost</span>{% else %}{{ stage_chip(d.stage) }}{% endif %}</td>
+              <td>{{ d.owner or '' }}</td>
+              <td>{{ d.source or '' }}</td>
+              <td>{{ (d.closed_at or d.close_date) | uk_date }}</td>
+              <td class="num"><b>{{ d.value | money }}</b></td>
+              <td class="num">{{ (d.value * d.probability // 100) | money }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="8" class="empty-line">
+              {% if current_query %}No deals match these filters. <a class="text-link" href="{{ url_for('pipeline', view='list') }}">Clear filters</a>
+              {% else %}No deals yet. <button type="button" class="text-link" data-open="dlg-deal">Add the first one</button>.{% endif %}
+            </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </form>
+  {{ pagination(page, pages, total, 'deals') }}
+</section>
+{% endblock %}

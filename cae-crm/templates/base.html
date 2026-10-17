@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <title>{% block title %}{% endblock %} – CAE CRM</title>
+  <title>{% block title %}{% endblock %} – {{ workspace.name }} – CAE CRM</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400..800;1,400..800&display=swap">
@@ -19,27 +19,35 @@
   <aside class="sidebar" id="sidebar">
     <a class="brand" href="{{ url_for('overview') }}">
       <span class="mark" aria-hidden="true">C</span>
-      <span class="brand-name">CAE CRM</span>
+      <span class="brand-text"><span class="brand-name">CAE CRM</span><span class="brand-ws" title="Your workspace">{{ workspace.name }}</span></span>
     </a>
-    <nav aria-label="Main">
-      {% for endpoint, label, icon_name in nav %}
-        {% set active = request.endpoint == endpoint or (endpoint == 'customers' and request.endpoint == 'company') or (endpoint == 'finance' and request.endpoint == 'invoice') %}
-        <a href="{{ url_for(endpoint) }}" {% if active %}aria-current="page"{% endif %}>
-          {{ icon(icon_name) }}<span>{{ label }}</span>
-          {% if counts.get(endpoint) %}
-            <span class="count {{ 'alert' if endpoint == 'finance' }}" title="{{ {'pipeline': 'Open deals', 'schedule': 'Still to do today', 'finance': 'Overdue invoices'}[endpoint] }}">{{ counts[endpoint] }}</span>
-          {% endif %}
-        </a>
+    <nav aria-label="Main" class="main-nav">
+      {% for heading, items in nav %}
+        {% if heading %}<p class="nav-heading">{{ heading }}</p>{% endif %}
+        {% for endpoint, label, icon_name in items %}
+          <a href="{{ url_for(endpoint) }}" {% if nav_active == endpoint %}aria-current="page"{% endif %}>
+            {{ icon(icon_name) }}<span>{{ label }}</span>
+            {% if counts.get(endpoint) %}
+              <span class="count {{ 'alert' if endpoint in alert_counts }}" title="{{ count_titles[endpoint] }}">{{ counts[endpoint] }}</span>
+            {% endif %}
+          </a>
+        {% endfor %}
       {% endfor %}
     </nav>
     <div class="sidebar-foot">
+      {% if current_user.role == 'admin' %}
+        <nav class="admin-links" aria-label="Administration">
+          <a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}aria-current="page"{% endif %}>{{ icon('cog') }}<span>Settings</span></a>
+          <a href="{{ url_for('auth.team') }}" {% if request.endpoint == 'auth.team' %}aria-current="page"{% endif %}>{{ icon('users') }}<span>Team</span></a>
+          <a href="{{ url_for('imports') }}" {% if request.endpoint in ('imports', 'import_map') %}aria-current="page"{% endif %}>{{ icon('upload') }}<span>Import</span></a>
+        </nav>
+      {% endif %}
       <div class="me">
         <span class="avatar" style="--h: {{ current_user.name | hue }}" aria-hidden="true">{{ current_user.name | initials }}</span>
         <div><p class="me-name">{{ current_user.name }}</p><p class="me-role">{{ current_user.role | capitalize }}</p></div>
       </div>
       <nav class="me-links" aria-label="Your account">
         <a href="{{ url_for('auth.account') }}" {% if request.endpoint == 'auth.account' %}aria-current="page"{% endif %}>Account</a>
-        {% if current_user.role == 'admin' %}<a href="{{ url_for('auth.team') }}" {% if request.endpoint == 'auth.team' %}aria-current="page"{% endif %}>Team</a>{% endif %}
         <form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button>Sign out</button></form>
       </nav>
     </div>
@@ -50,15 +58,17 @@
     <header class="topbar">
       <button class="icon-btn only-mobile" data-open-sidebar aria-label="Open menu">{{ icon('menu') }}</button>
       <button class="search-trigger" data-palette>
-        {{ icon('search') }}<span>Search customers, deals and people</span><kbd>Ctrl K</kbd>
+        {{ icon('search') }}<span>Search contacts, companies, deals and tickets</span><kbd>Ctrl K</kbd>
       </button>
       <div class="top-actions">
         <details class="new-menu">
           <summary class="btn primary">{{ icon('plus') }}<span>New</span></summary>
           <div class="menu" role="menu">
+            <button type="button" role="menuitem" data-open="dlg-contact">Contact</button>
+            <button type="button" role="menuitem" data-open="dlg-customer">Company</button>
             <button type="button" role="menuitem" data-open="dlg-deal">Deal</button>
-            <button type="button" role="menuitem" data-open="dlg-customer">Customer</button>
-            <button type="button" role="menuitem" data-open="dlg-activity">Activity</button>
+            <button type="button" role="menuitem" data-open="dlg-ticket">Ticket</button>
+            <button type="button" role="menuitem" data-open="dlg-activity">Task</button>
             <button type="button" role="menuitem" data-open="dlg-invoice">Invoice</button>
           </div>
         </details>
@@ -67,14 +77,17 @@
     </header>
 
     <main id="content">
+      {% block page %}
       <div class="page-head">
         <div>
+          {% block crumbs %}{% endblock %}
           <h1>{% block heading %}{% endblock %}</h1>
           {% block subtitle %}{% endblock %}
         </div>
         <div class="page-actions">{% block actions %}{% endblock %}</div>
       </div>
       {% block content %}{% endblock %}
+      {% endblock %}
     </main>
   </div>
 

@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Import{% endblock %}
+{% block heading %}Import from a spreadsheet{% endblock %}
+{% block subtitle %}<p class="subtitle">Bring in contacts or companies from Excel, Google Sheets or another CRM, saved as CSV.</p>{% endblock %}
+
+{% block content %}
+<ol class="steps" aria-label="Import steps">
+  <li class="{{ 'current' if step == 'upload' else 'done' }}"><span>1</span>Upload</li>
+  <li class="{{ 'current' if step == 'map' else 'done' if step == 'done' }}"><span>2</span>Match columns</li>
+  <li class="{{ 'current' if step == 'done' }}"><span>3</span>Done</li>
+</ol>
+
+{% if step == 'upload' %}
+  <section class="panel narrow">
+    <form method="post" action="{{ url_for('imports') }}" enctype="multipart/form-data" class="import-form">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <fieldset class="choice-cards">
+        <legend class="field-label">What are you importing?</legend>
+        <label class="choice-card"><input type="radio" name="object" value="contacts" checked>
+          <span>{{ icon('users') }}<b>Contacts</b><small>People, with their email, phone and company. Companies are created or matched by name.</small></span></label>
+        <label class="choice-card"><input type="radio" name="object" value="companies">
+          <span>{{ icon('building') }}<b>Companies</b><small>Businesses, with their address, Companies House and VAT numbers.</small></span></label>
+      </fieldset>
+      <label class="dropzone-file" data-file-drop>
+        {{ icon('upload') }}
+        <b data-file-name>Choose a CSV file or drop it here</b>
+        <small>Up to 5,000 rows. The first row should be the column headings.</small>
+        <input type="file" name="file" accept=".csv,text/csv" required>
+      </label>
+      <div class="form-actions"><button class="btn primary">Next: match columns</button></div>
+    </form>
+  </section>
+  <section class="panel narrow tips">
+    <h2>Before you import</h2>
+    <ul class="ticks">
+      <li>Contacts with an email already in CAE CRM are skipped or updated, your choice. No duplicates.</li>
+      <li>Postcodes, phone numbers and VAT numbers are tidied into UK format.</li>
+      <li>You'll record the UK GDPR lawful basis for holding everyone you import. Marketing consent is only set where the file says they opted in.</li>
+    </ul>
+  </section>
+
+{% elif step == 'map' %}
+  <section class="panel flush">
+    <header class="panel-head pad">
+      <div><h2>{{ imp.filename }}</h2><p class="panel-note">{{ "{:,}".format(rows_count) }} {{ imp.object }} found. Match each column to a field, or skip it.</p></div>
+    </header>
+    <form method="post" action="{{ url_for('import_map', import_id=imp.id) }}">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <div class="table-wrap">
+        <table class="records mapping">
+          <thead><tr><th>Column in your file</th><th>Example values</th><th>Import as</th></tr></thead>
+          <tbody>
+            {% for c in columns %}
+              <tr class="{{ 'is-matched' if c.guess }}">
+                <td><b>{{ c.header }}</b></td>
+                <td class="samples">{% for s in c.samples if s %}<span>{{ s }}</span>{% else %}<span class="muted">Empty</span>{% endfor %}</td>
+                <td><select name="map_{{ c.index }}" aria-label="Import {{ c.header }} as">
+                  <option value="">Don't import</option>
+                  {% for key, label, _ in fields %}<option value="{{ key }}" {{ 'selected' if key == c.guess }}>{{ label }}</option>{% endfor %}
+                </select></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="import-options pad">
+        <fieldset>
+          <legend class="field-label">If a record already exists</legend>
+          <label class="check"><input type="radio" name="duplicates" value="skip" checked><span>Skip it and keep what's in CAE CRM</span></label>
+          <label class="check"><input type="radio" name="duplicates" value="update"><span>Update it with the values in the file</span></label>
+          <p class="form-hint">{{ 'Contacts are matched by email.' if imp.object == 'contacts' else 'Companies are matched by Companies House number, then by name.' }}</p>
+        </fieldset>
+        {% if imp.object == 'contacts' %}
+          <label class="field"><span class="field-label">Lawful basis for holding their data</span>
+            <select name="lawful_basis">{% for b in lawful_bases %}<option {{ 'selected' if b == 'Legitimate interests' }}>{{ b }}</option>{% endfor %}</select>
+            <span class="field-hint">UK GDPR requires one for every person you hold.</span></label>
+          <label class="field"><span class="field-label">Lifecycle stage, where the file has none</span>
+            <select name="lifecycle">{% for s in lifecycle_stages %}<option {{ 'selected' if s == 'Lead' }}>{{ s }}</option>{% endfor %}</select></label>
+        {% endif %}
+      </div>
+      <footer class="form-actions pad">
+        <a class="btn ghost" href="{{ url_for('imports') }}">Start again</a>
+        <button class="btn primary">Import {{ "{:,}".format(rows_count) }} {{ imp.object }}</button>
+      </footer>
+    </form>
+  </section>
+
+{% else %}
+  <section class="panel narrow import-done">
+    <span class="done-mark">{{ icon('check') }}</span>
+    <h2>Import finished</h2>
+    <p class="muted">{{ filename }}, {{ "{:,}".format(total) }} rows</p>
+    <dl class="done-figures">
+      <div><dt>Created</dt><dd>{{ "{:,}".format(created) }}</dd></div>
+      <div><dt>Updated</dt><dd>{{ "{:,}".format(updated) }}</dd></div>
+      <div><dt>Skipped</dt><dd class="{{ 'bad-text' if errors }}">{{ "{:,}".format(errors | length) }}</dd></div>
+    </dl>
+    {% if errors %}
+      <details class="import-errors" {{ 'open' if errors | length <= 10 }}>
+        <summary>Rows that weren't imported</summary>
+        <ul>{% for row, message in errors[:200] %}<li><b>Row {{ row }}</b> {{ message }}</li>{% endfor %}</ul>
+        {% if errors | length > 200 %}<p class="muted small">And {{ errors | length - 200 }} more.</p>{% endif %}
+      </details>
+    {% endif %}
+    <div class="form-actions">
+      <a class="btn ghost" href="{{ url_for('imports') }}">Import another file</a>
+      <a class="btn primary" href="{{ url_for(obj) }}">View {{ obj }}</a>
+    </div>
+  </section>
+{% endif %}
+{% endblock %}

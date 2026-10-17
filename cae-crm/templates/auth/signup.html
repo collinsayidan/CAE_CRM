@@ -1,0 +1,23 @@
+{% extends "auth/_layout.html" %}
+{% from "_macros.html" import field %}
+{% block title %}Create your workspace{% endblock %}
+{% block content %}
+<h1>Create your workspace</h1>
+<p class="auth-lede">Your business gets its own private CRM. You'll be its admin, and you can invite your team afterwards.</p>
+<form method="post" action="{{ url_for('auth.signup') }}" class="auth-form" novalidate>
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  {% if code_required %}
+    {{ field('Invite code', 'setup_code', errors=errors, required=true, hint='CAE CRM is invite-only at the moment.', extra='autocomplete=off') }}
+  {% endif %}
+  {{ field('Business name', 'business', form.business, errors=errors, required=true, placeholder='Firth Ferries Ltd', extra='autocomplete=organization') }}
+  {{ field('Your name', 'name', form.name, errors=errors, required=true, extra='autocomplete=name') }}
+  {{ field('Work email', 'email', form.email, type='email', errors=errors, required=true, extra='autocomplete=username') }}
+  {{ field('Password', 'password', type='password', errors=errors, required=true, hint='At least 10 characters. A few unrelated words works well.', extra='autocomplete=new-password') }}
+  {{ field('Confirm password', 'confirm', type='password', required=true, extra='autocomplete=new-password') }}
+  <label class="check"><input type="checkbox" name="sample_data" {{ 'checked' if form.sample_data or not form }}>
+    <span>Add sample companies, deals and tickets so I can explore. You can delete them later.</span></label>
+  <button class="btn primary wide">Create workspace</button>
+</form>
+<p class="auth-note">Already have an account? <a class="text-link" href="{{ url_for('auth.login') }}">Sign in</a></p>
+{% endblock %}
+{% block foot %}Your data stays in your workspace. Only people you invite can see it.{% endblock %}

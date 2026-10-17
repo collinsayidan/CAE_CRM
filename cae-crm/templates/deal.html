@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, avatar, logo, field, select, stage_chip with context %}
+{% from "_record.html" import composer, timeline, upcoming_tasks, assoc, prop with context %}
+{% block title %}{{ d.title }}{% endblock %}
+
+{% block page %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="{{ url_for('pipeline') }}">Deals</a> <span aria-hidden="true">/</span> <span>{{ d.title }}</span></nav>
+<div class="record">
+  <aside class="record-left">
+    <section class="panel record-card">
+      <span class="deal-badge {{ 'won' if d.stage == 'Won' else 'lost' if d.stage == 'Lost' else '' }}">{{ icon('pipeline') }}</span>
+      <h1>{{ d.title }}</h1>
+      <p class="record-amount">{{ d.value | money }}</p>
+      <p class="muted">{{ d.probability }}% likely, closes {{ (d.closed_at or d.close_date) | uk_date }}</p>
+      <div class="quick-actions">
+        <button type="button" data-compose="note">{{ icon('note') }}<span>Note</span></button>
+        <button type="button" data-compose="email">{{ icon('mail') }}<span>Email</span></button>
+        <button type="button" data-compose="call">{{ icon('phone') }}<span>Call</span></button>
+        <button type="button" data-compose="task">{{ icon('task') }}<span>Task</span></button>
+        <button type="button" data-compose="meeting">{{ icon('meeting') }}<span>Meeting</span></button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <header class="panel-head"><h2>About</h2><button type="button" class="btn ghost sm" data-open="dlg-edit-deal">{{ icon('edit') }} Edit</button></header>
+      <dl class="props">
+        {{ prop('Stage', d.stage) }}
+        {{ prop('Amount, excluding VAT', d.value | money) }}
+        {{ prop('Weighted value', (d.value * d.probability // 100) | money) }}
+        {{ prop('Expected close', d.close_date | uk_date) }}
+        {{ prop('Owner', d.owner) }}
+        {{ prop('Lead source', d.source) }}
+        {{ prop('Created', d.created_at | uk_date) }}
+      </dl>
+      {% if current_user.role == 'admin' %}
+        <form method="post" action="{{ url_for('delete_deal', deal_id=d.id) }}" class="danger-zone" data-confirm="Delete the deal {{ d.title }}?">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}">
+          <button class="btn ghost sm danger">{{ icon('trash') }} Delete deal</button>
+        </form>
+      {% endif %}
+    </section>
+  </aside>
+
+  <section class="record-mid">
+    <section class="panel stage-path-panel" aria-label="Deal stage">
+      <form method="post" action="{{ url_for('move_deal', deal_id=d.id) }}" class="stage-path">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <input type="hidden" name="next" value="{{ request.full_path }}">
+        {% set reached = all_stages.index(d.stage) if d.stage in all_stages else 0 %}
+        {% for s, p in stages %}
+          <button name="stage" value="{{ s }}" class="{{ 'done' if loop.index0 < reached and d.stage not in ('Lost',) else '' }} {{ 'current' if s == d.stage }}"
+                  {% if s == d.stage %}aria-current="step"{% endif %} title="Move to {{ s }} ({{ p }}%)">{{ s }}</button>
+        {% endfor %}
+        <button name="stage" value="Won" class="won {{ 'current' if d.stage == 'Won' }}">{{ icon('check') }} Won</button>
+        <button name="stage" value="Lost" class="lost {{ 'current' if d.stage == 'Lost' }}">Lost</button>
+      </form>
+    </section>
+
+    <section class="panel" id="line-items" aria-label="Line items">
+      <header class="panel-head">
+        <div><h2>Line items</h2><p class="panel-note">{% if lines %}The deal's amount is the total of its lines, excluding VAT.{% else %}Add products to build the deal's value.{% endif %}</p></div>
+        {% if lines or d.value %}
+          <form method="post" action="{{ url_for('invoice_deal', deal_id=d.id) }}" data-confirm="Raise an invoice for {{ pennies(totals.gross if lines else d.value) }}{{ ' including VAT' if lines }}?">
+            <input type="hidden" name="csrf" value="{{ csrf_token }}">
+            <button class="btn primary sm">{{ icon('pound') }} Invoice this deal</button>
+          </form>
+        {% endif %}
+      </header>
+      {% if lines %}
+        <div class="table-wrap">
+          <table class="lines">
+            <thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Discount</th><th class="num">VAT</th><th class="num">Net</th><th></th></tr></thead>
+            <tbody>
+              {% for li in lines %}
+                <tr>
+                  <td>{{ li.name }}</td>
+                  <td class="num">{{ li.quantity }}</td>
+                  <td class="num">{{ pennies(li.unit_price) }}</td>
+                  <td class="num">{{ li.discount_pct ~ '%' if li.discount_pct else '' }}</td>
+                  <td class="num">{{ li.vat_rate }}%</td>
+                  <td class="num"><b>{{ pennies(li.quantity * li.unit_price * (100 - li.discount_pct) // 100) }}</b></td>
+                  <td class="num">
+                    <form method="post" action="{{ url_for('edit_line', deal_id=d.id, line_id=li.id) }}">
+                      <input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="action" value="delete">
+                      <button class="icon-btn sm" aria-label="Remove {{ li.name }}">{{ icon('trash') }}</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot>
+              <tr><td colspan="5" class="num">Subtotal, excluding VAT</td><td class="num">{{ pennies(totals.net) }}</td><td></td></tr>
+              {% for rate, net, vat in totals.by_rate %}
+                <tr><td colspan="5" class="num muted">VAT at {{ rate }}% on {{ pennies(net) }}</td><td class="num">{{ pennies(vat) }}</td><td></td></tr>
+              {% endfor %}
+              <tr class="total"><td colspan="5" class="num">Total including VAT</td><td class="num">{{ pennies(totals.gross) }}</td><td></td></tr>
+            </tfoot>
+          </table>
+        </div>
+      {% endif %}
+      <div class="add-line">
+        <form method="post" action="{{ url_for('add_line', deal_id=d.id) }}" class="add-line-form">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}">
+          <label class="field grow"><span class="field-label">Add a product</span>
+            <select name="product_id" required>
+              {% for p in products %}<option value="{{ p.id }}">{{ p.name }}, {{ pennies(p.unit_price) }}{{ ' a month' if p.billing == 'Monthly' else ' a year' if p.billing == 'Annual' else '' }}</option>
+              {% else %}<option value="">No products yet</option>{% endfor %}
+            </select></label>
+          <label class="field qty"><span class="field-label">Qty</span><input name="quantity" value="1" inputmode="numeric"></label>
+          <button class="btn sm" {{ 'disabled' if not products }}>{{ icon('plus') }} Add</button>
+        </form>
+        <details class="custom-line">
+          <summary class="text-link sm">Add a custom line instead</summary>
+          <form method="post" action="{{ url_for('add_line', deal_id=d.id) }}" class="add-line-form">
+            <input type="hidden" name="csrf" value="{{ csrf_token }}">
+            <label class="field grow"><span class="field-label">Description</span><input name="name" required maxlength="120"></label>
+            <label class="field qty"><span class="field-label">Qty</span><input name="quantity" value="1" inputmode="numeric"></label>
+            <label class="field"><span class="field-label">Unit price</span><input name="unit_price" required inputmode="decimal" placeholder="£0.00"></label>
+            <label class="field qty"><span class="field-label">Discount %</span><input name="discount_pct" value="0" inputmode="numeric"></label>
+            <label class="field"><span class="field-label">VAT</span><select name="vat_rate">{% for r in vat_rates %}<option value="{{ r }}">{{ r }}%</option>{% endfor %}</select></label>
+            <button class="btn sm">{{ icon('plus') }} Add</button>
+          </form>
+        </details>
+        <p class="form-hint"><a class="text-link sm" href="{{ url_for('products') }}">Manage your product library</a></p>
+      </div>
+    </section>
+
+    {{ composer(record, call_outcomes, owners) }}
+    {{ upcoming_tasks(upcoming) }}
+    {{ timeline(entries) }}
+  </section>
+
+  <aside class="record-right">
+    {% call assoc('Company', 1) %}
+      <a class="assoc-item" href="{{ url_for('company', company_id=company.id) }}">{{ logo(company.name, 'sm') }}
+        <span><b>{{ company.name }}</b><small>{{ company.city or company.industry or '' }}</small></span></a>
+    {% endcall %}
+    {% call assoc('Main contact', 1 if contact else 0) %}
+      {% if contact %}
+        <a class="assoc-item" href="{{ url_for('contact', contact_id=contact.id) }}">{{ avatar(contact.first_name ~ ' ' ~ contact.last_name, 'sm') }}
+          <span><b>{{ contact.first_name }} {{ contact.last_name }}</b><small>{{ contact.role or contact.email or '' }}</small></span></a>
+      {% else %}<p class="muted small">No contact yet. Edit the deal to choose one.</p>{% endif %}
+    {% endcall %}
+    {% call assoc('Invoices', invoices | length) %}
+      {% for i in invoices %}
+        <a class="assoc-item" href="{{ url_for('invoice', invoice_id=i.id) }}"><span><b>{{ i.number }}</b>
+          <small>{{ pennies(i.net + i.vat) }}, {{ 'paid' if i.paid_date else 'due ' ~ (i.due_date | uk_date) }}</small></span></a>
+      {% else %}<p class="muted small">Not invoiced yet.</p>{% endfor %}
+    {% endcall %}
+  </aside>
+</div>
+
+<span hidden data-prefill-page='{"company_id": "{{ d.company_id }}", "contact_id": "{{ d.contact_id or '' }}"}'></span>
+
+<dialog class="sheet" id="dlg-edit-deal" aria-labelledby="dlg-edit-deal-title">
+  <form method="post" action="{{ url_for('edit_deal', deal_id=d.id) }}" novalidate>
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <header><h2 id="dlg-edit-deal-title">Edit deal</h2><button type="button" class="icon-btn" data-close aria-label="Close">{{ icon('x') }}</button></header>
+    <div class="form-grid">
+      {{ field('Deal name', 'title', d.title, required=true) }}
+      {{ select('Company', 'company_id', all_companies() | map(attribute='name') | list, d.company_id, values=all_companies() | map(attribute='id') | list) }}
+      {{ select('Main contact', 'contact_id', company_contacts | map(attribute='first_name') | list, d.contact_id, values=company_contacts | map(attribute='id') | list, blank='No contact') }}
+      {% if lines %}
+        <label class="field"><span class="field-label">Amount</span><input value="{{ d.value | money }}" disabled><span class="field-hint">Set by the line items.</span></label>
+      {% else %}
+        {{ field('Amount, excluding VAT', 'value', '%.2f' | format(d.value / 100), required=true, extra='inputmode=decimal') }}
+      {% endif %}
+      {{ field('Expected close date', 'close_date', d.close_date, type='date', required=true) }}
+      {{ select('Owner', 'owner', owners, d.owner) }}
+      {{ select('Lead source', 'source', sources, d.source) }}
+    </div>
+    <footer><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Save changes</button></footer>
+  </form>
+</dialog>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, field, select %}
+{% block title %}Products{% endblock %}
+{% block heading %}Products{% endblock %}
+{% block subtitle %}<p class="subtitle">Your price list. Add products to a deal to build its value and invoice it line by line.</p>{% endblock %}
+{% block actions %}<button class="btn primary" data-open="dlg-product">{{ icon('plus') }} Add product</button>{% endblock %}
+
+{% block content %}
+<div class="view-tabs" role="tablist" aria-label="Show">
+  <span class="view-tab {{ 'is-active' if show != 'archived' }}"><a href="{{ url_for('products') }}" role="tab">Active</a></span>
+  <span class="view-tab {{ 'is-active' if show == 'archived' }}"><a href="{{ url_for('products', show='archived') }}" role="tab">Archived</a></span>
+</div>
+
+<section class="panel flush">
+  <div class="table-wrap">
+    <table class="records">
+      <thead><tr><th>Product</th><th>SKU</th><th>Billing</th><th class="num">Unit price</th><th class="num">VAT</th><th class="num">In open deals</th><th></th></tr></thead>
+      <tbody>
+        {% for p in items %}
+          <tr>
+            <td><span class="row-link"><span class="product-mark">{{ icon('box') }}</span><span><b>{{ p.name }}</b>
+              <small>{{ p.description or '' }}</small></span></span></td>
+            <td><code>{{ p.sku or '' }}</code></td>
+            <td>{{ p.billing }}</td>
+            <td class="num"><b>{{ pennies(p.unit_price) }}</b>{% if p.billing == 'Monthly' %}<small>a month</small>{% elif p.billing == 'Annual' %}<small>a year</small>{% endif %}</td>
+            <td class="num">{{ p.vat_rate }}%</td>
+            <td class="num">{{ p.in_deals or '' }}</td>
+            <td class="num row-actions">
+              <a class="btn ghost sm" href="{{ url_for('products', edit=p.id, show=show) }}">{{ icon('edit') }} Edit</a>
+              <form method="post" action="{{ url_for('update_product', product_id=p.id) }}" class="inline">
+                <input type="hidden" name="csrf" value="{{ csrf_token }}">
+                <input type="hidden" name="action" value="{{ 'restore' if show == 'archived' else 'archive' }}">
+                <button class="btn ghost sm">{{ 'Restore' if show == 'archived' else 'Archive' }}</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="7" class="empty-line">
+            {% if show == 'archived' %}Nothing archived.{% else %}No products yet. <button type="button" class="text-link" data-open="dlg-product">Add your first product or service</button>.{% endif %}
+          </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% macro product_form(action, title, dialog_id, p=None) -%}
+<dialog class="sheet" id="{{ dialog_id }}" aria-labelledby="{{ dialog_id }}-title" {% if p %}data-autoopen{% endif %}>
+  <form method="post" action="{{ action }}">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <header><h2 id="{{ dialog_id }}-title">{{ title }}</h2>
+      {% if p %}<a class="icon-btn" href="{{ url_for('products', show=show) }}" aria-label="Close">{{ icon('x') }}</a>
+      {% else %}<button type="button" class="icon-btn" data-close aria-label="Close">{{ icon('x') }}</button>{% endif %}</header>
+    <div class="form-grid">
+      <div class="span-2">{{ field('Name', 'name', p.name if p else '', required=true, placeholder='Support retainer', extra='maxlength=120') }}</div>
+      {{ field('SKU', 'sku', p.sku if p else '', placeholder='SUP-STD') }}
+      {{ select('Billing', 'billing', billing_periods, p.billing if p else 'One-off') }}
+      {{ field('Unit price, excluding VAT', 'unit_price', ('%.2f' | format(p.unit_price / 100)) if p else '', required=true, placeholder='£0.00', extra='inputmode=decimal') }}
+      {{ select('VAT rate', 'vat_rate', vat_labels, p.vat_rate if p else vat_rates[0], values=vat_rates) }}
+    </div>
+    <label class="field"><span class="field-label">Description <span class="optional">(optional)</span></span><textarea name="description" rows="2">{{ p.description if p else '' }}</textarea></label>
+    <footer>
+      {% if p %}<a class="btn ghost" href="{{ url_for('products', show=show) }}">Cancel</a>{% else %}<button type="button" class="btn ghost" data-close>Cancel</button>{% endif %}
+      <button class="btn primary">{{ 'Save product' if p else 'Add product' }}</button>
+    </footer>
+  </form>
+</dialog>
+{%- endmacro %}
+
+{{ product_form(url_for('create_product'), 'Add a product', 'dlg-product') }}
+{% if edit %}{{ product_form(url_for('update_product', product_id=edit.id), 'Edit ' ~ edit.name, 'dlg-edit-product', edit) }}{% endif %}
+{% endblock %}

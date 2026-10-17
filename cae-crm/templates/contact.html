@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, avatar, logo, field, select, stage_chip with context %}
+{% from "_record.html" import composer, timeline, upcoming_tasks, assoc, prop with context %}
+{% set name = c.first_name ~ ' ' ~ c.last_name %}
+{% block title %}{{ name }}{% endblock %}
+
+{% block page %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="{{ url_for('contacts') }}">Contacts</a> <span aria-hidden="true">/</span> <span>{{ name }}</span></nav>
+<div class="record">
+  <aside class="record-left">
+    <section class="panel record-card">
+      {{ avatar(name, 'xl') }}
+      <h1>{{ name }}</h1>
+      <p class="muted">{{ c.role or 'Contact' }}{% if company %} at <a href="{{ url_for('company', company_id=company.id) }}">{{ company.name }}</a>{% endif %}</p>
+      <p class="record-chips"><span class="chip lifecycle-{{ c.lifecycle_stage | slug }}">{{ c.lifecycle_stage or 'Lead' }}</span>
+        {% if c.lead_status %}<span class="chip">{{ c.lead_status }}</span>{% endif %}</p>
+      <div class="quick-actions">
+        <button type="button" data-compose="note">{{ icon('note') }}<span>Note</span></button>
+        {% if c.email %}<a href="mailto:{{ c.email }}" data-compose="email">{{ icon('mail') }}<span>Email</span></a>{% else %}<button type="button" data-compose="email">{{ icon('mail') }}<span>Email</span></button>{% endif %}
+        {% if c.phone %}<a href="tel:{{ c.phone | replace(' ', '') }}" data-compose="call">{{ icon('phone') }}<span>Call</span></a>{% else %}<button type="button" data-compose="call">{{ icon('phone') }}<span>Call</span></button>{% endif %}
+        <button type="button" data-compose="task">{{ icon('task') }}<span>Task</span></button>
+        <button type="button" data-compose="meeting">{{ icon('meeting') }}<span>Meeting</span></button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <header class="panel-head"><h2>About</h2><button type="button" class="btn ghost sm" data-open="dlg-edit-contact">{{ icon('edit') }} Edit</button></header>
+      <dl class="props">
+        {{ prop('Email', c.email) }}
+        {{ prop('Phone', c.phone) }}
+        {{ prop('Job title', c.role) }}
+        {{ prop('Owner', c.owner) }}
+        {{ prop('Lifecycle stage', c.lifecycle_stage) }}
+        {{ prop('Lead status', c.lead_status) }}
+        {{ prop('Added', c.created_at | uk_date) }}
+      </dl>
+    </section>
+
+    <section class="panel">
+      <header class="panel-head"><h2>Data protection</h2><span class="muted small">UK GDPR</span></header>
+      <dl class="props">
+        {{ prop('Lawful basis', c.lawful_basis) }}
+        {{ prop('Marketing emails', ('Opted in ' ~ (c.consent_date | uk_date)) if c.marketing_consent else 'No consent') }}
+      </dl>
+      <div class="gdpr-actions">
+        <a class="btn ghost sm" href="{{ url_for('export_contact', contact_id=c.id) }}" title="Download everything held about this person">{{ icon('download') }} Export their data</a>
+        {% if current_user.role == 'admin' %}
+          <form method="post" action="{{ url_for('erase_contact', contact_id=c.id) }}" data-confirm="Erase {{ name }}? This permanently deletes their personal data and activity.">
+            <input type="hidden" name="csrf" value="{{ csrf_token }}">
+            <button class="btn ghost sm danger">{{ icon('trash') }} Erase</button>
+          </form>
+        {% endif %}
+      </div>
+    </section>
+  </aside>
+
+  <section class="record-mid">
+    {{ composer(record, call_outcomes, owners) }}
+    {{ upcoming_tasks(upcoming) }}
+    {{ timeline(entries) }}
+  </section>
+
+  <aside class="record-right">
+    {% call assoc('Company', 1 if company else 0) %}
+      {% if company %}
+        <a class="assoc-item" href="{{ url_for('company', company_id=company.id) }}">{{ logo(company.name, 'sm') }}
+          <span><b>{{ company.name }}</b><small>{{ company.city or company.industry or '' }}</small></span></a>
+      {% else %}<p class="muted small">Not linked to a company. Edit the contact to link one.</p>{% endif %}
+    {% endcall %}
+    {% call assoc('Deals', deals | length, 'dlg-deal', 'Add deal') %}
+      {% for d in deals %}
+        <a class="assoc-item" href="{{ url_for('deal', deal_id=d.id) }}"><span><b>{{ d.title }}</b>
+          <small>{{ d.value | money }}, {{ d.stage }}, closes {{ d.close_date | uk_date }}</small></span></a>
+      {% else %}<p class="muted small">No deals yet.</p>{% endfor %}
+    {% endcall %}
+    {% call assoc('Tickets', tickets | length, 'dlg-ticket', 'Add ticket') %}
+      {% for t in tickets %}
+        <a class="assoc-item" href="{{ url_for('ticket', ticket_id=t.id) }}"><span><b>{{ t.subject }}</b>
+          <small>#{{ t.id }}, {{ t.status }}, {{ t.priority }} priority</small></span></a>
+      {% else %}<p class="muted small">No tickets.</p>{% endfor %}
+    {% endcall %}
+  </aside>
+</div>
+
+<span hidden data-prefill-page='{"company_id": "{{ c.company_id or '' }}", "contact_id": "{{ c.id }}"}'></span>
+
+<dialog class="sheet" id="dlg-edit-contact" aria-labelledby="dlg-edit-contact-title">
+  <form method="post" action="{{ url_for('edit_contact', contact_id=c.id) }}" novalidate>
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <header><h2 id="dlg-edit-contact-title">Edit {{ name }}</h2><button type="button" class="icon-btn" data-close aria-label="Close">{{ icon('x') }}</button></header>
+    <div class="form-grid">
+      {{ field('First name', 'first_name', c.first_name, required=true) }}
+      {{ field('Last name', 'last_name', c.last_name, required=true) }}
+      {{ field('Email', 'email', c.email, type='email') }}
+      {{ field('Phone', 'phone', c.phone, type='tel') }}
+      {{ field('Job title', 'role', c.role) }}
+      {{ select('Company', 'company_id', all_companies() | map(attribute='name') | list, c.company_id, values=all_companies() | map(attribute='id') | list, blank='No company') }}
+      {{ select('Lifecycle stage', 'lifecycle_stage', lifecycle_stages, c.lifecycle_stage) }}
+      {{ select('Lead status', 'lead_status', lead_statuses, c.lead_status) }}
+      {{ select('Owner', 'owner', owners, c.owner) }}
+      {{ select('Lawful basis for holding their data', 'lawful_basis', lawful_bases, c.lawful_basis) }}
+    </div>
+    <label class="check"><input type="checkbox" name="marketing_consent" {{ 'checked' if c.marketing_consent }}><span>They've agreed to receive marketing emails</span></label>
+    <footer><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Save changes</button></footer>
+  </form>
+</dialog>
+{% endblock %}

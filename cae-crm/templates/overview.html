@@ -5,6 +5,22 @@
 {% block subtitle %}<p class="subtitle">{{ today.strftime('%A %-d %B %Y') }}</p>{% endblock %}
 
 {% block content %}
+{% if empty %}
+<section class="panel welcome">
+  <div>
+    <h2>Welcome to {{ workspace.name }}</h2>
+    <p class="muted">Your workspace is ready. Start by bringing in the people and businesses you work with.</p>
+  </div>
+  <ol class="welcome-steps">
+    <li><button type="button" class="btn ghost" data-open="dlg-customer">Add a company</button></li>
+    <li><button type="button" class="btn ghost" data-open="dlg-contact">Add a contact</button></li>
+    {% if current_user.role == 'admin' %}
+      <li><a class="btn ghost" href="{{ url_for('imports') }}">Import a spreadsheet</a></li>
+      <li><a class="btn ghost" href="{{ url_for('settings') }}">Set your business details</a></li>
+    {% endif %}
+  </ol>
+</section>
+{% endif %}
 {% set ahead = track.gap >= 0 %}
 <section class="track" aria-label="{{ track.month }} revenue against target"
          style="--won: {{ '%.2f' | format(track.won_pct) }}%; --expected: {{ '%.2f' | format(track.expected_pct) }}%">
@@ -60,6 +76,11 @@
     <p class="stat-note">Each deal's value multiplied by its stage probability</p>
     {{ spark_forecast }}
   </div>
+  <a class="stat stat-link" href="{{ url_for('tickets') }}">
+    <div class="stat-head"><span class="stat-icon">{{ icon('lifebuoy') }}</span><p class="stat-label">Open tickets</p></div>
+    <p class="stat-value">{{ tickets_open }}</p>
+    <p class="stat-note">{% if tickets_breached %}<span class="delta down">{{ tickets_breached }} past due</span> on service levels{% else %}All within service levels{% endif %}</p>
+  </a>
   <div class="stat">
     <div class="stat-head"><span class="stat-icon">{{ icon('check') }}</span><p class="stat-label">Win rate</p></div>
     <p class="stat-value">{{ win_rate }}%</p>
@@ -92,7 +113,7 @@
   <section class="panel agenda-panel">
     <header class="panel-head">
       <h2>Up next</h2>
-      <a class="text-link" href="{{ url_for('schedule') }}">Schedule</a>
+      <a class="text-link" href="{{ url_for('tasks') }}">Tasks</a>
     </header>
     <ol class="timeline">
       {% for a in agenda %}
@@ -104,7 +125,7 @@
           </div>
         </li>
       {% else %}
-        <li class="empty-line">Nothing booked. <button class="text-link" data-open="dlg-activity">Schedule a call</button></li>
+        <li class="empty-line">Nothing booked. <button class="text-link" data-open="dlg-activity">Add a task</button></li>
       {% endfor %}
     </ol>
   </section>
@@ -117,14 +138,14 @@
         <h2>Closing in the next 30 days</h2>
         <p class="panel-note">Earliest close date first</p>
       </div>
-      <a class="text-link" href="{{ url_for('pipeline') }}">Pipeline</a>
+      <a class="text-link" href="{{ url_for('pipeline') }}">All deals</a>
     </header>
     <ul class="deal-list">
       {% for d in closing_soon %}
         <li>
           {{ logo(d.company) }}
           <div class="deal-main">
-            <a class="deal-title" href="{{ url_for('company', company_id=d.company_id) }}">{{ d.title }}</a>
+            <a class="deal-title" href="{{ url_for('deal', deal_id=d.id) }}">{{ d.title }}</a>
             <span class="deal-company">{{ d.company }}</span>
           </div>
           {{ stage_chip(d.stage) }}

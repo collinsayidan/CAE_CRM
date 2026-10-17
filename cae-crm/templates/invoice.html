@@ -4,7 +4,14 @@
 {% block heading %}Invoice {{ i.number }}{% endblock %}
 {% block subtitle %}<p class="subtitle">{{ 'Paid on ' ~ (i.paid_date | uk_date) if i.paid_date else 'Awaiting payment, due ' ~ (i.due_date | uk_date) }}</p>{% endblock %}
 {% block actions %}
-  <a class="btn ghost" href="{{ url_for('finance') }}">All invoices</a>
+  <a class="btn ghost" href="{{ url_for('invoices') }}">All invoices</a>
+  {% if i.deal_id %}<a class="btn ghost" href="{{ url_for('deal', deal_id=i.deal_id) }}">View deal</a>{% endif %}
+  {% if not i.paid_date %}
+    <form method="post" action="{{ url_for('mark_paid', invoice_id=i.id) }}" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+      <button class="btn ghost">{{ icon('check') }} Mark paid</button>
+    </form>
+  {% endif %}
   <button class="btn primary" data-print>{{ icon('printer') }} Print or save as PDF</button>
 {% endblock %}
 
@@ -12,30 +19,45 @@
 <article class="panel invoice">
   <header class="invoice-head">
     <div>
-      <p class="invoice-brand"><span class="mark" aria-hidden="true">C</span>CAE CRM Ltd</p>
-      <p class="muted">Registered in Scotland<br>VAT number GB000000000</p>
+      <p class="invoice-brand"><span class="logo" style="--h: {{ business.name | hue }}" aria-hidden="true">{{ business.name | initials }}</span>{{ business.legal_name or business.name }}</p>
+      <p class="muted">
+        {% if business.address %}{{ business.address }}<br>{% endif %}
+        {% if business.city or business.postcode %}{{ business.city }} {{ business.postcode }}<br>{% endif %}
+        {% if business.company_no %}Company number {{ business.company_no }}<br>{% endif %}
+        {% if business.vat_registered and business.vat_no %}VAT number {{ business.vat_no }}{% endif %}
+      </p>
     </div>
     <dl class="facts tight">
       <dt>Invoice number</dt><dd>{{ i.number }}</dd>
-      <dt>Tax point</dt><dd>{{ i.issue_date | uk_date }}</dd>
+      <dt>{{ 'Tax point' if business.vat_registered else 'Date' }}</dt><dd>{{ i.issue_date | uk_date }}</dd>
       <dt>Payment due</dt><dd>{{ i.due_date | uk_date }}</dd>
     </dl>
   </header>
   <div class="bill-to">
     <p class="muted">Bill to</p>
-    <p><b>{{ i.company }}</b><br>{{ i.address }}<br>{{ i.city }}<br>{{ i.postcode }}</p>
-    {% if i.customer_vat %}<p class="muted">VAT number {{ i.customer_vat }}</p>{% endif %}
+    <p><b>{{ company.name }}</b>{% if company.address %}<br>{{ company.address }}{% endif %}{% if company.city %}<br>{{ company.city }}{% endif %}<br>{{ company.postcode }}</p>
+    {% if company.vat_no %}<p class="muted">VAT number {{ company.vat_no }}</p>{% endif %}
   </div>
   <table class="invoice-lines">
-    <thead><tr><th>Description</th><th class="num">Net</th><th class="num">VAT rate</th><th class="num">VAT</th><th class="num">Total</th></tr></thead>
-    <tbody><tr><td>{{ i.description }}</td><td class="num">{{ pennies(i.net) }}</td><td class="num">{{ i.vat_rate }}%</td>
-               <td class="num">{{ pennies(i.vat) }}</td><td class="num">{{ pennies(i.net + i.vat) }}</td></tr></tbody>
+    <thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">VAT rate</th><th class="num">Net</th></tr></thead>
+    <tbody>
+      {% for li in lines %}
+        <tr><td>{{ li.description }}{% if li.discount_pct %}<small>{{ li.discount_pct }}% discount</small>{% endif %}</td>
+          <td class="num">{{ li.quantity }}</td><td class="num">{{ pennies(li.unit_price) }}</td>
+          <td class="num">{{ li.vat_rate }}%</td><td class="num">{{ pennies(li.net) }}</td></tr>
+      {% endfor %}
+    </tbody>
     <tfoot>
       <tr><td colspan="4" class="num">Subtotal excluding VAT</td><td class="num">{{ pennies(i.net) }}</td></tr>
-      <tr><td colspan="4" class="num">VAT at {{ i.vat_rate }}%</td><td class="num">{{ pennies(i.vat) }}</td></tr>
+      {% if business.vat_registered or i.vat %}
+        {% for rate, (net, vat) in by_rate %}
+          <tr><td colspan="4" class="num">VAT at {{ rate }}% on {{ pennies(net) }}</td><td class="num">{{ pennies(vat) }}</td></tr>
+        {% endfor %}
+      {% endif %}
       <tr class="total"><td colspan="4" class="num">Amount due in GBP</td><td class="num">{{ pennies(i.net + i.vat) }}</td></tr>
     </tfoot>
   </table>
-  <p class="muted small">Pay by bank transfer within 30 days, quoting {{ i.number }}. Late payments may attract interest under the Late Payment of Commercial Debts (Interest) Act 1998.</p>
+  {% if not business.vat_registered and not i.vat %}<p class="muted small">{{ business.legal_name or business.name }} is not registered for VAT, so no VAT is charged.</p>{% endif %}
+  <p class="muted small">Pay by bank transfer by {{ i.due_date | uk_date }}, quoting {{ i.number }}. Late payments may attract interest under the Late Payment of Commercial Debts (Interest) Act 1998.</p>
 </article>
 {% endblock %}

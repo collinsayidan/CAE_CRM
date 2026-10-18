@@ -1,0 +1,51 @@
+{# One conversation's questions, answers, notices and suggestion cards. Used on the Assistant page and in the side
+   panel. next_url is where a confirmed suggestion returns to (the panel passes the page it's open on). #}
+{% from "_macros.html" import icon %}
+{% set back_to = next_url or url_for('assistant', conversation_id=conversation.id) %}
+{% for item in items %}
+  {% if item.type == 'question' %}
+    <div class="ai-msg ai-question"><p>{{ item.text }}</p></div>
+  {% elif item.type == 'answer' %}
+    <div class="ai-msg ai-answer">{{ item.html }}</div>
+  {% elif item.type == 'notice' %}
+    <p class="ai-notice" role="status">{{ item.text }}</p>
+  {% elif item.type == 'card' %}
+    {% set c = item.card %}
+    <form class="ai-card" method="post" action="{{ url_for('assistant_confirm', message_id=c.message_id, tool_use_id=c.id) }}" data-ai-card>
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <input type="hidden" name="next" value="{{ back_to }}">
+      {% for kind, record_id, name in c.links %}<input type="hidden" name="{{ kind }}_id" value="{{ record_id }}">{% endfor %}
+      <p class="ai-card-head">{{ icon('sparkle') }}
+        <b>{{ {'task': 'Suggested task', 'note': 'Suggested note', 'deal_stage': 'Suggested stage change'}[c.kind] }}</b>
+        {% if c.done %}<span class="chip ok">Confirmed</span>{% endif %}
+      </p>
+      {% if c.links %}
+        <p class="ai-card-links small muted">For {% for kind, record_id, name in c.links %}{{ kind }} <b>{{ name or ('number ' ~ record_id) }}</b>{{ ', ' if not loop.last }}{% endfor %}</p>
+      {% endif %}
+      {% if c.kind == 'task' %}
+        <label class="field"><span class="field-label">Task</span><input name="subject" value="{{ c.data.subject }}" required {{ 'disabled' if c.done }}></label>
+        <div class="ai-card-row">
+          <label class="field"><span class="field-label">Type</span>
+            <select name="kind" {{ 'disabled' if c.done }}>{% for k in activity_kinds %}<option {{ 'selected' if k == c.data.kind }}>{{ k }}</option>{% endfor %}</select></label>
+          <label class="field"><span class="field-label">Date</span><input type="date" name="date" value="{{ c.data.due_date }}" required {{ 'disabled' if c.done }}></label>
+          <label class="field"><span class="field-label">Time</span><input type="time" name="time" value="{{ c.data.due_time }}" {{ 'disabled' if c.done }}></label>
+        </div>
+        <input type="hidden" name="owner" value="{{ c.data.owner }}">
+        <p class="small muted">For {{ c.data.owner }}</p>
+      {% elif c.kind == 'note' %}
+        <input type="hidden" name="kind" value="note">
+        {% if c.data.subject %}<label class="field"><span class="field-label">Subject</span><input name="subject" value="{{ c.data.subject }}" {{ 'disabled' if c.done }}></label>{% endif %}
+        <label class="field"><span class="field-label">Note</span><textarea name="body" rows="4" required {{ 'disabled' if c.done }}>{{ c.data.body }}</textarea></label>
+      {% else %}
+        <label class="field"><span class="field-label">Move the deal to</span>
+          <select name="stage" {{ 'disabled' if c.done }}>{% for s in deal_stages %}<option {{ 'selected' if s == c.data.stage }}>{{ s }}</option>{% endfor %}</select></label>
+      {% endif %}
+      {% if not c.done %}
+        <div class="ai-card-actions">
+          <button class="btn primary sm">{{ icon('check') }} Confirm</button>
+          <span class="small muted">Nothing changes until you confirm.</span>
+        </div>
+      {% endif %}
+    </form>
+  {% endif %}
+{% endfor %}

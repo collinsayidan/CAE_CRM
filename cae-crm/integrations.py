@@ -312,4 +312,7 @@ def register(app):
         import documents
         reminders = documents.send_due_reminders()
         import webhooks
-        return jsonify(synced=len(results), results=results, reminders=reminders, webhooks=webhooks.retry_due(budget=20))
+        delivered = webhooks.retry_due(budget=20)
+        import assistant
+        return jsonify(synced=len(results), results=results, reminders=reminders, webhooks=delivered,
+                       assistant_conversations_deleted=assistant.purge())

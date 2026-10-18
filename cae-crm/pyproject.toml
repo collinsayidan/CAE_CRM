@@ -12,6 +12,7 @@ dependencies = [
     "sentry-sdk[flask]>=2.0",  # error monitoring, when SENTRY_DSN is set
     "segno>=1.6",  # QR codes for setting up two-factor sign-in
     "fpdf2>=2.8",  # invoice and quote PDFs
+    "anthropic>=1.15",  # the AI assistant, when ANTHROPIC_API_KEY is set
 ]
 
 [tool.vercel]

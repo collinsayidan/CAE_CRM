@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon, avatar, logo, field, select, stage_chip with context %}
+{% from "_tags.html" import tags_panel with context %}
 {% from "_record.html" import composer, timeline, upcoming_tasks, assoc, prop, custom_props, custom_inputs, files_panel with context %}
 {% set name = c.first_name ~ ' ' ~ c.last_name %}
 {% block title %}{{ name }}{% endblock %}
@@ -22,6 +23,8 @@
         <button type="button" data-compose="meeting">{{ icon('meeting') }}<span>Meeting</span></button>
       </div>
     </section>
+
+    {{ tags_panel('contact', c.id, 'contacts') }}
 
     <section class="panel">
       <header class="panel-head"><h2>About</h2><button type="button" class="btn ghost sm" data-open="dlg-edit-contact">{{ icon('edit') }} Edit</button></header>

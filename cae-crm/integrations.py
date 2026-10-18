@@ -316,5 +316,9 @@ def register(app):
         import assistant
         import security
         security.purge()
+        from sales import notify_quiet
+        import companies_house
+        import recycle
         return jsonify(synced=len(results), results=results, reminders=reminders, webhooks=delivered,
-                       assistant_conversations_deleted=assistant.purge())
+                       assistant_conversations_deleted=assistant.purge(), quiet_deals=notify_quiet(),
+                       companies_checked=companies_house.refresh_due(), recycle_bin_emptied=recycle.purge())

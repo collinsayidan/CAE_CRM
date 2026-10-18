@@ -6,8 +6,8 @@ import random
 import secrets
 from datetime import date, datetime, timedelta
 
-from db import (ACTIVITY_KINDS, CALL_OUTCOMES, LAWFUL_BASES, OPEN_STAGES, SOURCES, STAGE_PROBABILITY,
-                TICKET_PRIORITIES, TICKET_SLA_HOURS, TICKET_SOURCES, next_invoice_number)
+from db import (ACTIVITY_KINDS, CALL_OUTCOMES, LAWFUL_BASES, LOST_REASONS, OPEN_STAGES, SOURCES, STAGE_PROBABILITY,
+                TICKET_PRIORITIES, TICKET_SLA_HOURS, TICKET_SOURCES, WON_REASONS, next_invoice_number)
 from ukfmt import add_months, add_working_hours, vat_amount
 
 COMPANIES = [
@@ -104,6 +104,9 @@ def seed_workspace(db, ws, today, owner_name, monthly_target):
                             value=value, stage=stage, probability=STAGE_PROBABILITY[stage], owner=rng.choice(owners),
                             source=rng.choice(SOURCES), close_date=close_date.isoformat(),
                             closed_at=closed_at.isoformat() if closed_at else None, created_at=created_at.isoformat())
+        if stage in ("Won", "Lost"):  # picked from the id, so the sample's random sequence stays the same
+            reasons = LOST_REASONS if stage == "Lost" else WON_REASONS + [None] * 4
+            db.execute("UPDATE deals SET outcome_reason=? WHERE id=?", (reasons[deal_id % len(reasons)], deal_id))
         db.insert("engagements", workspace_id=ws, kind="system", subject="Deal created", body=None, outcome=None,
                   author="CAE CRM", occurred_at=f"{created_at.isoformat()}T09:00", company_id=cid, contact_id=contact,
                   deal_id=deal_id, ticket_id=None)

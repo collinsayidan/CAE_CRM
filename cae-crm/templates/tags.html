@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Tags{% endblock %}
+{% block heading %}Tags{% endblock %}
+{% block subtitle %}<p class="subtitle">Tags group contacts and companies. Anyone can add them on a record or from a list; here you can rename, merge or delete them.</p>{% endblock %}
+
+{% block content %}
+<section class="panel flush">
+  <div class="table-wrap">
+    <table class="records">
+      <thead><tr><th>Tag</th><th class="num">Contacts</th><th class="num">Companies</th><th>Rename</th><th></th></tr></thead>
+      <tbody>
+        {% for t in tags %}
+          <tr>
+            <td><span class="tag">{{ t.name }}</span></td>
+            <td class="num">{% if t.contacts %}<a href="{{ url_for('contacts', tag=t.name) }}">{{ t.contacts }}</a>{% else %}0{% endif %}</td>
+            <td class="num">{% if t.companies %}<a href="{{ url_for('companies', tag=t.name) }}">{{ t.companies }}</a>{% else %}0{% endif %}</td>
+            <td>
+              <form method="post" action="{{ url_for('tags_settings') }}" class="inline">
+                <input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="tag_id" value="{{ t.id }}">
+                <label class="sr-only" for="rename-{{ t.id }}">New name for {{ t.name }}</label>
+                <input id="rename-{{ t.id }}" name="name" value="{{ t.name }}" maxlength="40" required>
+                <button class="btn ghost sm">Rename</button>
+              </form>
+            </td>
+            <td>
+              <form method="post" action="{{ url_for('tags_settings') }}" data-confirm="Delete the tag {{ t.name }}? It comes off every record.">
+                <input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="tag_id" value="{{ t.id }}">
+                <input type="hidden" name="action" value="delete"><button class="btn ghost sm danger">{{ icon('trash') }} Delete</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="empty-line">No tags yet. Add one from a contact or company page.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+<p class="form-hint">Renaming a tag to the name of another one merges them.</p>
+{% endblock %}

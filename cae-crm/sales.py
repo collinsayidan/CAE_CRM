@@ -11,7 +11,7 @@ from events import emit
 from core import (OPEN_SQL, advance_lifecycle, back, chosen_owner, get_or_404, log_event, one, owned, owner_names, rows,
                   scalar, today, wants_json, ws)
 from crm import line_totals, render_index, resolve_links
-from db import ACTIVITY_KINDS, BILLING_PERIODS, OPEN_STAGES, SOURCES, STAGE_PROBABILITY, get_db
+from db import ACTIVITY_KINDS, BILLING_PERIODS, LOST_REASONS, OPEN_STAGES, SOURCES, STAGE_PROBABILITY, WON_REASONS, get_db
 from ukfmt import add_months, money
 
 PROJECT_STATUSES = ["On track", "At risk", "Blocked", "Complete"]
@@ -37,12 +37,74 @@ def parse_line(f):
     return name, int(qty), price, int(discount), int(rate)
 
 
-def set_stage(deal, stage, reason=None):
-    """Move a deal to a stage, with what follows from it (a delivery project when won). Returns a message. No commit."""
+def quiet_clause(alias="d", workspace=None):
+    """SQL (and its parameters) for open deals that have gone quiet: nothing logged on them for the workspace's
+    quiet_days and no task coming up, or past their expected close date."""
+    w = workspace or one("SELECT quiet_days FROM workspaces WHERE id=?", ws())
+    t = today()
+    cutoff = (t - timedelta(days=int(w["quiet_days"] or 14))).isoformat()
+    sql = (f"({alias}.{OPEN_SQL} AND ({alias}.close_date < ? OR ("
+           f"COALESCE((SELECT MAX(e.occurred_at) FROM engagements e WHERE e.deal_id={alias}.id), {alias}.created_at) < ? "
+           f"AND NOT EXISTS (SELECT 1 FROM activities a WHERE a.deal_id={alias}.id AND a.done=0 AND a.due_at >= ?))))")
+    return sql, [t.isoformat(), cutoff, t.isoformat()]
+
+
+def quiet_ids(workspace_id=None):
+    """The ids of a workspace's open deals that have gone quiet."""
+    w = one("SELECT id, quiet_days FROM workspaces WHERE id=?", workspace_id or ws())
+    clause, params = quiet_clause("d", w)
+    return {r[0] for r in rows(f"SELECT d.id FROM deals d WHERE d.workspace_id=? AND {clause}", w["id"], *params)}
+
+
+def quiet_reason(deal, workspace=None):
+    """Why a quiet deal is quiet, in words."""
+    if deal["close_date"] < today().isoformat():
+        return f"Expected to close on {ukfmt.uk_date(deal['close_date'])}, which has passed."
+    w = workspace or one("SELECT quiet_days FROM workspaces WHERE id=?", ws())
+    return f"Nothing logged for {w['quiet_days']} days, and no task coming up."
+
+
+def notify_quiet():
+    """For the daily job: tell each owner once when one of their deals goes quiet, and reset deals that woke up."""
+    from notifications import notify, user_named
+    db, told = get_db(), 0
+    for w in rows("SELECT id, quiet_days FROM workspaces"):
+        quiet = quiet_ids(w["id"])
+        for d in rows(f"SELECT * FROM deals WHERE workspace_id=? AND {OPEN_SQL} AND quiet_since IS NOT NULL", w["id"]):
+            if d["id"] not in quiet:
+                db.execute("UPDATE deals SET quiet_since=NULL WHERE id=?", (d["id"],))
+        for deal_id in quiet:
+            d = one("SELECT * FROM deals WHERE id=?", deal_id)
+            if d["quiet_since"]:
+                continue
+            db.execute("UPDATE deals SET quiet_since=? WHERE id=?", (today().isoformat(), deal_id))
+            notify([user_named(d["owner"], w["id"])], f"Deal gone quiet: {d['title']}", quiet_reason(d, w),
+                   url_for("deal", deal_id=deal_id), workspace_id=w["id"])
+            told += 1
+    db.commit()
+    return told
+
+
+def reason_choice(stage, form):
+    """(reason, note) from a form, or (None, None). Lost reasons must come from the list."""
+    choices = LOST_REASONS if stage == "Lost" else WON_REASONS
+    reason = form.get("reason") if form.get("reason") in choices else None
+    return reason, (form.get("note") or "").strip()[:500] or None
+
+
+def set_stage(deal, stage, detail=None, reason=None, note=None):
+    """Move a deal to a stage, with what follows from it (a delivery project when won). Returns a message. No commit.
+    reason and note say why a deal was won or lost; a lost deal without one is recorded as "Not given"."""
     db = get_db()
     closed = today().isoformat() if stage in ("Won", "Lost") else None
-    db.execute("UPDATE deals SET stage=?, probability=?, closed_at=? WHERE id=? AND workspace_id=?",
-               (stage, STAGE_PROBABILITY[stage], closed, deal["id"], ws()))
+    if stage == "Lost":
+        reason = reason or "Not given"
+    if stage not in ("Won", "Lost"):
+        reason = note = None
+    db.execute("UPDATE deals SET stage=?, probability=?, closed_at=?, outcome_reason=?, outcome_note=?, quiet_since=NULL "
+               "WHERE id=? AND workspace_id=?",
+               (stage, STAGE_PROBABILITY[stage], closed, reason, note, deal["id"], ws()))
+    why = ". ".join(filter(None, [f"Reason: {reason}" if reason else None, note]))
     links = dict(deal_id=deal["id"], company_id=deal["company_id"], contact_id=deal["contact_id"])
     if stage != deal["stage"]:
         emit("deal.stage_changed", deal["id"], value=stage, previous_stage=deal["stage"])
@@ -52,11 +114,12 @@ def set_stage(deal, stage, reason=None):
         db.insert("projects", workspace_id=ws(), company_id=deal["company_id"], deal_id=deal["id"],
                   name=f"Deliver: {deal['title']}", owner=deal["owner"], status="On track", progress=0,
                   due_date=(today() + timedelta(days=60)).isoformat())
-        log_event("Deal won", reason or f"{money(deal['value'])}. Delivery project created.", **links)
+        log_event("Deal won", ". ".join(filter(None, [detail or f"{money(deal['value'])}. Delivery project created.", why])),
+                  **links)
         advance_lifecycle(deal["contact_id"], "Customer", f"Won the deal {deal['title']}")
         return f"Won: {deal['title']}, {money(deal['value'])}. Delivery project created."
     if stage == "Lost":
-        log_event("Deal lost", reason, **links)
+        log_event("Deal lost", ". ".join(filter(None, [detail, why])) or None, **links)
         return f"Marked as lost: {deal['title']}."
     log_event(f"Stage changed to {stage}", f"Was {deal['stage']}", **links)
     return f"Moved to {stage}: {deal['title']}."
@@ -69,7 +132,7 @@ def register(app):
     @app.route("/pipeline")
     def pipeline():
         if request.args.get("view") == "list":
-            return render_index("deals", "deals.html", all_stages=OPEN_STAGES + ["Won", "Lost"])
+            return render_index("deals", "deals.html", all_stages=OPEN_STAGES + ["Won", "Lost"], quiet=quiet_ids())
         owner = request.args.get("owner", "")
         sql = (f"SELECT d.*, c.name AS company FROM deals d JOIN companies c ON c.id=d.company_id"
                f" WHERE d.workspace_id=? AND d.{OPEN_SQL}")
@@ -80,7 +143,7 @@ def register(app):
         columns = defaultdict(list)
         for deal in rows(sql + " ORDER BY d.close_date", *args):
             columns[deal["stage"]].append(deal)
-        return render_template("pipeline.html", columns=columns, owner=owner)
+        return render_template("pipeline.html", columns=columns, owner=owner, quiet=quiet_ids())
 
     @app.post("/deals")
     def create_deal():
@@ -115,12 +178,52 @@ def register(app):
         stage = request.form.get("stage")
         if stage not in STAGE_PROBABILITY:
             abort(400)
-        message = set_stage(deal, stage)
+        reason, note = reason_choice(stage, request.form)
+        if stage == "Lost" and not reason:
+            # Ask why first, on a page of its own (which also works without JavaScript).
+            target = url_for("lose_deal", deal_id=deal_id, next=request.form.get("next") or None)
+            if wants_json():
+                return jsonify(ok=False, reason_needed=True, url=target), 422
+            return redirect(target)
+        message = set_stage(deal, stage, reason=reason, note=note)
         get_db().commit()
         if wants_json():
             return jsonify(ok=True, stage=stage, probability=STAGE_PROBABILITY[stage], message=message)
         flash(message, "ok")
         return back("pipeline")
+
+    @app.route("/deals/<int:deal_id>/lost", methods=["GET", "POST"])
+    def lose_deal(deal_id):
+        """Mark a deal as lost, saying why."""
+        deal = get_or_404("deals", deal_id)
+        error = None
+        if request.method == "POST":
+            reason, note = reason_choice("Lost", request.form)
+            if reason:
+                flash(set_stage(deal, "Lost", reason=reason, note=note), "ok")
+                get_db().commit()
+                return back("deal", deal_id=deal_id)
+            error = "Choose a reason."
+        return render_template("deal_lost.html", d=deal, reasons=LOST_REASONS, error=error,
+                               next=request.values.get("next", "")), (422 if error else 200)
+
+    @app.post("/deals/<int:deal_id>/reason")
+    def deal_reason(deal_id):
+        """Add or change why a won or lost deal went the way it did."""
+        deal = get_or_404("deals", deal_id)
+        if deal["stage"] not in ("Won", "Lost"):
+            abort(400)
+        reason, note = reason_choice(deal["stage"], request.form)
+        if deal["stage"] == "Lost" and not reason:
+            flash("Choose a reason.", "error")
+            return redirect(url_for("deal", deal_id=deal_id))
+        get_db().execute("UPDATE deals SET outcome_reason=?, outcome_note=? WHERE id=? AND workspace_id=?",
+                         (reason, note, deal_id, ws()))
+        log_event(f"{'Win' if deal['stage'] == 'Won' else 'Loss'} reason: {reason or 'cleared'}", note, deal_id=deal_id,
+                  company_id=deal["company_id"], contact_id=deal["contact_id"])
+        get_db().commit()
+        flash("Reason saved.", "ok")
+        return redirect(url_for("deal", deal_id=deal_id))
 
     # --- Line items -------------------------------------------------------------
 

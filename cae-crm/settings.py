@@ -17,11 +17,13 @@ HUB = [
     ("integrations", "bolt", "Integrations", "Connect your email, Xero and HMRC.", False),
     ("imports", "upload", "Import", "Bring in contacts and companies from a spreadsheet.", True),
     ("custom_fields_page", "edit", "Custom fields", "Add your own fields to contacts, companies, deals and tickets.", True),
+    ("tags_settings", "list", "Tags", "Rename, merge or delete the tags on contacts and companies.", True),
     ("workflows", "bolt", "Workflows", "Create tasks, assign owners and notify people automatically.", True),
     ("developers", "columns", "API and webhooks", "Connect other systems, Zapier or Power BI to your CRM data.", True),
     ("billing", "pound", "Billing", "Your plan, number of users and payments.", True),
     ("vat", "shield", "VAT returns", "Submit Making Tax Digital VAT returns to HMRC.", True),
     ("audit_trail", "list", "Audit trail", "Who changed what, and when. Download it for your records.", True),
+    ("recycle_bin", "trash", "Recycle bin", "Restore deleted contacts, companies, deals and tickets for 30 days.", True),
     ("legal_index", "shield", "Legal and privacy", "Terms of service, privacy notice, data processing agreement and cookies.", False),
 ]
 
@@ -69,6 +71,10 @@ def register(app):
             if not target:
                 errors["monthly_target"] = "Enter the amount you aim to win each month, like £150,000."
             data["monthly_target"] = target
+            quiet = f.get("quiet_days", "").strip() or str(w["quiet_days"] or 14)
+            if not quiet.isdigit() or not 1 <= int(quiet) <= 365:
+                errors["quiet_days"] = "Enter a number of days between 1 and 365."
+            data["quiet_days"] = int(quiet) if quiet.isdigit() else 14
             prefix = f.get("invoice_prefix", "").strip().upper()
             if not re.fullmatch(r"[A-Z0-9]{1,8}", prefix):
                 errors["invoice_prefix"] = "Use 1 to 8 letters or numbers, like INV."
@@ -102,13 +108,14 @@ def register(app):
                 db = get_db()
                 db.execute("UPDATE workspaces SET name=?, legal_name=?, address=?, city=?, postcode=?, company_no=?,"
                            " vat_registered=?, vat_no=?, monthly_target=?, invoice_prefix=?, payment_terms=?, reply_to=?,"
-                           " bank_account_name=?, bank_sort_code=?, bank_account_number=?, payment_link=?, reminders_on=?"
-                           " WHERE id=?",
+                           " bank_account_name=?, bank_sort_code=?, bank_account_number=?, payment_link=?, reminders_on=?,"
+                           " quiet_days=? WHERE id=?",
                            (data["name"], data["legal_name"], data["address"], data["city"], data["postcode"],
                             data["company_no"], data["vat_registered"], data["vat_no"], data["monthly_target"],
                             data["invoice_prefix"], data["payment_terms"], data["reply_to"] or None,
                             data["bank_account_name"] or None, data["bank_sort_code"] or None,
-                            data["bank_account_number"] or None, data["payment_link"] or None, data["reminders_on"], ws()))
+                            data["bank_account_number"] or None, data["payment_link"] or None, data["reminders_on"],
+                            data["quiet_days"], ws()))
                 if data.get("logo"):
                     from core import now
                     db.execute("UPDATE workspaces SET logo=?, logo_updated=? WHERE id=?",

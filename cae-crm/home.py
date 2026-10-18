@@ -207,7 +207,22 @@ def register(app):
                         " GROUP BY li.name ORDER BY value DESC LIMIT 8", ws())
         product_peak = max([plain(p["value"]) for p in products] + [1])
 
-        return render_template("reports.html", by_source=breakdown("source"), by_owner=breakdown("owner"),
+        # Why deals were won and lost over the last 12 months.
+        since = (today() - timedelta(days=365)).isoformat()
+        outcomes, unexplained = {}, {}
+        for stage in ("Won", "Lost"):
+            found = rows("SELECT COALESCE(outcome_reason, 'Not given') AS reason, COUNT(*) AS n, SUM(value) AS value "
+                         "FROM deals WHERE workspace_id=? AND stage=? AND closed_at >= ? GROUP BY 1 ORDER BY n DESC, 1",
+                         ws(), stage, since)
+            if stage == "Won":  # a win reason is optional, so wins without one are counted, not charted
+                unexplained[stage] = sum(r["n"] for r in found if r["reason"] == "Not given")
+                found = [r for r in found if r["reason"] != "Not given"]
+            peak = max([r["n"] for r in found] + [1])
+            outcomes[stage] = [dict(reason=r["reason"], n=r["n"], value=plain(r["value"]) or 0, share=r["n"] / peak * 100)
+                               for r in found]
+
+        return render_template("reports.html", by_source=breakdown("source"), by_owner=breakdown("owner"), outcomes=outcomes,
+                               unexplained=unexplained,
                                avg_deal=avg_deal, cycle=round(cycle), new_contacts=new_contacts, funnel=funnel,
                                funnel_peak=funnel_peak, service=service, products=products, product_peak=product_peak,
                                plain=plain)

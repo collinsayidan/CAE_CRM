@@ -46,7 +46,8 @@
               <td class="pick"><input type="checkbox" name="ids" value="{{ d.id }}" aria-label="Select {{ d.title }}"></td>
               <td><a class="row-link" href="{{ url_for('deal', deal_id=d.id) }}">{{ logo(d.company, 'sm') }}<span><b>{{ d.title }}</b>
                 <small>{{ d.company }}</small></span></a></td>
-              <td>{% if d.stage == 'Won' %}<span class="chip ok">Won</span>{% elif d.stage == 'Lost' %}<span class="chip bad">Lost</span>{% else %}{{ stage_chip(d.stage) }}{% endif %}</td>
+              <td>{% if d.stage == 'Won' %}<span class="chip ok">Won</span>{% elif d.stage == 'Lost' %}<span class="chip bad" {% if d.outcome_reason %}title="{{ d.outcome_reason }}"{% endif %}>Lost</span>{% else %}{{ stage_chip(d.stage) }}{% endif %}
+                {% if d.id in quiet %}<span class="chip quiet">Gone quiet</span>{% endif %}</td>
               <td>{{ d.owner or '' }}</td>
               <td>{{ d.source or '' }}</td>
               <td>{{ (d.closed_at or d.close_date) | uk_date }}</td>

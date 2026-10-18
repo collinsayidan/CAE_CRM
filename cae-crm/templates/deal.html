@@ -25,6 +25,7 @@
       <header class="panel-head"><h2>About</h2><button type="button" class="btn ghost sm" data-open="dlg-edit-deal">{{ icon('edit') }} Edit</button></header>
       <dl class="props">
         {{ prop('Stage', d.stage) }}
+        {% if d.outcome_reason %}{{ prop('Won because' if d.stage == 'Won' else 'Lost because', d.outcome_reason) }}{% endif %}
         {{ prop('Amount, excluding VAT', d.value | money) }}
         {{ prop('Weighted value', (d.value * d.probability // 100) | money) }}
         {{ prop('Expected close', d.close_date | uk_date) }}
@@ -55,6 +56,20 @@
         <button name="stage" value="Won" class="won {{ 'current' if d.stage == 'Won' }}">{{ icon('check') }} Won</button>
         <button name="stage" value="Lost" class="lost {{ 'current' if d.stage == 'Lost' }}">Lost</button>
       </form>
+      {% if quiet %}<p class="quiet-note">{{ icon('clock') }} <span><b>Gone quiet.</b> {{ quiet }} Log what's happening, or set a task.</span></p>{% endif %}
+      {% if d.stage in ('Won', 'Lost') %}
+        <form method="post" action="{{ url_for('deal_reason', deal_id=d.id) }}" class="reason-inline">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}">
+          <label class="field"><span class="field-label">{{ 'Why did you win it?' if d.stage == 'Won' else 'Why was it lost?' }}{% if d.stage == 'Won' %} <span class="optional">(optional)</span>{% endif %}</span>
+            <select name="reason">
+              {% if d.stage == 'Won' %}<option value="">Choose a reason</option>{% endif %}
+              {% for r in (won_reasons if d.stage == 'Won' else lost_reasons) %}<option {{ 'selected' if r == d.outcome_reason }}>{{ r }}</option>{% endfor %}
+            </select></label>
+          <label class="field"><span class="field-label">Note <span class="optional">(optional)</span></span>
+            <input name="note" value="{{ d.outcome_note or '' }}" maxlength="500"></label>
+          <button class="btn ghost sm">Save reason</button>
+        </form>
+      {% endif %}
     </section>
 
     <section class="panel" id="line-items" aria-label="Line items">

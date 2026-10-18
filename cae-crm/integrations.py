@@ -314,5 +314,7 @@ def register(app):
         import webhooks
         delivered = webhooks.retry_due(budget=20)
         import assistant
+        import security
+        security.purge()
         return jsonify(synced=len(results), results=results, reminders=reminders, webhooks=delivered,
                        assistant_conversations_deleted=assistant.purge())

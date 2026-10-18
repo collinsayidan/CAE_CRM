@@ -15,7 +15,7 @@
   <tbody>
     <tr><td>Your name, email, password (stored only as a scrambled hash), role, and any profile details you add: job title, department, phone, location, LinkedIn, a short bio and a photo</td>
         <td>To create your account, sign you in and show your team who's who</td><td>Contract</td></tr>
-    <tr><td>Sign-in and security records: IP address, failed sign-in attempts, two-factor settings, password reset requests, and an audit trail of changes made in your workspace</td>
+    <tr><td>Sign-in and security records: IP address, the browser and device you sign in from, where you're currently signed in, failed sign-in attempts, two-factor settings, password reset requests, and an audit trail of changes made in your workspace</td>
         <td>To keep accounts secure, stop misuse, and let admins see who changed what</td><td>Legitimate interests (security)</td></tr>
     <tr><td>Business and billing details: business name, address, VAT number, the number of users, and subscription status. Card details go straight to Stripe and never reach us</td>
         <td>To charge for CAE CRM and keep the accounts the law requires</td><td>Contract; legal obligation</td></tr>
@@ -49,7 +49,7 @@
 <h2>How long we keep it</h2>
 <ul>
   <li><b>Account and profile details:</b> while you're on a team. When an admin removes you, they're deleted. Your name may stay on records you created or changed, such as notes and the audit trail, because those belong to the business.</li>
-  <li><b>Sign-in sessions:</b> end after 12 hours. Password reset links expire after an hour.</li>
+  <li><b>Sign-in sessions:</b> end after 12 hours unused, or when you sign out. Password reset links expire after an hour, and email confirmation and invite links after 7 days. Failed sign-in attempts are kept for a day. A record of which browsers you've signed in from is kept while you have an account, so we can warn you about a new one.</li>
   <li><b>Billing records:</b> six years, as UK tax law requires.</li>
   <li><b>Webhook delivery logs:</b> 30 days.</li>
   <li><b>AI assistant conversations:</b> 30 days from the last message, unless you delete them sooner. Erasing a contact also deletes conversations that mention them. A count of questions asked and the amount of AI processing used, without their content, is kept for 13 months.</li>
@@ -78,6 +78,7 @@
   <li>Admins must use two-factor sign-in.</li>
   <li>Each business's data is kept apart from every other business's.</li>
 </ul>
+<p>When you choose a password, we check it against Have I Been Pwned's list of passwords exposed in data breaches. Only the first five characters of a one-way scrambled version (a hash) are sent, never your password or email address, so the service can't tell what your password is or whose it is.</p>
 <p>The <a href="{{ url_for('legal', doc='dpa') }}#security">data processing agreement</a> lists our security measures in full.</p>
 
 <h2>Changes</h2>

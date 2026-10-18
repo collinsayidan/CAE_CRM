@@ -25,6 +25,26 @@
     </form>
   </section>
 
+  <section class="panel" id="sessions">
+    <h2 class="panel-title">Where you're signed in</h2>
+    <p class="muted small panel-intro">If you don't recognise a device, sign it out and change your password. A sign-in ends after 12 hours unused.</p>
+    <ul class="session-list">
+      {% for s in sessions %}
+        <li>
+          <div><b>{{ s.device }}</b>{% if s.current %} <span class="chip ok">This device</span>{% endif %}
+            <small class="muted">IP {{ s.ip or 'unknown' }} · last active {{ s.last_seen | uk_datetime }}</small></div>
+          {% if not s.current %}
+            <form method="post" action="{{ url_for('auth.end_session', session_id=s.id) }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn ghost sm">Sign out</button></form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+    {% if sessions | length > 1 %}
+      <form method="post" action="{{ url_for('auth.end_other_sessions') }}" data-confirm="Sign out of every other device?">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn ghost sm danger">Sign out everywhere else</button></form>
+    {% endif %}
+  </section>
+
   <section class="panel">
     <h2 class="panel-title">Two-factor sign-in</h2>
     {% if me.totp_enabled_at %}

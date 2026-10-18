@@ -38,8 +38,9 @@ def database(request, tmp_path):
 
 def make_app(database):
     # Two-factor sign-in for admins has its own tests; elsewhere admins sign in with just a password.
+    # The breached-password check has its own tests; elsewhere it would call Have I Been Pwned.
     return create_app({"TESTING": True, "DATABASE": database, "TODAY": TODAY, "SECRET_KEY": "test",
-                       "MISSING_SETTINGS": [], "ADMIN_2FA_REQUIRED": False})
+                       "MISSING_SETTINGS": [], "ADMIN_2FA_REQUIRED": False, "BREACH_CHECK": False})
 
 
 def add_workspace(app, name, admin, sample=True):

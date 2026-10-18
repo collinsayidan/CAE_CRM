@@ -12,6 +12,7 @@ from flask import (Blueprint, Response, abort, current_app, flash, g, redirect, 
                    url_for)
 from werkzeug.security import check_password_hash, generate_password_hash
 
+import security
 import ukfmt
 from db import DEFAULT_MONTHLY_TARGET, get_db
 
@@ -42,7 +43,7 @@ def password_problem(password, confirm=None):
         return f"Use at least {MIN_PASSWORD} characters. A few unrelated words works well."
     if confirm is not None and password != confirm:
         return "The two passwords don't match."
-    return None
+    return security.breach_problem(password)
 
 
 def valid_email(email):
@@ -50,10 +51,12 @@ def valid_email(email):
     return bool(local) and "." in domain and " " not in email
 
 
-def create_user(db, workspace_id, name, email, password, role="member"):
+def create_user(db, workspace_id, name, email, password, role="member", verified=True):
+    """verified: whether the email address is known to be theirs (sign-up and temporary passwords aren't)."""
+    when = now_utc().isoformat()
     user_id = db.insert("users", workspace_id=workspace_id, email=email.strip().lower(), name=name.strip(),
                         password_hash=generate_password_hash(password), role=role, failed_logins=0,
-                        created_at=now_utc().isoformat())
+                        created_at=when, email_verified_at=when if verified else None)
     db.commit()
     return user_id
 
@@ -74,8 +77,8 @@ def load_user():
     user_id = session.get("user_id")
     if user_id is None:
         return None
-    user = get_db().execute("SELECT id, email, name, role, workspace_id, job_title, password_hash, totp_enabled_at "
-                            "FROM users WHERE id=?",
+    user = get_db().execute("SELECT id, email, name, role, workspace_id, job_title, password_hash, totp_enabled_at, "
+                            "email_verified_at FROM users WHERE id=?",
                             (user_id,)).fetchone()
     if user is None:
         return None
@@ -85,6 +88,9 @@ def load_user():
     elif session["pv"] != version:
         session.clear()  # the password changed since this session started
         return None
+    if not security.session_ok(user):
+        session.clear()  # signed out from another device, or unused for too long
+        return None
     return user
 
 
@@ -92,8 +98,11 @@ def start_session(user_id):
     session.clear()  # new session on sign-in, so an old cookie can't be reused
     session.permanent = True
     session["user_id"] = user_id
-    row = get_db().execute("SELECT password_hash FROM users WHERE id=?", (user_id,)).fetchone()
+    row = get_db().execute("SELECT id, name, email, workspace_id, password_hash FROM users WHERE id=?",
+                           (user_id,)).fetchone()
     session["pv"] = password_version(row["password_hash"])
+    security.open_session(row)
+    get_db().commit()
 
 
 def admin_required():
@@ -201,6 +210,9 @@ def login():
         password = request.form.get("password", "")
         user = db.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
         locked = user and user["locked_until"] and datetime.fromisoformat(user["locked_until"]) > now_utc()
+        if security.too_many_failures():
+            error = "Too many sign-in attempts from your network. Wait 15 minutes, then try again."
+            return render_template("auth/login.html", error=error, email=email, next=request.form.get("next", "")), 429
         if locked:
             error = "Too many failed attempts. Try again in 15 minutes, or ask an admin to reset your password."
         elif user and check_password_hash(user["password_hash"], password):
@@ -222,6 +234,8 @@ def login():
                 db.commit()
             else:
                 check_password_hash(_DUMMY_HASH, password)
+            security.note_failure()
+            db.commit()
             error = "That email and password don't match an account."
     return render_template("auth/login.html", error=error, email=email, next=request.args.get("next", "")), \
         (401 if error else 200)
@@ -229,6 +243,8 @@ def login():
 
 @bp.post("/logout")
 def logout():
+    security.end_current()
+    get_db().commit()
     session.clear()
     flash("You're signed out.", "ok")
     return redirect(url_for("auth.login"))
@@ -300,8 +316,14 @@ def reset(token):
         if problem:
             errors["password"] = problem
         else:
-            db.execute("UPDATE users SET password_hash=?, failed_logins=0, locked_until=NULL WHERE id=?",
-                       (generate_password_hash(request.form["password"]), user["id"]))
+            when = now_utc().isoformat(timespec="seconds")
+            # The link reached their inbox, so the address is theirs; a pending invite counts as accepted.
+            db.execute("UPDATE users SET password_hash=?, failed_logins=0, locked_until=NULL, "
+                       "email_verified_at=COALESCE(email_verified_at, ?), "
+                       "invite_accepted_at=CASE WHEN invited_at IS NULL THEN invite_accepted_at "
+                       "ELSE COALESCE(invite_accepted_at, ?) END WHERE id=?",
+                       (generate_password_hash(request.form["password"]), when, when, user["id"]))
+            security.end_all(user["id"])
             db.commit()
             session.clear()
             flash("Password changed. Sign in with your new password. Any devices signed in to your account were signed out.", "ok")
@@ -342,7 +364,7 @@ def signup():
             from core import today
             t = today()
             ws_id = create_workspace(db, form["business"], t)
-            user_id = create_user(db, ws_id, form["name"], email, form["password"], "admin")
+            user_id = create_user(db, ws_id, form["name"], email, form["password"], "admin", verified=False)
             from legal import VERSION
             db.execute("UPDATE workspaces SET terms_version=?, terms_accepted_at=?, terms_accepted_by=? WHERE id=?",
                        (VERSION, now_utc().isoformat(timespec="seconds"), f"{form['name'].strip()} <{email}>", ws_id))
@@ -352,7 +374,14 @@ def signup():
                 seed_workspace(db, ws_id, t, form["name"].strip(), DEFAULT_MONTHLY_TARGET)
                 db.commit()
             start_session(user_id)
-            flash(f"Welcome to CAE CRM. {form['business'].strip()} is ready. Add your business details under Settings.", "ok")
+            import mail
+            confirm = ""
+            if mail.configured():
+                security.send_verification(db.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone())
+                db.commit()
+                confirm = f" We've emailed {email} a link to confirm your address."
+            flash(f"Welcome to CAE CRM. {form['business'].strip()} is ready.{confirm} "
+                  "Add your business details under Settings.", "ok")
             return redirect(url_for("overview"))
     return render_template("auth/signup.html", errors=errors, form=form, code_required=bool(expected)), \
         (422 if errors else 200)
@@ -372,6 +401,7 @@ def account():
         if not errors:
             new_hash = generate_password_hash(request.form["password"])
             db.execute("UPDATE users SET password_hash=? WHERE id=?", (new_hash, g.user["id"]))
+            security.end_others(g.user["id"])
             db.commit()
             session["pv"] = password_version(new_hash)  # stay signed in here; other sessions are signed out
             flash("Password changed. Any other devices signed in to your account have been signed out.", "ok")
@@ -386,7 +416,7 @@ def _account_page(**context):
     import json
     recovery_left = len(json.loads(me["recovery_codes"] or "[]"))
     return render_template("auth/account.html", me=me, profile=context.pop("profile", me), max_bio=MAX_BIO,
-                           recovery_left=recovery_left, **context)
+                           recovery_left=recovery_left, sessions=security.sessions_for(me["id"]), **context)
 
 
 @bp.post("/account/profile")
@@ -401,14 +431,16 @@ def account_profile():
 
 
 TEAM_COLUMNS = ("id, name, email, role, locked_until, created_at, job_title, department, phone, location, linkedin, "
-                "bio, photo_updated")
+                "bio, photo_updated, invited_at, invite_accepted_at")
 
 
 @bp.route("/team", methods=["GET", "POST"])
 def team():
     """Everyone can see who's on the team; only admins can add people."""
+    import mail
     db = get_db()
     errors, form = {}, {}
+    inviting = mail.configured()  # with email working, people choose their own password from an invite link
     if request.method == "POST":
         admin_required()
         form = request.form
@@ -419,23 +451,33 @@ def team():
             errors["email"] = "Enter a valid email address."
         elif db.execute("SELECT 1 FROM users WHERE email=?", (email,)).fetchone():
             errors["email"] = "That email already has a CAE CRM account."
-        problem = password_problem(form.get("password", ""))
+        problem = None if inviting else password_problem(form.get("password", ""))
         if problem:
             errors["password"] = problem
         if not errors:
-            user_id = create_user(db, g.user["workspace_id"], form["name"], email, form["password"],
-                                  form.get("role") if form.get("role") in ROLES else "member")
+            password = secrets.token_urlsafe(32) if inviting else form["password"]  # nobody knows an invitee's yet
+            user_id = create_user(db, g.user["workspace_id"], form["name"], email, password,
+                                  form.get("role") if form.get("role") in ROLES else "member", verified=False)
             job_title = form.get("job_title", "").strip()[:80]
             if job_title:
                 db.execute("UPDATE users SET job_title=? WHERE id=?", (job_title, user_id))
                 db.commit()
             from billing import sync_seats
             sync_seats(g.user["workspace_id"])
-            flash(f"{form['name'].strip()} can now sign in. Share their temporary password with them directly.", "ok")
+            if inviting:
+                from core import workspace
+                person = db.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
+                sent = security.send_invite(person, g.user, workspace())
+                db.commit()
+                flash(f"Invite sent to {email}. The link lasts {security.INVITE_DAYS} days." if sent else
+                      f"{form['name'].strip()} was added, but the invite email couldn't be sent. Use Resend invite.",
+                      "ok" if sent else "error")
+            else:
+                flash(f"{form['name'].strip()} can now sign in. Share their temporary password with them directly.", "ok")
             return redirect(url_for("auth.team"))
     users = db.execute(f"SELECT {TEAM_COLUMNS} FROM users WHERE workspace_id=? ORDER BY name",
                        (g.user["workspace_id"],)).fetchall()
-    return render_template("auth/team.html", users=users, errors=errors, form=form, roles=ROLES,
+    return render_template("auth/team.html", users=users, errors=errors, form=form, roles=ROLES, inviting=inviting,
                            now=now_utc().isoformat()), (422 if errors else 200)
 
 
@@ -513,8 +555,9 @@ def reset_password(user_id):
     db = get_db()
     db.execute("UPDATE users SET password_hash=?, failed_logins=0, locked_until=NULL WHERE id=?",
                (generate_password_hash(request.form["password"]), user_id))
+    security.end_all(user_id)
     db.commit()
-    flash("Password reset and account unlocked.", "ok")
+    flash("Password reset and account unlocked. They've been signed out everywhere.", "ok")
     return redirect(url_for("auth.member", user_id=user_id))
 
 
@@ -555,3 +598,4 @@ import twofactor  # noqa: E402  (its pages join this blueprint)
 
 twofactor.register(bp, dict(get_db=get_db, start_session=start_session, admin_required=admin_required,
                             team_member=_team_member, now_utc=now_utc, safe_next=safe_next))
+security.register(bp)

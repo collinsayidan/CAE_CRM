@@ -1595,3 +1595,14 @@ mark.to-confirm { background: var(--warn-soft); color: var(--warn-ink, var(--ink
   .ai-ask { flex-direction: column; align-items: stretch; }
   .ai-panel { width: 100vw; border-left: 0; }
 }
+
+/* Account security ------------------------------------------------------------------------------------------------ */
+.invite-logo { max-height: 48px; max-width: 180px; object-fit: contain; margin-bottom: 14px; }
+.verify-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; }
+.verify-banner form { margin: 0; }
+.team-card-invite { display: flex; gap: 14px; flex-wrap: wrap; }
+.session-list { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 10px; }
+.session-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-lg); }
+.session-list li > div { display: grid; gap: 2px; min-width: 0; justify-items: start; }
+.session-list small { font-size: 12.5px; overflow-wrap: anywhere; }
+.session-list form { margin: 0; flex-shrink: 0; }

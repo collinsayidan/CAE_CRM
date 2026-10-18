@@ -1,8 +1,8 @@
 {% extends "legal/_layout.html" %}
 {% block content %}
-<p class="legal-lead">CAE CRM uses one cookie, and a little browser storage, only to make the service work. There are no advertising or analytics cookies, so we don't need to ask for your consent. The Privacy and Electronic Communications Regulations allow storage that's strictly necessary for a service you've asked for.</p>
+<p class="legal-lead">CAE CRM uses two cookies, and a little browser storage, only to make the service work. There are no advertising or analytics cookies, so we don't need to ask for your consent. The Privacy and Electronic Communications Regulations allow storage that's strictly necessary for a service you've asked for.</p>
 
-<h2>The cookie</h2>
+<h2>Cookies</h2>
 <div class="table-wrap">
 <table class="legal-table">
   <thead><tr><th>Name</th><th>What it does</th><th>How long it lasts</th></tr></thead>
@@ -10,6 +10,8 @@
     <tr><td><code>session</code></td>
         <td>Keeps you signed in, and holds a security token that stops other websites making changes in your name. It's signed so it can't be tampered with, and it's only sent over secure connections.</td>
         <td>12 hours after you sign in. If you haven't signed in, it lasts until you close your browser.</td></tr>
+    <tr><td><code>cae_device</code></td><td>A random number that recognises this browser, so we can email you if someone signs in to your account from a browser you haven't used before. It's strictly necessary for keeping your account secure.</td>
+        <td>2 years.</td></tr>
   </tbody>
 </table>
 </div>

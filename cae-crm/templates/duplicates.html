@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, avatar, logo %}
+{% set people = obj == 'contacts' %}
+{% block title %}Duplicate {{ obj }}{% endblock %}
+{% block crumbs %}<nav class="crumbs" aria-label="Breadcrumb"><a href="{{ url_for(obj) }}">{{ obj | capitalize }}</a></nav>{% endblock %}
+{% block heading %}Possible duplicate {{ obj }}{% endblock %}
+{% block subtitle %}<p class="subtitle">Choose which record to keep. Merging fills its empty fields from the other and moves across everything linked to it, then deletes the other. It can't be undone.</p>{% endblock %}
+
+{% block content %}
+{% for a, b, why in pairs %}
+  <section class="panel dup-pair">
+    <p class="dup-why">{{ icon('users') }} Both have {{ why | join(', and ') }}.</p>
+    <form method="post" action="{{ url_for('merge_duplicates', obj=obj) }}" class="dup-form" data-confirm="Merge these two? The one you don't keep is deleted.">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <div class="dup-grid">
+        {% for r, other in ((a, b), (b, a)) %}
+          <label class="dup-card">
+            <span class="dup-choose"><input type="radio" name="keep" value="{{ r.id }}" {{ 'checked' if loop.first }}> Keep this one</span>
+            {% if people %}
+              <span class="dup-name">{{ avatar(r.first_name ~ ' ' ~ r.last_name, 'sm') }}<b>{{ r.first_name }} {{ r.last_name }}</b></span>
+              <dl class="props compact">
+                <div class="prop"><dt>Email</dt><dd>{{ r.email or '—' }}</dd></div>
+                <div class="prop"><dt>Phone</dt><dd>{{ r.phone or '—' }}</dd></div>
+                <div class="prop"><dt>Company</dt><dd>{{ r.company or '—' }}</dd></div>
+                <div class="prop"><dt>Lifecycle</dt><dd>{{ r.lifecycle_stage or '—' }}</dd></div>
+                <div class="prop"><dt>Marketing</dt><dd>{{ 'Unsubscribed' if r.unsubscribed_at else ('Opted in' if r.marketing_consent else 'Not opted in') }}</dd></div>
+                <div class="prop"><dt>Added</dt><dd>{{ r.created_at | uk_date }}</dd></div>
+              </dl>
+              <a class="text-link sm" href="{{ url_for('contact', contact_id=r.id) }}" target="_blank" rel="noopener">Open {{ icon('external') }}</a>
+            {% else %}
+              <span class="dup-name">{{ logo(r.name, 'sm') }}<b>{{ r.name }}</b></span>
+              <dl class="props compact">
+                <div class="prop"><dt>Companies House</dt><dd>{{ r.company_no or '—' }}</dd></div>
+                <div class="prop"><dt>Website</dt><dd>{{ r.website or '—' }}</dd></div>
+                <div class="prop"><dt>Address</dt><dd>{{ [r.address, r.city, r.postcode] | select | join(', ') or '—' }}</dd></div>
+                <div class="prop"><dt>Owner</dt><dd>{{ r.owner or '—' }}</dd></div>
+                <div class="prop"><dt>Added</dt><dd>{{ r.created_at | uk_date }}</dd></div>
+              </dl>
+              <a class="text-link sm" href="{{ url_for('company', company_id=r.id) }}" target="_blank" rel="noopener">Open {{ icon('external') }}</a>
+            {% endif %}
+          </label>
+        {% endfor %}
+      </div>
+      <input type="hidden" name="pair" value="{{ a.id }}"><input type="hidden" name="pair" value="{{ b.id }}">
+      <div class="form-actions">
+        <button class="btn primary sm">Merge</button>
+      </div>
+    </form>
+    <form method="post" action="{{ url_for('dismiss_duplicates', obj=obj) }}" class="dup-dismiss">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="ids" value="{{ a.id }}"><input type="hidden" name="ids" value="{{ b.id }}">
+      <button class="text-link sm">Not duplicates</button>
+    </form>
+  </section>
+{% else %}
+  <section class="panel"><p class="empty-line">No likely duplicates. Nice and tidy.</p></section>
+{% endfor %}
+{% endblock %}

@@ -17,11 +17,13 @@ import audit
 import auth
 import billing
 import campaigns
+import companies_house
 import crm
 import dataio
 import fields
 import files
 import documents
+import duplicates
 import events
 import finance
 import home
@@ -31,9 +33,11 @@ import monitoring
 import notifications
 import mtd
 import quotes
+import recycle
 import sales
 import service
 import settings
+import tags
 import twofactor
 import ukfmt
 import webforms
@@ -57,8 +61,10 @@ NAV = [
 SETTINGS_TABS = [("settings", "Business details", True), ("auth.team", "Team", False),
                  ("assistant_settings", "AI assistant", True),
                  ("integrations", "Integrations", False), ("imports", "Import", True), ("billing", "Billing", True),
-                 ("custom_fields_page", "Custom fields", True), ("workflows", "Workflows", True),
+                 ("custom_fields_page", "Custom fields", True), ("tags_settings", "Tags", True),
+                 ("workflows", "Workflows", True),
                  ("developers", "API and webhooks", True), ("vat", "VAT returns", True),
+                 ("recycle_bin", "Recycle bin", True),
                  ("audit_trail", "Audit trail", True)]
 # Which nav item lights up for pages that aren't in the nav themselves.
 NAV_PARENT = {"contact": "contacts", "company": "companies", "deal": "pipeline", "ticket": "tickets",
@@ -232,7 +238,7 @@ def create_app(config=None):
     events.register(app)  # first, so its after_request hook runs last, once everything else is saved
     for module in (home, crm, sales, service, finance, quotes, webforms, campaigns, billing, integrations, xero, mtd,
                    documents, notifications, files, fields, workflows, webhooks, api, legal, dataio, settings, audit,
-                   assistant):
+                   assistant, tags, duplicates, companies_house, recycle):
         module.register(app)
     return app
 

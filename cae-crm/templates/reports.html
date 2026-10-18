@@ -65,6 +65,23 @@
   <section class="panel"><header class="panel-head"><h2>Leaderboard</h2><p class="panel-note">All time</p></header>{{ breakdown(by_owner, true) }}</section>
 </div>
 
+<div class="layout-even">
+  {% for stage, title in (('Won', 'Why we win'), ('Lost', 'Why we lose')) %}
+    <section class="panel"><header class="panel-head"><div><h2>{{ title }}</h2><p class="panel-note">Deals {{ stage | lower }} in the last 12 months</p></div></header>
+      <ul class="rank">
+        {% for r in outcomes[stage] %}
+          <li><span class="rank-name">{{ r.reason }}</span><span class="rank-value">{{ r.n }} {{ 'deal' if r.n == 1 else 'deals' }}</span>
+            <span class="rank-bar"><i style="width: {{ '%.1f' | format(r.share) }}%"></i></span>
+            <span class="rank-meta">{{ r.value | money }}</span></li>
+        {% else %}
+          <li class="empty-line">{{ 'No reasons recorded yet. Add one on a won deal.' if stage == 'Won' else 'No deals lost in the last 12 months.' }}</li>
+        {% endfor %}
+      </ul>
+      {% if unexplained.get(stage) %}<p class="form-hint">{{ unexplained[stage] }} won {{ 'deal has' if unexplained[stage] == 1 else 'deals have' }} no reason recorded.</p>{% endif %}
+    </section>
+  {% endfor %}
+</div>
+
 <section class="panel">
   <header class="panel-head"><div><h2>Products in the open pipeline</h2><p class="panel-note">Net value quoted on open deals</p></div>
     <a class="text-link" href="{{ url_for('products') }}">Products</a></header>

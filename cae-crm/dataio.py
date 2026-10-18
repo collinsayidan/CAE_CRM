@@ -188,7 +188,11 @@ def register(app):
         from fields import definitions, display
         extra = definitions(obj) if obj in ("contacts", "companies", "deals", "tickets") else []
         custom = {r["id"]: r["custom"] for r in rows(f"SELECT id, custom FROM {obj} WHERE workspace_id=?", ws())} if extra else {}
-        writer.writerow([label for label, _ in EXPORT_COLUMNS[obj]] + [f["label"] for f in extra])
+        import tags
+        tagged = {"contacts": "contact", "companies": "company"}.get(obj)
+        tag_map = tags.tags_for(tagged, [r["id"] for r in data]) if tagged else {}
+        writer.writerow([label for label, _ in EXPORT_COLUMNS[obj]] + [f["label"] for f in extra]
+                        + (["Tags"] if tagged else []))
         for r in data:
             line = []
             for _, key in EXPORT_COLUMNS[obj]:
@@ -202,6 +206,8 @@ def register(app):
                 import json
                 saved = json.loads(custom.get(r["id"]) or "{}")
                 line += [csv_safe(display(f, saved.get(str(f["id"]))) or "") for f in extra]
+            if tagged:
+                line.append(csv_safe(", ".join(tag_map.get(r["id"], []))))
             writer.writerow(line)
         filename = f"cae-{obj}-{today().isoformat()}.csv"
         return Response("﻿" + out.getvalue(), mimetype="text/csv",  # BOM so Excel reads £ and accents

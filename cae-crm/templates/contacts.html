@@ -8,6 +8,7 @@
   {% if current_user.role == 'admin' %}
     <a class="btn ghost" href="{{ url_for('imports') }}">{{ icon('upload') }} Import</a>
     <a class="btn ghost" href="{{ url_for('export', obj='contacts', **request.args) }}">{{ icon('download') }} Export</a>
+    <a class="btn ghost" href="{{ url_for('duplicates', obj='contacts') }}">{{ icon('users') }} Find duplicates</a>
   {% endif %}
   <button class="btn primary" data-open="dlg-contact">{{ icon('plus') }} Add contact</button>
 {% endblock %}
@@ -22,6 +23,7 @@
     {{ filter_select('lifecycle', 'Any lifecycle stage', lifecycle_stages, active.lifecycle) }}
     {{ filter_select('lead_status', 'Any lead status', lead_statuses, active.lead_status) }}
     {{ filter_select('consent', 'Any consent', ['Opted in to marketing', 'Not opted in'], active.consent, values=['1', '0']) }}
+    {% if tag_names %}{{ filter_select('tag', 'Any tag', tag_names, active.tag) }}{% endif %}
     {{ filter_select('sort', 'Sort', ['Newest first', 'Name', 'Company', 'Lifecycle stage'], active.sort, values=['newest', 'name', 'company', 'lifecycle']) }}
     {% if current_query %}<a class="text-link sm" href="{{ url_for('contacts') }}">Clear filters</a>{% endif %}
     <noscript><button class="btn sm">Apply</button></noscript>
@@ -30,8 +32,10 @@
   <form method="post" action="{{ url_for('bulk', obj='contacts') }}" data-bulk>
     <input type="hidden" name="csrf" value="{{ csrf_token }}">
     <input type="hidden" name="next" value="{{ request.full_path }}">
-    {% call bulk_bar('contacts', owners_all, [('lifecycle', 'Set lifecycle stage')]) %}
+    {% call bulk_bar('contacts', owners_all, [('lifecycle', 'Set lifecycle stage')] + ([('tag_add', 'Add tag'), ('tag_remove', 'Remove tag')] if tag_names else [])) %}
       <template data-bulk-options="lifecycle">{% for s in lifecycle_stages %}<option>{{ s }}</option>{% endfor %}</template>
+      <template data-bulk-options="tag_add">{% for t in tag_names %}<option>{{ t }}</option>{% endfor %}</template>
+      <template data-bulk-options="tag_remove">{% for t in tag_names %}<option>{{ t }}</option>{% endfor %}</template>
     {% endcall %}
     <div class="table-wrap">
       <table class="records">
@@ -44,7 +48,8 @@
             <tr>
               <td class="pick"><input type="checkbox" name="ids" value="{{ c.id }}" aria-label="Select {{ c.first_name }} {{ c.last_name }}"></td>
               <td><a class="row-link" href="{{ url_for('contact', contact_id=c.id) }}">{{ avatar(c.first_name ~ ' ' ~ c.last_name, 'sm') }}
-                <span><b>{{ c.first_name }} {{ c.last_name }}</b><small>{{ c.email or 'No email' }}</small></span></a></td>
+                <span><b>{{ c.first_name }} {{ c.last_name }}</b><small>{{ c.email or 'No email' }}</small></span></a>
+                {% if tag_map.get(c.id) %}<p class="tag-row">{% for t in tag_map[c.id] %}<a class="tag" href="{{ url_for('contacts', tag=t) }}">{{ t }}</a>{% endfor %}</p>{% endif %}</td>
               <td>{% if c.company_id %}<a href="{{ url_for('company', company_id=c.company_id) }}">{{ c.company }}</a>{% else %}<span class="muted">None</span>{% endif %}</td>
               <td><span class="chip lifecycle-{{ c.lifecycle_stage | slug }}">{{ c.lifecycle_stage or 'Lead' }}</span></td>
               <td>{{ c.lead_status or '' }}</td>

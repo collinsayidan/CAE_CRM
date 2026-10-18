@@ -7,6 +7,7 @@ from urllib.parse import parse_qsl, urlencode
 from flask import Response, abort, flash, g, redirect, render_template, request, url_for
 
 import auth
+import tags
 import ukfmt
 from events import emit
 from core import (OPEN_SQL, advance_lifecycle, back, chosen_owner, get_or_404, log_event, now, one, owned,
@@ -16,6 +17,7 @@ from db import (ACTIVITY_KINDS, CALL_OUTCOMES, LAWFUL_BASES, LEAD_STATUSES, LIFE
 
 PAGE_SIZE = 50
 ENGAGEMENT_KINDS = ("note", "call", "email", "meeting")
+TAGGED = {"contacts": "contact", "companies": "company"}  # lists whose records can be tagged
 
 # How each list page can be searched, filtered and sorted. Filter values always travel as parameters.
 LISTS = {
@@ -24,7 +26,8 @@ LISTS = {
         scope="ct.workspace_id=?",
         search=["LOWER(ct.first_name || ' ' || ct.last_name)", "LOWER(ct.email)", "LOWER(c.name)"],
         filters={"owner": "ct.owner = ?", "lifecycle": "ct.lifecycle_stage = ?", "lead_status": "ct.lead_status = ?",
-                 "company": "ct.company_id = ?", "consent": "ct.marketing_consent = ?"},
+                 "company": "ct.company_id = ?", "consent": "ct.marketing_consent = ?",
+                 "tag": tags.filter_clause("contact", "ct")},
         sorts={"name": "LOWER(ct.first_name), LOWER(ct.last_name)", "newest": "ct.created_at DESC, ct.id DESC",
                "company": "LOWER(c.name) NULLS LAST", "lifecycle": "ct.lifecycle_stage"},
     ),
@@ -36,7 +39,8 @@ LISTS = {
                 " FROM companies c"),
         scope="c.workspace_id=?",
         search=["LOWER(c.name)", "LOWER(c.city)", "LOWER(c.postcode)", "LOWER(c.industry)"],
-        filters={"owner": "c.owner = ?", "region": "c.region = ?", "industry": "c.industry = ?"},
+        filters={"owner": "c.owner = ?", "region": "c.region = ?", "industry": "c.industry = ?",
+                 "tag": tags.filter_clause("company", "c")},
         sorts={"value": "lifetime DESC NULLS LAST, c.name", "name": "LOWER(c.name)", "newest": "c.created_at DESC, c.id DESC",
                "pipeline": "pipeline DESC NULLS LAST"},
     ),
@@ -78,6 +82,12 @@ def list_records(obj, args, paginate=True):
     if obj == "deals" and args.get("open") == "1":
         where.append(f"d.{OPEN_SQL}")
         active["open"] = "1"
+    if obj == "deals" and args.get("quiet") == "1":
+        from sales import quiet_clause
+        clause, extra = quiet_clause("d")
+        where.append(clause)
+        params += extra
+        active["quiet"] = "1"
     if obj == "tickets" and args.get("open") == "1":
         where.append("t.status <> 'Closed'")
         active["open"] = "1"
@@ -100,7 +110,7 @@ def view_tabs(obj):
                      ("Customers", urlencode({"lifecycle": "Customer"}))],
         "companies": [("All companies", ""), ("My companies", urlencode({"owner": me}))],
         "deals": [("All deals", ""), ("My open deals", urlencode({"owner": me, "open": "1"})),
-                  ("Won", urlencode({"stage": "Won"}))],
+                  ("Gone quiet", urlencode({"quiet": "1"})), ("Won", urlencode({"stage": "Won"}))],
         "tickets": [("All tickets", ""), ("Open", urlencode({"open": "1"})),
                     ("My open tickets", urlencode({"owner": me, "open": "1"})),
                     ("Urgent", urlencode({"priority": "Urgent", "open": "1"}))],
@@ -188,6 +198,8 @@ def validate_contact(f, contact_id=None):
 def render_index(obj, template, **extra):
     data, total, page, active = list_records(obj, request.args)
     tabs, current = view_tabs(obj)
+    if obj in ("contacts", "companies"):
+        extra.update(tag_map=tags.tags_for(TAGGED[obj], [r["id"] for r in data]), tag_names=tags.all_names())
     return render_template(template, records=data, total=total, page=page, pages=-(-total // PAGE_SIZE) or 1,
                            active=active, tabs=tabs, current_query=current, obj=obj, owners_all=owner_names(), **extra)
 
@@ -291,6 +303,7 @@ def register(app):
         db.execute("DELETE FROM contacts WHERE id=? AND workspace_id=?", (contact_id, ws()))
         from files import delete_for
         delete_for("contact", contact_id)
+        tags.forget("contact", contact_id)
         import assistant  # conversations that mention them go too
         assistant.forget(ws(), f"{c['first_name']} {c['last_name']}", c["email"])
         if c["company_id"]:
@@ -373,7 +386,8 @@ def register(app):
             flash(problem, "error")
             return redirect(url_for("company", company_id=company_id))
         get_db().commit()
-        flash(f"Deleted {c['name']}. Its people are kept as contacts without a company.", "ok")
+        flash(f"Deleted {c['name']}. Its people are kept as contacts without a company. An admin can restore it from "
+              "Settings, Recycle bin, for 30 days.", "ok")
         return redirect(url_for("companies"))
 
     # Old route from the first release: add a contact from a company page.
@@ -386,7 +400,9 @@ def register(app):
 
     @app.route("/deals/<int:deal_id>")
     def deal(deal_id):
+        from db import LOST_REASONS, WON_REASONS
         from quotes import quote_state
+        from sales import quiet_ids, quiet_reason
         d = get_or_404("deals", deal_id)
         company = one("SELECT * FROM companies WHERE id=? AND workspace_id=?", d["company_id"], ws())
         contact = one("SELECT * FROM contacts WHERE id=? AND workspace_id=?", d["contact_id"], ws()) if d["contact_id"] else None
@@ -403,7 +419,9 @@ def register(app):
             company_contacts=rows("SELECT id, first_name, last_name FROM contacts WHERE workspace_id=? AND company_id=?"
                                   " ORDER BY first_name", ws(), d["company_id"]),
             record=dict(deal_id=deal_id, company_id=d["company_id"], contact_id=d["contact_id"]),
-            call_outcomes=CALL_OUTCOMES, all_stages=OPEN_STAGES + ["Won", "Lost"])
+            call_outcomes=CALL_OUTCOMES, all_stages=OPEN_STAGES + ["Won", "Lost"],
+            quiet=quiet_reason(d) if d["id"] in quiet_ids() else None,
+            lost_reasons=LOST_REASONS, won_reasons=WON_REASONS)
 
     @app.post("/deals/<int:deal_id>/edit")
     def edit_deal(deal_id):
@@ -448,12 +466,11 @@ def register(app):
             flash("This deal has invoices, which UK law requires you to keep for 6 years, so it can't be deleted.", "error")
             return redirect(url_for("deal", deal_id=deal_id))
         db = get_db()
-        db.execute("DELETE FROM deals WHERE id=? AND workspace_id=?", (deal_id, ws()))
-        from files import delete_for
-        delete_for("deal", deal_id)
+        import recycle
+        recycle.delete("deals", deal_id)
         log_event(f"Deal deleted: {d['title']}", f"Deleted by {g.user['name']}", company_id=d["company_id"])
         db.commit()
-        flash(f"Deleted the deal {d['title']}.", "ok")
+        flash(f"Deleted the deal {d['title']}. An admin can restore it from Settings, Recycle bin, for 30 days.", "ok")
         return redirect(url_for("pipeline"))
 
     # --- Activity timeline --------------------------------------------------
@@ -537,6 +554,11 @@ def register(app):
             for contact_id in ids:
                 log_event(f"Lifecycle stage changed to {value}", f"Bulk update by {g.user['name']}", contact_id=contact_id)
             message = f"{len(ids)} moved to {value}."
+        elif action in ("tag_add", "tag_remove") and table in TAGGED:
+            message = tags.bulk(TAGGED[table], ids, action, value)
+            if not message:
+                flash("Choose a tag.", "error")
+                return back(obj)
         elif action == "status" and table == "tickets" and value in TICKET_STATUSES:
             from service import set_ticket_status
             for ticket_id in ids:
@@ -553,10 +575,9 @@ def register(app):
                                                  ws(), record_id):
                     skipped += 1
                 else:
-                    db.execute(f"DELETE FROM {table} WHERE id=? AND workspace_id=?", (record_id, ws()))
-                    from files import RECORDS, delete_for
-                    delete_for(next(k for k, v in RECORDS.items() if v == table), record_id)
-            message = f"Deleted {len(ids) - skipped}."
+                    import recycle
+                    recycle.delete(table, record_id)
+            message = f"Deleted {len(ids) - skipped}. Admins can restore them from Settings, Recycle bin, for 30 days."
             if skipped:
                 message += f" Kept {skipped} with invoices, which UK law requires you to keep for 6 years."
         else:
@@ -588,14 +609,9 @@ def delete_company_records(company_id):
     """Delete a company, keeping its people as contacts. Returns a reason if it must be kept."""
     if scalar("SELECT COUNT(*) FROM invoices WHERE workspace_id=? AND company_id=?", ws(), company_id):
         return "This company has invoices, which UK law requires you to keep for 6 years, so it can't be deleted."
-    db = get_db()
-    db.execute("UPDATE contacts SET company_id=NULL WHERE workspace_id=? AND company_id=?", (ws(), company_id))
-    # Keep notes that are also on a person's timeline.
-    db.execute("UPDATE engagements SET company_id=NULL WHERE workspace_id=? AND company_id=? AND contact_id IS NOT NULL",
-               (ws(), company_id))
-    db.execute("DELETE FROM companies WHERE id=? AND workspace_id=?", (company_id, ws()))
-    from files import delete_for
-    delete_for("company", company_id)
+    # To the recycle bin. Its people stay as contacts without a company, and notes also on a person's timeline stay.
+    import recycle
+    recycle.delete("companies", company_id)
     return None
 
 

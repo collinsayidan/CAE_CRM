@@ -8,6 +8,7 @@
   {% if current_user.role == 'admin' %}
     <a class="btn ghost" href="{{ url_for('imports') }}">{{ icon('upload') }} Import</a>
     <a class="btn ghost" href="{{ url_for('export', obj='companies', **request.args) }}">{{ icon('download') }} Export</a>
+    <a class="btn ghost" href="{{ url_for('duplicates', obj='companies') }}">{{ icon('building') }} Find duplicates</a>
   {% endif %}
   <button class="btn primary" data-open="dlg-customer">{{ icon('plus') }} Add company</button>
 {% endblock %}
@@ -21,6 +22,7 @@
     {{ filter_select('owner', 'Any owner', owners_all, active.owner) }}
     {{ filter_select('region', 'Any region', region_options, active.region) }}
     {{ filter_select('industry', 'Any industry', industry_options, active.industry) }}
+    {% if tag_names %}{{ filter_select('tag', 'Any tag', tag_names, active.tag) }}{% endif %}
     {{ filter_select('sort', 'Sort', ['Lifetime revenue', 'Open pipeline', 'Name', 'Newest first'], active.sort, values=['value', 'pipeline', 'name', 'newest']) }}
     {% if current_query %}<a class="text-link sm" href="{{ url_for('companies') }}">Clear filters</a>{% endif %}
     <noscript><button class="btn sm">Apply</button></noscript>
@@ -29,7 +31,10 @@
   <form method="post" action="{{ url_for('bulk', obj='companies') }}" data-bulk>
     <input type="hidden" name="csrf" value="{{ csrf_token }}">
     <input type="hidden" name="next" value="{{ request.full_path }}">
-    {{ bulk_bar('companies', owners_all) }}
+    {% call bulk_bar('companies', owners_all, [('tag_add', 'Add tag'), ('tag_remove', 'Remove tag')] if tag_names else []) %}
+      <template data-bulk-options="tag_add">{% for t in tag_names %}<option>{{ t }}</option>{% endfor %}</template>
+      <template data-bulk-options="tag_remove">{% for t in tag_names %}<option>{{ t }}</option>{% endfor %}</template>
+    {% endcall %}
     <div class="table-wrap">
       <table class="records">
         <thead><tr>
@@ -42,7 +47,9 @@
             <tr>
               <td class="pick"><input type="checkbox" name="ids" value="{{ c.id }}" aria-label="Select {{ c.name }}"></td>
               <td><a class="row-link" href="{{ url_for('company', company_id=c.id) }}">{{ logo(c.name, 'sm') }}<span><b>{{ c.name }}</b>
-                <small>{{ c.industry or 'Industry not set' }}</small></span></a></td>
+                <small>{{ c.industry or 'Industry not set' }}</small></span></a>
+                {% if c.ch_status in ch_warn %}<span class="chip bad" title="According to Companies House">{{ ch_status_label(c.ch_status) }}</span>{% endif %}
+                {% if tag_map.get(c.id) %}<p class="tag-row">{% for t in tag_map[c.id] %}<a class="tag" href="{{ url_for('companies', tag=t) }}">{{ t }}</a>{% endfor %}</p>{% endif %}</td>
               <td>{{ c.city or '' }}<small>{{ c.postcode }}{% if c.region %}, {{ c.region }}{% endif %}</small></td>
               <td>{{ c.owner or '' }}</td>
               <td class="num">{{ c.contacts }}</td>

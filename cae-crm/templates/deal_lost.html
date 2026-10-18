@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Mark {{ d.title }} as lost{% endblock %}
+{% block crumbs %}<nav class="crumbs" aria-label="Breadcrumb"><a href="{{ url_for('pipeline') }}">Deals</a> <span aria-hidden="true">/</span> <a href="{{ url_for('deal', deal_id=d.id) }}">{{ d.title }}</a></nav>{% endblock %}
+{% block heading %}Why was this deal lost?{% endblock %}
+{% block subtitle %}<p class="subtitle">{{ d.title }}, {{ d.value | money }}. Knowing why helps you win the next one; Reports shows the reasons over time.</p>{% endblock %}
+
+{% block content %}
+<section class="panel narrow">
+  <form method="post" action="{{ url_for('lose_deal', deal_id=d.id) }}" class="reason-form">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <input type="hidden" name="next" value="{{ next }}">
+    {% if error %}<p class="form-alert" role="alert">{{ error }}</p>{% endif %}
+    <fieldset class="reason-choices">
+      <legend class="field-label">Main reason</legend>
+      {% for r in reasons %}
+        <label class="check"><input type="radio" name="reason" value="{{ r }}" required {{ 'checked' if request.form.get('reason') == r }}> <span>{{ r }}</span></label>
+      {% endfor %}
+    </fieldset>
+    <label class="field"><span class="field-label">Anything to add? <span class="optional">(optional)</span></span>
+      <textarea name="note" rows="3" maxlength="500" placeholder="For example, which competitor, or when to try again">{{ request.form.get('note', '') }}</textarea></label>
+    <div class="form-actions">
+      <a class="btn ghost" href="{{ next or url_for('deal', deal_id=d.id) }}">Cancel</a>
+      <button class="btn primary">{{ icon('x') }} Mark as lost</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

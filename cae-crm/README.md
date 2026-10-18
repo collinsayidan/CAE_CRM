@@ -130,6 +130,15 @@ Ticket pages add the status path and the two service-level clocks.
 - **Files:** attach contracts, purchase orders and photos to any contact, company, deal or ticket (up to 4 MB each: PDFs, images, Office and OpenDocument files, text, CSV, zip and saved emails). Files always download rather than open in the page. Whoever attached a file, or an admin, can remove it. Erasing a contact or deleting a record removes its files too. With `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` set, files go to a private Supabase Storage bucket and download through links that expire after a minute; without them, they're kept in the database.
 - **Custom fields:** admins add up to 30 fields in **Settings → Custom fields**: text, number, date, dropdown or yes/no, on contacts, companies, deals or tickets. They show in the About panel, are filled in from the Edit window, and are included in CSV exports. Removing a field hides it but keeps what was entered.
 
+### Sales and data tools
+
+- **Deals gone quiet:** an open deal with nothing logged for 14 days (change it under Settings, Business details) and no task coming up, or past its expected close date, is marked "Gone quiet" on the board and list, and has its own tab. The daily job tells the owner once, by notification.
+- **Win and loss reasons:** marking a deal lost asks why (price, timing, a competitor, no decision, no budget or other, plus a note), on its own page so it works without JavaScript. Won deals can have an optional reason. Reports shows both for the last 12 months. The API and workflows record "Not given".
+- **Tags:** add tags to contacts and companies on their pages or in bulk from a list, filter lists by tag, and save the filter as a view to make a segment that keeps itself up to date. Tags are in CSV exports. Admins rename, merge and delete tags under Settings, Tags.
+- **Duplicates:** admins open **Find duplicates** on the Contacts or Companies list. Contacts match on email, phone number, or name at the same company; companies on Companies House number, name (ignoring Ltd and punctuation) or website. **Merge** keeps the record you choose, fills its empty fields from the other, moves everything linked across and notes it on the timeline. An unsubscribe or bounce on either contact wins. **Not duplicates** hides a pair.
+- **Companies House:** set `COMPANIES_HOUSE_API_KEY` and typing a company's name in the new or edit company form suggests matches from the register; choosing one fills in the number and registered office. **Refresh from Companies House** records a company's status and SIC codes, and dissolved companies or ones in liquidation or administration get a red warning. The daily job re-checks up to 100 companies. Get a free key: register at developer.company-information.service.gov.uk, create an application, and add a **REST** API key for the live environment.
+- **Recycle bin:** deleted contacts, companies, deals and tickets go to Settings, Recycle bin, with everything deleted alongside them (timeline, line items, tasks, quotes, tags and files). Admins can restore them for 30 days, or delete them permanently sooner; the daily job empties older entries. Erasing a contact under UK GDPR is still immediate.
+
 ### Workflows
 
 Admins set up rules in **Settings → Workflows**: *when* something happens (a contact is added, a web form is submitted, a deal moves to a stage, a ticket is opened, a quote is accepted, an invoice is paid), optionally narrowed to one stage, priority or form, *then* do one thing:
@@ -282,6 +291,10 @@ dataio.py     CSV import and export, saved views
 settings.py   business details, VAT and invoice settings
 assistant.py  the AI assistant: settings, conversations, the Claude loop, suggestions
 assistant_tools.py  what the assistant can look up and suggest, all workspace-scoped
+tags.py       tags on contacts and companies
+duplicates.py finding and merging duplicate contacts and companies
+companies_house.py  Companies House lookups and status checks
+recycle.py    the 30-day recycle bin for deleted records
 db.py         schema, migrations, SQLite/PostgreSQL connection wrapper
 seed.py       sample data for a new workspace
 ukfmt.py      GBP, dates, VAT, postcodes, phone numbers, working hours, financial year

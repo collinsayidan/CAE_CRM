@@ -10,6 +10,7 @@ from datetime import date, timedelta
 from flask import g
 
 import fields
+import tags
 from core import OPEN_SQL, now, one, owned, owner_names, rows, scalar, today, ws
 from db import ACTIVITY_KINDS, OPEN_STAGES, STAGE_PROBABILITY, TICKET_PRIORITIES, TICKET_STATUSES
 from ukfmt import money
@@ -211,6 +212,7 @@ def _get_contact(record_id):
         "owner": r["owner"], "lifecycle_stage": r["lifecycle_stage"], "lead_status": r["lead_status"],
         "lawful_basis": r["lawful_basis"], "marketing_consent": bool(r["marketing_consent"]),
         "unsubscribed": bool(r["unsubscribed_at"]), "added": r["created_at"], "custom_fields": _custom("contacts", r),
+        "tags": [t["name"] for t in tags.tags_of("contact", record_id)],
         "deals": [dict(d, value=_gbp(d["value"])) for d in rows(
             "SELECT id, title, stage, value FROM deals WHERE workspace_id=? AND contact_id=? ORDER BY id DESC LIMIT 10",
             ws(), record_id)],
@@ -227,6 +229,7 @@ def _get_company(record_id):
         "phone": r["phone"], "address": ", ".join(filter(None, [r["address"], r["city"], r["postcode"]])),
         "region": r["region"], "company_number": r["company_no"], "vat_number": r["vat_no"], "owner": r["owner"],
         "added": r["created_at"], "custom_fields": _custom("companies", r),
+        "tags": [t["name"] for t in tags.tags_of("company", record_id)],
         "contacts": [dict(id=c["id"], name=_person(c), job_title=c["role"], email=c["email"]) for c in rows(
             "SELECT id, first_name, last_name, role, email FROM contacts WHERE workspace_id=? AND company_id=? "
             "ORDER BY first_name LIMIT 20", ws(), record_id)],
@@ -249,6 +252,7 @@ def _get_deal(record_id):
         "kind": "deal", "id": r["id"], "title": r["title"], "value": _gbp(r["value"]), "stage": r["stage"],
         "probability_percent": r["probability"], "owner": r["owner"], "source": r["source"],
         "close_date": r["close_date"], "closed_on": r["closed_at"], "added": r["created_at"],
+        "won_or_lost_because": r["outcome_reason"], "outcome_note": r["outcome_note"],
         "company": {"id": r["company_id"], "name": r["company"]},
         "contact": {"id": r["contact_id"], "name": _person(r)} if r["contact_id"] else None,
         "custom_fields": _custom("deals", r),

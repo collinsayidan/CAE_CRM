@@ -1,5 +1,21 @@
 /* CAE CRM: navy and teal on white and light grey. */
 
+/* Plus Jakarta Sans, served from our own domain (SIL Open Font License, see fonts/OFL.txt). */
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("fonts/plus-jakarta-sans-latin-wght-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: italic;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("fonts/plus-jakarta-sans-latin-wght-italic.woff2") format("woff2");
+}
+
 :root {
   --canvas: #f4f6f9;
   --surface: #ffffff;

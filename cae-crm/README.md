@@ -219,7 +219,7 @@ Scheduled refresh in the Power BI service uses the same sign-in. Cells that a sp
 ## Design
 
 - **Colours:** navy and teal on white cards and a light grey background, with light and dark themes. Amber marks things due soon, and red marks only what is overdue or breached.
-- **Typeface:** Plus Jakarta Sans throughout.
+- **Typeface:** Plus Jakarta Sans throughout, served from `static/fonts/` (SIL Open Font License) so pages load nothing from other websites.
 - **Contrast:** text meets WCAG AA in both themes.
 - **Layout:** works down to phone width. Boards scroll sideways a column at a time, and record pages stack.
 - **Without JavaScript:** every page still works. Forms post normally, and card menus stand in for drag and drop.

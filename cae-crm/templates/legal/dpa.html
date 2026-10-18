@@ -1,0 +1,95 @@
+{% extends "legal/_layout.html" %}
+{% block content %}
+<p class="legal-lead">This agreement forms part of the <a href="{{ url_for('legal', doc='terms') }}">terms of service</a> between your organisation ("you", the controller) and {{ legal_detail('LEGAL_COMPANY_NAME') }} ("we", the processor). It covers the personal data your workspace holds in CAE CRM, as Article 28 of the UK GDPR requires.</p>
+
+<h2>1. What we do with your data</h2>
+<p>We process personal data only to provide CAE CRM to you, and only on your documented instructions. Those instructions are these terms, and what you and your team do in the app, the API and the integrations you switch on. If we think an instruction breaks data protection law, we'll tell you. If the law requires us to process data in some other way, we'll tell you first, unless the law forbids it. Schedule 1 sets out the details.</p>
+
+<h2>2. Our people</h2>
+<p>Everyone we allow to access your data is bound to keep it confidential, and has access only where they need it to run, support or secure the service.</p>
+
+<h2 id="security-measures">3. Security</h2>
+<p>We keep appropriate technical and organisational measures in place, as Article 32 requires. Schedule 2 lists them. We may improve them, but we won't make them weaker overall.</p>
+
+<h2>4. Sub-processors</h2>
+<p>You give general permission for us to use the sub-processors in Schedule 3. We'll tell admins at least 30 days before adding or replacing one. If you object on reasonable data protection grounds and we can't resolve it, you can end the terms and get a refund of any prepaid fees for the time left. Each sub-processor is bound by a written contract with data protection duties at least as strong as ours, and we stay responsible for them.</p>
+<p>Services you choose to connect, such as Gmail, Outlook, Xero, HMRC, Zapier, Power BI or your own systems, aren't our sub-processors. Data goes to them on your instruction.</p>
+
+<h2>5. Helping you</h2>
+<ul>
+  <li><b>People's rights.</b> CAE CRM lets you find, correct, export (as a subject access file) and erase a person's data. If someone contacts us directly about data you control, we'll pass it to you, and help you respond where you need us to.</li>
+  <li><b>Your other duties.</b> We'll give reasonable help with security, breach notifications, data protection impact assessments and consulting the ICO, taking into account what we know about the processing.</li>
+</ul>
+
+<h2>6. Personal data breaches</h2>
+<p>If we become aware of a breach affecting your data, we'll tell you without undue delay, and in any case within 48 hours. {{ to_confirm('notification period') }} We'll tell you what we know: what happened, the data and people likely to be affected, the likely consequences, and what we're doing about it. We'll then keep you updated.</p>
+
+<h2>7. Transfers outside the UK</h2>
+<p>We'll only transfer your data outside the UK with a valid safeguard in place:</p>
+<ul>
+  <li>UK adequacy regulations;</li>
+  <li>the UK Extension to the EU-US Data Privacy Framework;</li>
+  <li>the UK International Data Transfer Agreement;</li>
+  <li>the UK Addendum to the EU's standard contractual clauses.</li>
+</ul>
+
+<h2>8. When the terms end</h2>
+<p>You have 30 days to export your data. After that we'll delete it, including from backups as they're overwritten, unless the law requires us to keep it. We'll confirm the deletion in writing if you ask.</p>
+
+<h2>9. Checks and audits</h2>
+<p>We'll give you the information you reasonably need to show that we're meeting this agreement. If that isn't enough, you can audit us, or ask an independent auditor bound by confidentiality to do so. Give us at least 30 days' notice, and do it no more than once a year, unless there's been a breach or a regulator requires it. You pay for the audit.</p>
+
+<h2>10. Your responsibilities</h2>
+<p>You're responsible for:</p>
+<ul>
+  <li>having a lawful basis for the personal data you put into CAE CRM;</li>
+  <li>giving people the privacy information they're entitled to;</li>
+  <li>getting any consent you need, including under PECR for marketing emails.</li>
+</ul>
+
+<h2>Schedule 1: Details of the processing</h2>
+<dl class="legal-dl">
+  <dt>Subject matter and duration</dt><dd>Providing CAE CRM, for as long as the terms last, plus the 30-day export and deletion period.</dd>
+  <dt>Nature and purpose</dt><dd>Storing, organising, displaying, searching, exporting, sending and deleting records, so you can manage customer relationships, sales, service tickets, quotes, invoices, email campaigns and web forms.</dd>
+  <dt>Types of personal data</dt><dd>
+    <p>Whatever you put in. Typically:</p>
+    <ul>
+      <li>names, job titles, email addresses and phone numbers;</li>
+      <li>company details;</li>
+      <li>notes, call and meeting records, and emails logged from connected mailboxes (subject and a short preview);</li>
+      <li>marketing consent and unsubscribe records;</li>
+      <li>web form submissions;</li>
+      <li>quote signatures (name, position, IP address and browser);</li>
+      <li>files you attach;</li>
+      <li>your custom fields.</li>
+    </ul>
+    <p>CAE CRM isn't designed for special category or criminal offence data. Don't put it in unless you've checked that you can.</p></dd>
+  <dt>People the data is about</dt><dd>Your customers, prospects, suppliers and their staff, people who fill in your web forms or sign your quotes, and your own team.</dd>
+</dl>
+
+<h2 id="security">Schedule 2: Security measures</h2>
+<ul>
+  <li><b>Encryption:</b> all connections use HTTPS. Tokens for connected services (Gmail, Outlook, Xero, HMRC) are encrypted in the database.</li>
+  <li><b>Signing in:</b> passwords are stored as salted scrypt hashes. Accounts lock for 15 minutes after 5 failed sign-ins. Admins must use two-factor sign-in. Sessions end after 12 hours.</li>
+  <li><b>Keeping businesses apart:</b> every query is limited to the signed-in workspace, and this is covered by automated tests. Row-level security is on for every database table, so the database provider's public interface can't read them.</li>
+  <li><b>API and webhooks:</b> API keys are stored only as hashes, can be limited to reading, and are rate-limited. Webhooks are signed, go only to public HTTPS addresses, and don't follow redirects.</li>
+  <li><b>Files:</b> attachments are kept in a private storage bucket and downloaded through links that expire after a minute, or in the database where no bucket is set up. File types that could run code are refused.</li>
+  <li><b>Web protection:</b> forms carry anti-forgery tokens. Exports and feeds are protected against spreadsheet formula injection.</li>
+  <li><b>Accountability:</b> an audit trail records who changed what. Error reports have personal data removed.</li>
+  <li><b>Development:</b> every change is tested automatically before it's released.</li>
+  <li><b>Resilience:</b> the database is backed up by our hosting provider. {{ to_confirm('backup frequency and how restores are tested') }}</li>
+</ul>
+
+<h2>Schedule 3: Sub-processors</h2>
+<div class="table-wrap">
+<table class="legal-table">
+  <thead><tr><th>Provider</th><th>What for</th><th>Where</th></tr></thead>
+  <tbody>
+    <tr><td>Vercel Inc.</td><td>Running the application</td><td>{{ to_confirm('region') }}; United States company</td></tr>
+    <tr><td>Supabase Inc.</td><td>Database and file storage</td><td>{{ legal_detail('LEGAL_DATA_REGION') }}</td></tr>
+    <tr><td>Resend</td><td>Sending email you send from CAE CRM, such as campaigns, quotes, invoices and reminders</td><td>United States</td></tr>
+    <tr><td>Functional Software, Inc. (Sentry)</td><td>Error reports, with personal data removed, if switched on</td><td>{{ to_confirm('United States or EU') }}</td></tr>
+  </tbody>
+</table>
+</div>
+{% endblock %}

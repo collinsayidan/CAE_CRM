@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} – CAE CRM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400..800;1,400..800&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% include "_brand_head.html" %}
+  <script>try { const t = localStorage.getItem("cae-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+</head>
+<body class="legal-page">
+  <header class="legal-top">
+    <a class="auth-brand" href="{{ url_for('landing') }}"><img class="mark" src="{{ url_for('static', filename='brand/icon.svg') }}" alt="" width="32" height="32">CAE CRM</a>
+    <nav aria-label="Legal documents">
+      {% for key, label in legal_docs.items() %}
+        <a href="{{ url_for('legal', doc=key) }}" {% if key == doc %}aria-current="page"{% endif %}>{{ label }}</a>
+      {% endfor %}
+    </nav>
+  </header>
+  <main class="legal-body">
+    {% if not reviewed %}
+      <p class="legal-draft" role="note"><b>Draft.</b> This document is being reviewed by a solicitor and may change. If you have a question about it, contact us at {{ legal_detail('LEGAL_EMAIL') }}.</p>
+    {% endif %}
+    <article class="legal-doc">
+      <h1>{{ title }}</h1>
+      {% if doc %}<p class="legal-meta">Last updated {{ updated }} · Version {{ version }}</p>{% endif %}
+      {% block content %}{% endblock %}
+    </article>
+  </main>
+  <footer class="legal-foot">{{ legal_detail('LEGAL_COMPANY_NAME') }}, company number {{ legal_detail('LEGAL_COMPANY_NUMBER') }}, registered office {{ legal_detail('LEGAL_ADDRESS') }}.</footer>
+</body>
+</html>

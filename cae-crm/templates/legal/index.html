@@ -1,0 +1,13 @@
+{% extends "legal/_layout.html" %}
+{% block content %}
+<p>The agreements and notices that apply when you use CAE CRM, written to be read.</p>
+<ul class="legal-list">
+  <li><a href="{{ url_for('legal', doc='terms') }}"><b>Terms of service</b></a><span>The agreement between your business and us when you use CAE CRM.</span></li>
+  <li><a href="{{ url_for('legal', doc='privacy') }}"><b>Privacy notice</b></a><span>What we do with personal data about you, your team and visitors to this site.</span></li>
+  <li><a href="{{ url_for('legal', doc='dpa') }}"><b>Data processing agreement</b></a><span>How we handle the personal data your business keeps in CAE CRM, on your instructions. It forms part of the terms.</span></li>
+  <li><a href="{{ url_for('legal', doc='cookies') }}"><b>Cookies and storage</b></a><span>The one cookie we use, and what's kept in your browser.</span></li>
+</ul>
+{% if current_user and current_user.role == 'admin' and workspace %}
+  <p class="legal-meta">{% if workspace.terms_version %}{{ workspace.name }} agreed to version {{ workspace.terms_version }} of the terms on {{ workspace.terms_accepted_at | uk_date }}, accepted by {{ workspace.terms_accepted_by }}.{% else %}{{ workspace.name }} was set up before acceptance of the terms was recorded.{% endif %}</p>
+{% endif %}
+{% endblock %}

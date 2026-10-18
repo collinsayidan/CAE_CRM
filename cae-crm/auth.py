@@ -343,6 +343,10 @@ def signup():
             t = today()
             ws_id = create_workspace(db, form["business"], t)
             user_id = create_user(db, ws_id, form["name"], email, form["password"], "admin")
+            from legal import VERSION
+            db.execute("UPDATE workspaces SET terms_version=?, terms_accepted_at=?, terms_accepted_by=? WHERE id=?",
+                       (VERSION, now_utc().isoformat(timespec="seconds"), f"{form['name'].strip()} <{email}>", ws_id))
+            db.commit()
             if form.get("sample_data") == "on":
                 from seed import seed_workspace
                 seed_workspace(db, ws_id, t, form["name"].strip(), DEFAULT_MONTHLY_TARGET)

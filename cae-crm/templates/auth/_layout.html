@@ -21,6 +21,7 @@
       {% block content %}{% endblock %}
     </section>
     <p class="auth-foot">{% block foot %}A UK sales CRM. Amounts in pounds sterling.{% endblock %}</p>
+    <nav class="auth-legal-links" aria-label="Legal"><a href="{{ url_for('legal', doc='terms') }}">Terms</a><a href="{{ url_for('legal', doc='privacy') }}">Privacy</a><a href="{{ url_for('legal', doc='cookies') }}">Cookies</a></nav>
   </main>
 </body>
 </html>

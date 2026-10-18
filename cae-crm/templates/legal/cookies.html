@@ -1,0 +1,34 @@
+{% extends "legal/_layout.html" %}
+{% block content %}
+<p class="legal-lead">CAE CRM uses one cookie, and a little browser storage, only to make the service work. There are no advertising or analytics cookies, so we don't need to ask for your consent. The Privacy and Electronic Communications Regulations allow storage that's strictly necessary for a service you've asked for.</p>
+
+<h2>The cookie</h2>
+<div class="table-wrap">
+<table class="legal-table">
+  <thead><tr><th>Name</th><th>What it does</th><th>How long it lasts</th></tr></thead>
+  <tbody>
+    <tr><td><code>session</code></td>
+        <td>Keeps you signed in, and holds a security token that stops other websites making changes in your name. It's signed so it can't be tampered with, and it's only sent over secure connections.</td>
+        <td>12 hours after you sign in. If you haven't signed in, it lasts until you close your browser.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Browser storage</h2>
+<div class="table-wrap">
+<table class="legal-table">
+  <thead><tr><th>Name</th><th>What it does</th><th>How long it lasts</th></tr></thead>
+  <tbody>
+    <tr><td><code>cae-theme</code></td><td>Remembers whether you chose the light or dark look.</td><td>Until you clear your browser's storage.</td></tr>
+    <tr><td><code>cae-device</code></td><td>A random device number that HMRC requires us to send with VAT returns, as part of its fraud prevention rules. It's only created on the VAT pages.</td><td>Until you clear your browser's storage.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Other websites</h2>
+<p>Our pages load the Plus Jakarta Sans typeface from Google Fonts, so Google receives your IP address and browser details when a page loads. Google says it doesn't set cookies for this or use the data for advertising. {{ to_confirm('or host the font ourselves') }}</p>
+<p>Web forms and quotes that businesses share from CAE CRM use the same <code>session</code> cookie, for security only.</p>
+
+<h2>Controlling cookies</h2>
+<p>You can block or delete cookies in your browser's settings. If you block the <code>session</code> cookie, you won't be able to sign in or submit forms.</p>
+{% endblock %}

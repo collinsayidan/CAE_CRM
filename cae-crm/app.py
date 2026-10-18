@@ -25,6 +25,7 @@ import events
 import finance
 import home
 import integrations
+import legal
 import monitoring
 import notifications
 import mtd
@@ -68,7 +69,7 @@ SETTINGS_PARENT = {"auth.member": "auth.team", "auth.edit_member": "auth.team", 
 PUBLIC_ENDPOINTS = {"landing", "favicon", "auth.login", "auth.signup", "auth.setup", "auth.forgot", "auth.reset",
                     "auth.two_factor_check", "static",
                     "public_form", "public_quote", "accept_quote", "decline_quote", "unsubscribe", "resend_webhook",
-                    "stripe_webhook", "cron_sync", "workspace_logo", "public_quote_pdf"}
+                    "stripe_webhook", "cron_sync", "workspace_logo", "public_quote_pdf", "legal", "legal_index"}
 TWO_FACTOR_SETUP_ALLOWED = {"auth.two_factor_setup", "auth.logout", "static", "favicon"}
 # Forms embedded on other websites can't carry our session's CSRF token; they have their own spam checks.
 # Mail apps' one-click unsubscribe and Resend's webhooks post from elsewhere too; the webhook is signed.
@@ -220,7 +221,7 @@ def create_app(config=None):
     app.register_blueprint(auth.bp)
     events.register(app)  # first, so its after_request hook runs last, once everything else is saved
     for module in (home, crm, sales, service, finance, quotes, webforms, campaigns, billing, integrations, xero, mtd,
-                   documents, notifications, files, fields, workflows, webhooks, api, dataio, settings, audit):
+                   documents, notifications, files, fields, workflows, webhooks, api, legal, dataio, settings, audit):
         module.register(app)
     return app
 

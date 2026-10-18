@@ -197,6 +197,16 @@ To connect Power BI:
 
 Scheduled refresh in the Power BI service uses the same sign-in. Cells that a spreadsheet could run as a formula are neutralised, but numbers and phone numbers are left as they are.
 
+### Legal pages
+
+`/legal` has draft **terms of service**, a **privacy notice**, a **data processing agreement** (covering what UK GDPR Article 28 requires) and a **cookies and storage** statement. They're written to match what CAE CRM actually does. **A solicitor must review them before they're relied on.**
+
+- Until `CAE_LEGAL_REVIEWED=1` is set, each page shows a "Draft" notice.
+- Company details come from the `LEGAL_…` settings. Anything missing, and any point still to decide, shows as a highlighted "to confirm" note rather than being guessed.
+- Signing up records which version of the terms each workspace agreed to, when, and by whom. Admins can see this at `/legal`.
+- Links appear on the landing page, the sign-in and sign-up pages, and in Settings.
+- When the wording changes, update `VERSION` in `legal.py`.
+
 ### Lists, views and data
 
 - **Views:** filter any list, then save the filters as a view tab. Built-in views include My contacts, New leads, Open tickets and Urgent.

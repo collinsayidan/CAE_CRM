@@ -65,7 +65,10 @@ CREATE TABLE IF NOT EXISTS workspaces (
     bank_account_number TEXT,
     payment_link TEXT,
     reminders_on INTEGER NOT NULL DEFAULT 0,
-    onboarding_done INTEGER NOT NULL DEFAULT 0
+    onboarding_done INTEGER NOT NULL DEFAULT 0,
+    terms_version TEXT,
+    terms_accepted_at TEXT,
+    terms_accepted_by TEXT
 );
 CREATE TABLE IF NOT EXISTS users (
     id {pk},
@@ -530,7 +533,8 @@ ADDED_COLUMNS = {
                    "stripe_subscription_id TEXT", "seats INTEGER", "period_end TEXT",
                    "cancel_at_period_end INTEGER NOT NULL DEFAULT 0", "logo TEXT", "logo_updated TEXT",
                    "bank_account_name TEXT", "bank_sort_code TEXT", "bank_account_number TEXT", "payment_link TEXT",
-                   "reminders_on INTEGER NOT NULL DEFAULT 0", "onboarding_done INTEGER NOT NULL DEFAULT 0"],
+                   "reminders_on INTEGER NOT NULL DEFAULT 0", "onboarding_done INTEGER NOT NULL DEFAULT 0",
+                   "terms_version TEXT", "terms_accepted_at TEXT", "terms_accepted_by TEXT"],
     "deals": ["workspace_id INTEGER", "contact_id INTEGER", "custom TEXT"],
     "tickets": ["custom TEXT"],
     "activities": ["workspace_id INTEGER", "contact_id INTEGER", "ticket_id INTEGER"],

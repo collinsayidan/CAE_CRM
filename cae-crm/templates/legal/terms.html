@@ -1,0 +1,85 @@
+{% extends "legal/_layout.html" %}
+{% block content %}
+<p class="legal-lead">These terms are the agreement between your business and {{ legal_detail('LEGAL_COMPANY_NAME') }} ("we", "us") when you use CAE CRM. Our <a href="{{ url_for('legal', doc='dpa') }}">data processing agreement</a> forms part of them.</p>
+
+<h2>1. Who these terms are for</h2>
+<p>CAE CRM is for businesses, charities and other organisations, not for personal use. By creating a workspace, you confirm that you're accepting these terms on behalf of an organisation and that you're allowed to. "You" means that organisation.</p>
+
+<h2>2. Your workspace and team</h2>
+<ul>
+  <li>Your workspace holds your organisation's data. The person who creates it becomes its first admin.</li>
+  <li>Admins decide who joins, what they can do, and can remove people at any time. You're responsible for what your team does in CAE CRM.</li>
+  <li>Keep sign-in details private. Admins must use two-factor sign-in. Tell us straight away if you think someone has got into your workspace who shouldn't have.</li>
+  <li>API keys and webhook secrets act on behalf of your workspace. Keep them as safe as a password and revoke any you no longer use.</li>
+</ul>
+
+<h2>3. Using CAE CRM properly</h2>
+<p>You mustn't use CAE CRM to:</p>
+<ul>
+  <li>break the law, including data protection law and the Privacy and Electronic Communications Regulations (PECR);</li>
+  <li>send marketing emails to people who haven't agreed to receive them, or keep sending after someone unsubscribes;</li>
+  <li>upload anything harmful, such as malware, or content you don't have the right to use;</li>
+  <li>try to get into other workspaces, test our security without our written permission, or overload the service, for example by going round the API's limits;</li>
+  <li>copy, resell or reverse engineer the software.</li>
+</ul>
+<p>If you do, we may suspend access while we sort it out. We'll tell you why, unless the law or a security risk stops us.</p>
+
+<h2>4. Your data</h2>
+<ul>
+  <li><b>It's yours.</b> You own the information you put into CAE CRM. You give us permission to store and process it only to run the service for you, as set out in the data processing agreement.</li>
+  <li><b>You decide how it's used.</b> For personal data about your customers and contacts, you're the controller and we're your processor. You're responsible for having a lawful basis for holding it, and for any consent you need, such as for marketing emails.</li>
+  <li><b>You can take it with you.</b> You can export your records as CSV at any time, or read them through the API.</li>
+</ul>
+
+<h2>5. Trial, prices and payment</h2>
+<ul>
+  <li>New workspaces get a 14-day free trial. No card is needed.</li>
+  <li>After the trial, CAE CRM is charged per user per month, at the price shown under <b>Settings → Billing</b> when you subscribe. You pay monthly in advance through Stripe. VAT is added where it applies.</li>
+  <li>The number of users is counted automatically and the charge changes as your team grows or shrinks. {{ to_confirm('whether changes are charged or credited part-way through a month') }}</li>
+  <li>We'll give you at least 30 days' notice of a price increase, by email and in the app.</li>
+  <li>If the trial ends without a subscription, or a payment fails and isn't put right, your workspace becomes read-only: your team can still see and export everything but can't make changes until someone subscribes.</li>
+  <li>{{ to_confirm('refund policy, for example no refunds for part-months') }}</li>
+</ul>
+
+<h2>6. The service</h2>
+<ul>
+  <li>We work to keep CAE CRM available, secure and backed up, but we can't promise it will never be interrupted. We'll try to give notice of planned maintenance.</li>
+  <li>We improve CAE CRM over time. We won't take away a core feature you rely on without reasonable notice.</li>
+  <li>For help, contact us at {{ legal_detail('LEGAL_EMAIL') }}. {{ to_confirm('support hours and response times, if any are promised') }}</li>
+</ul>
+
+<h2>7. Other services you connect</h2>
+<p>You can connect services run by others, such as Gmail, Outlook, Xero, HMRC's Making Tax Digital service, Power BI and your own systems through the API and webhooks. Their own terms apply to them, and we aren't responsible for them. You choose what to connect and can disconnect at any time.</p>
+
+<h2>8. Invoices, quotes and VAT</h2>
+<p>CAE CRM helps you produce invoices, quotes and VAT returns from your own figures. It doesn't give tax, legal or accounting advice. You're responsible for checking what you send to customers and to HMRC. A VAT return is only submitted when you confirm it.</p>
+
+<h2>9. Our software</h2>
+<p>We own CAE CRM, its design and its code. These terms give you the right to use it while your subscription or trial lasts. If you send us ideas or feedback, we can use them without owing you anything.</p>
+
+<h2>10. Responsibility if things go wrong</h2>
+<ul>
+  <li>Nothing in these terms limits liability for death or personal injury caused by negligence, for fraud, or for anything else the law doesn't allow to be limited.</li>
+  <li>Neither of us is responsible to the other for loss of profit, revenue, business, goodwill or data that could have been restored from a backup, or for indirect losses.</li>
+  <li>Apart from that, each side's total liability under these terms in any 12 months is limited to the amount you paid us in the 12 months before the claim. {{ to_confirm('liability cap and any separate cap for data protection claims') }}</li>
+</ul>
+
+<h2>11. Ending</h2>
+<ul>
+  <li><b>You can cancel at any time</b> from <b>Settings → Billing</b>. Your subscription runs to the end of the month you've paid for.</li>
+  <li><b>We can end or suspend your access</b> if you seriously break these terms and don't put it right within 14 days of us asking, or straight away if there's a risk to the service or other customers. We can also stop offering CAE CRM, with at least 90 days' notice.</li>
+  <li><b>Getting your data back.</b> After your workspace ends, you have 30 days to export your data. We then delete it within a further 30 days, except where the law requires us to keep something, such as our own billing records. {{ to_confirm('these periods, and how closure is requested') }}</li>
+</ul>
+
+<h2>12. Changes to these terms</h2>
+<p>We may update these terms. For changes that matter, we'll tell admins by email and in the app at least 30 days before they apply. If you don't agree, you can cancel before then.</p>
+
+<h2>13. General</h2>
+<ul>
+  <li>These terms, the data processing agreement and the prices you agree to are the whole agreement between us about CAE CRM.</li>
+  <li>Only you and we have rights under these terms.</li>
+  <li>Neither of us is responsible for delays caused by things outside our reasonable control.</li>
+  <li>If a court finds part of these terms can't be enforced, the rest still applies.</li>
+  <li>The law of {{ legal_detail('LEGAL_LAW') }} applies, and its courts deal with any dispute.</li>
+</ul>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "legal/_layout.html" %}
+{% block content %}
+<p class="legal-lead">This notice explains what personal data {{ legal_detail('LEGAL_COMPANY_NAME') }} ("we") collects through CAE CRM, why, and your rights. We're registered with the Information Commissioner's Office, number {{ legal_detail('LEGAL_ICO_NUMBER') }}.</p>
+
+<h2>Two different roles</h2>
+<ul>
+  <li><b>We're the controller</b> for data about the people who use CAE CRM (you and your team), about billing, and about visitors to this website. This notice covers that.</li>
+  <li><b>We're a processor</b> for the customer and contact records that businesses keep in CAE CRM, including people who fill in a business's web form or sign one of its quotes. That business is the controller and decides how the data is used. If you're one of those people, contact the business directly. We'll help them respond. Our <a href="{{ url_for('legal', doc='dpa') }}">data processing agreement</a> covers how we handle that data.</li>
+</ul>
+
+<h2>What we collect, why, and our lawful basis</h2>
+<div class="table-wrap">
+<table class="legal-table">
+  <thead><tr><th>Data</th><th>Why</th><th>Lawful basis</th></tr></thead>
+  <tbody>
+    <tr><td>Your name, email, password (stored only as a scrambled hash), role, and any profile details you add: job title, department, phone, location, LinkedIn, a short bio and a photo</td>
+        <td>To create your account, sign you in and show your team who's who</td><td>Contract</td></tr>
+    <tr><td>Sign-in and security records: IP address, failed sign-in attempts, two-factor settings, password reset requests, and an audit trail of changes made in your workspace</td>
+        <td>To keep accounts secure, stop misuse, and let admins see who changed what</td><td>Legitimate interests (security)</td></tr>
+    <tr><td>Business and billing details: business name, address, VAT number, the number of users, and subscription status. Card details go straight to Stripe and never reach us</td>
+        <td>To charge for CAE CRM and keep the accounts the law requires</td><td>Contract; legal obligation</td></tr>
+    <tr><td>Emails you send us, and our replies</td><td>To answer you</td><td>Legitimate interests</td></tr>
+    <tr><td>Service emails, such as password resets and notices about your account</td><td>To run the service. We don't send marketing without asking first</td><td>Contract</td></tr>
+    <tr><td>Error reports, which may include an account number and the page involved, with form contents, cookies and sign-in details removed</td>
+        <td>To find and fix faults</td><td>Legitimate interests</td></tr>
+    <tr><td>Website visits: IP address and browser details in our hosting provider's logs</td><td>To deliver pages and protect the site</td><td>Legitimate interests</td></tr>
+  </tbody>
+</table>
+</div>
+<p>If you connect Gmail or Outlook, CAE CRM logs only emails to or from people already in your workspace's contacts, and only the subject and a short preview. It doesn't read or store anything else in your mailbox.</p>
+
+<h2>Who we share it with</h2>
+<p>We use these providers to run CAE CRM. They act on our instructions and must protect the data:</p>
+<ul>
+  <li><b>Vercel</b>: hosting.</li>
+  <li><b>Supabase</b>: database and file storage, in {{ legal_detail('LEGAL_DATA_REGION') }}.</li>
+  <li><b>Resend</b>: sending email.</li>
+  <li><b>Stripe</b>: payments and invoices for your subscription.</li>
+  <li><b>Sentry</b>: error reports, if switched on.</li>
+  <li><b>Google Fonts</b>: our typeface is loaded from Google, which receives your IP address when a page loads. {{ to_confirm('or host the font ourselves so Google receives nothing') }}</li>
+</ul>
+<p>We don't sell personal data, and we don't use it for advertising. We only share it with anyone else if the law requires it or to protect people's safety.</p>
+
+<h2>Outside the UK</h2>
+<p>Some of these providers are based in, or use services in, the United States or the EU. Where data leaves the UK, it's protected by UK adequacy regulations, the UK Extension to the EU-US Data Privacy Framework, or the UK's International Data Transfer Agreement or Addendum. {{ to_confirm('which applies to each provider') }}</p>
+
+<h2>How long we keep it</h2>
+<ul>
+  <li><b>Account and profile details:</b> while you're on a team. When an admin removes you, they're deleted. Your name may stay on records you created or changed, such as notes and the audit trail, because those belong to the business.</li>
+  <li><b>Sign-in sessions:</b> end after 12 hours. Password reset links expire after an hour.</li>
+  <li><b>Billing records:</b> six years, as UK tax law requires.</li>
+  <li><b>Webhook delivery logs:</b> 30 days.</li>
+  <li><b>Workspace data:</b> deleted within 30 days of the 30-day export window that follows a workspace closing (see the <a href="{{ url_for('legal', doc='terms') }}">terms</a>).</li>
+  <li><b>Backups and error reports:</b> kept for a limited period, then overwritten. {{ to_confirm('backup and error report retention periods') }}</li>
+</ul>
+
+<h2>Your rights</h2>
+<p>You can ask us:</p>
+<ul>
+  <li>for a copy of your personal data;</li>
+  <li>to correct it;</li>
+  <li>to delete it;</li>
+  <li>to restrict how we use it;</li>
+  <li>to stop using it, where we rely on legitimate interests;</li>
+  <li>to send it to you or someone else in a reusable format.</li>
+</ul>
+<p>You can change most profile details yourself under <b>Profile and password</b>. To use any other right, email {{ legal_detail('LEGAL_EMAIL') }}. We'll reply within one month.</p>
+<p>If you're unhappy with how we've handled your data, please tell us first. You can also complain to the Information Commissioner's Office at <a href="https://ico.org.uk/make-a-complaint/" rel="noopener">ico.org.uk</a> or on 0303 123 1113.</p>
+
+<h2>Security</h2>
+<p>Here are the main ways we protect your data:</p>
+<ul>
+  <li>It's encrypted on its way to and from the service.</li>
+  <li>Passwords are stored only as scrypt hashes.</li>
+  <li>Admins must use two-factor sign-in.</li>
+  <li>Each business's data is kept apart from every other business's.</li>
+</ul>
+<p>The <a href="{{ url_for('legal', doc='dpa') }}#security">data processing agreement</a> lists our security measures in full.</p>
+
+<h2>Changes</h2>
+<p>If we change this notice in a way that matters, we'll tell users by email or in the app before the change applies.</p>
+{% endblock %}

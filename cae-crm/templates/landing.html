@@ -83,6 +83,7 @@
       <a class="btn primary big" href="{{ url_for('auth.signup') }}">Create your workspace</a>
     </section>
   </main>
-  <footer class="landing-foot">CAE CRM. Amounts in pounds sterling. Built for UK businesses.</footer>
+  <footer class="landing-foot">CAE CRM. Amounts in pounds sterling. Built for UK businesses.
+    <nav aria-label="Legal"><a href="{{ url_for('legal', doc='terms') }}">Terms</a><a href="{{ url_for('legal', doc='privacy') }}">Privacy</a><a href="{{ url_for('legal', doc='dpa') }}">Data processing</a><a href="{{ url_for('legal', doc='cookies') }}">Cookies</a></nav></footer>
 </body>
 </html>

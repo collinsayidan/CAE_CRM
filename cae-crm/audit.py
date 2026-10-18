@@ -52,6 +52,7 @@ LABELS = {
     "auth.resend_verification": "Asked for a new email confirmation link", "auth.end_session": "Signed out a device",
     "auth.end_other_sessions": "Signed out everywhere else",
     "companies_house_refresh": "Updated a company from Companies House",
+    "ticket_reply": "Replied to a ticket by email", "account_summary": "Changed their daily summary email", "saved_replies_page": "Changed a saved reply",
     "restore_from_bin": "Restored a record from the recycle bin", "delete_from_bin": "Deleted a record permanently",
     "merge_duplicates": "Merged duplicate records", "dismiss_duplicates": "Marked two records as not duplicates",
     "add_tag": "Tagged a record", "remove_tag": "Removed a tag from a record", "tags_settings": "Changed a tag",

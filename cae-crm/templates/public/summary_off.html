@@ -1,0 +1,22 @@
+{% extends "public/_layout.html" %}
+{% block title %}Daily summary emails{% endblock %}
+{% block main_class %}is-narrow{% endblock %}
+{% block content %}
+<section class="panel public-form-card">
+  {% if not user %}
+    <h1>This link isn't valid</h1>
+    <p class="muted public-intro">Sign in to CAE CRM and change your emails under Profile and password.</p>
+  {% elif done %}
+    <div class="public-done" role="status">
+      <span class="done-tick" aria-hidden="true">✓</span>
+      <h1>Daily summaries are off</h1>
+      <p>{{ user.email }} won't get the morning summary any more. You can turn it back on under Profile and password.</p>
+    </div>
+  {% else %}
+    <h1>Turn off daily summaries?</h1>
+    <p class="muted public-intro">Stop the morning summary email to {{ user.email }}. Other emails, such as password resets, still arrive.</p>
+    <form method="post"><div class="public-actions"><button class="btn primary">Turn them off</button></div></form>
+  {% endif %}
+</section>
+{% endblock %}
+{% block foot %}CAE CRM{% endblock %}

@@ -1657,3 +1657,23 @@ a.tag:hover, .tag a:hover { text-decoration: underline; }
 .ch-suggest small { color: var(--muted); font-size: 12.5px; }
 .ch-suggest small.bad { color: var(--bad); }
 .ch-refresh { margin-top: 12px; }
+
+/* Support: replies, saved replies and the survey ----------------------------------------------------------------- */
+.reply-panel .panel-head h2 { display: flex; align-items: center; gap: 8px; }
+.reply-panel .panel-head h2 .icon { width: 18px; height: 18px; color: var(--primary); }
+.reply-form { display: grid; gap: 12px; }
+.reply-form p { margin: 0; }
+.reply-form textarea { resize: vertical; min-height: 120px; }
+.saved-picker { margin-bottom: 12px; }
+.saved-picker select { max-width: 340px; }
+.saved-reply-list { list-style: none; margin: 0; padding: 0; }
+.saved-reply-list li { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line-soft); }
+.saved-reply-list li:last-child { border-bottom: 0; }
+.saved-reply-list p { margin: 4px 0 0; }
+.survey-form { display: grid; gap: 16px; }
+.survey-choices { border: 0; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.survey-choice { display: grid; place-items: center; padding: 14px 8px; border: 1px solid var(--line); border-radius: var(--r-lg); cursor: pointer; font-weight: 700; }
+.survey-choice input { width: auto; margin: 0 0 6px; accent-color: var(--primary); }
+.survey-choice:has(input:checked) { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); background: var(--accent-soft); }
+.csat-score { font-size: 34px; font-weight: 700; margin: 0; }
+.csat-bars { display: grid; gap: 6px; margin: 12px 0; }

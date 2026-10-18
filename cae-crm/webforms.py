@@ -61,8 +61,10 @@ def read_settings(f):
 
 
 def next_working_morning(start):
+    import ukholidays
+    days_off = ukholidays.for_workspace()
     d = start + timedelta(days=1)
-    while not ukfmt.is_working_day(d):
+    while not ukfmt.is_working_day(d, days_off):
         d += timedelta(days=1)
     return datetime.combine(d, datetime.min.time()).replace(hour=10)
 

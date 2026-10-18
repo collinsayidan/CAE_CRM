@@ -56,7 +56,8 @@ def register(app):
         change = round((won_this - won_last) / won_last * 100) if won_last else None
 
         # The month track: won revenue against target, paced by UK working days.
-        days = working_days(this_month, next_month)
+        import ukholidays
+        days = working_days(this_month, next_month, ukholidays.for_workspace())
         elapsed = sum(1 for d in days if d < t)
         expected = target * elapsed / len(days)
         left = len(days) - elapsed
@@ -222,7 +223,7 @@ def register(app):
                                for r in found]
 
         return render_template("reports.html", by_source=breakdown("source"), by_owner=breakdown("owner"), outcomes=outcomes,
-                               unexplained=unexplained,
+                               unexplained=unexplained, csat=__import__("support").satisfaction(),
                                avg_deal=avg_deal, cycle=round(cycle), new_contacts=new_contacts, funnel=funnel,
                                funnel_peak=funnel_peak, service=service, products=products, product_peak=product_peak,
                                plain=plain)

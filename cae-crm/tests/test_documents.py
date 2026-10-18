@@ -103,7 +103,8 @@ def test_overdue_reminders_go_once_per_stage_and_stop_when_paid(app, client, out
     assert app.test_client().get("/cron/sync", headers=cron).get_json()["reminders"] == 0  # the 14-day one is done
     assert query(app, "SELECT stage FROM invoice_reminders WHERE invoice_id=?", invoice_id)[0][0] == 14
     client.post(f"/invoices/{invoice_id}/remind", data={"csrf": client.csrf})
-    assert len(outbox) == 2
+    # Count the customer's emails only: the daily job also sends the team their morning summary.
+    assert len([m for m in outbox if m["to"] == ["accounts@customer.co.uk"]]) == 2
     client.post(f"/invoices/{invoice_id}/paid", data={"csrf": client.csrf})
     with app.app_context():
         from db import get_db

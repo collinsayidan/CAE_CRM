@@ -1,0 +1,29 @@
+{% extends "public/_layout.html" %}
+{% block title %}How did we do?{% endblock %}
+{% block main_class %}is-narrow{% endblock %}
+{% block content %}
+<section class="panel public-form-card">
+  {% if s.rated_at %}
+    <div class="public-done" role="status">
+      <span class="done-tick" aria-hidden="true">✓</span>
+      <h1>Thank you</h1>
+      <p>You rated our help with request #{{ t.id if t else '' }} as <b>{{ ratings[s.rating] }}</b>. {{ business.name }} will see your answer{{ ' and comment' if s.comment }}.</p>
+    </div>
+  {% else %}
+    <h1>How did we do?</h1>
+    <p class="muted public-intro">Your request{% if t %} #{{ t.id }}, {{ t.subject }},{% endif %} is closed. How was our help?</p>
+    <form method="post" class="survey-form">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <fieldset class="survey-choices">
+        <legend class="sr-only">Your rating</legend>
+        {% for key, label in ratings.items() %}
+          <label class="survey-choice"><input type="radio" name="rating" value="{{ key }}" required {{ 'checked' if key == chosen }}><span>{{ label }}</span></label>
+        {% endfor %}
+      </fieldset>
+      <label class="field"><span class="field-label">Anything you'd like to add? <span class="optional">(optional)</span></span>
+        <textarea name="comment" rows="3" maxlength="1000"></textarea></label>
+      <div class="public-actions"><button class="btn primary">Send my answer</button></div>
+    </form>
+  {% endif %}
+</section>
+{% endblock %}

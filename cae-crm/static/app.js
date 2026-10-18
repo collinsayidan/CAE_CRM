@@ -787,4 +787,105 @@
     });
     document.addEventListener("click", e => { if (!pick.contains(e.target)) close(); });
   }
+  /* AI assistant: ask without reloading, on the Assistant page and in the side panel ----------------------- */
+  const aiPanel = $("#ai-panel");
+  const aiKey = "cae-ai-conversation";
+  const aiStore = {
+    get() { try { return sessionStorage.getItem(aiKey) || ""; } catch (e) { return ""; } },
+    set(id) { try { id ? sessionStorage.setItem(aiKey, id) : sessionStorage.removeItem(aiKey); } catch (e) { /* storage unavailable */ } },
+  };
+  function aiScroll(thread) { thread.scrollTop = thread.scrollHeight; (aiPanel ? null : $("#latest"))?.scrollIntoView({ block: "end" }); }
+  async function aiLoad(id) {
+    const thread = $("[data-ai-thread]", aiPanel);
+    try {
+      const res = await fetch(`/assistant/${id}?fragment=1&next=${encodeURIComponent(location.pathname)}`, { headers: { "X-Requested-With": "fetch" } });
+      if (!res.ok) throw new Error(res.status);
+      const html = await res.text();
+      if (aiStore.get() !== String(id)) return;  // "New" was pressed while this loaded
+      thread.innerHTML = html;
+      $("[name=conversation_id]", aiPanel).value = id;
+      aiScroll(thread);
+    } catch (e) { aiStore.set(""); }
+  }
+  function aiOpen() {
+    aiPanel.hidden = false;
+    document.body.classList.add("ai-open");
+    const id = aiStore.get();
+    if (id && !$("[name=conversation_id]", aiPanel).value) aiLoad(id);
+    setTimeout(() => $("textarea", aiPanel).focus(), 30);
+  }
+  function aiClose() { aiPanel.hidden = true; document.body.classList.remove("ai-open"); }
+  if (aiPanel) {
+    $$("[data-ai-open]").forEach(a => a.addEventListener("click", e => { e.preventDefault(); aiPanel.hidden ? aiOpen() : aiClose(); }));
+    $("[data-ai-close]", aiPanel).addEventListener("click", aiClose);
+    $("[data-ai-new]", aiPanel).addEventListener("click", () => {
+      aiStore.set("");
+      $("[name=conversation_id]", aiPanel).value = "";
+      $("[data-ai-full]", aiPanel).href = "/assistant";
+      $("[data-ai-thread]", aiPanel).replaceChildren();
+      $("textarea", aiPanel).focus();
+    });
+    document.addEventListener("keydown", e => { if (e.key === "Escape" && !aiPanel.hidden && !document.querySelector("dialog[open]")) aiClose(); });
+    let reopen = false;
+    try { reopen = sessionStorage.getItem("cae-ai-open") === "1"; } catch (e) { /* storage unavailable */ }
+    if (aiStore.get() && reopen) aiOpen();
+    window.addEventListener("pagehide", () => { try { sessionStorage.setItem("cae-ai-open", aiPanel.hidden ? "0" : "1"); } catch (e) { /* storage unavailable */ } });
+  }
+  $$("form[data-ai-form]").forEach(form => {
+    const area = $("textarea", form);
+    area?.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); }
+    });
+    form.addEventListener("submit", async e => {
+      e.preventDefault();
+      const data = new FormData(form);
+      if (e.submitter?.name === "question") data.set("question", e.submitter.value);
+      const question = (data.get("question") || "").trim();
+      if (!question) return;
+      const box = form.closest(".ai-panel, .ai-chat") || document;
+      const thread = $("[data-ai-thread]", box);
+      const main = $("form.ai-ask", box);
+      const idField = $("[name=conversation_id]", main);
+      if (idField?.value) data.set("conversation_id", idField.value);
+      $(".ai-empty", thread)?.remove();
+      $("[data-ai-hint]", thread)?.remove();
+      const pending = document.createElement("div");
+      pending.className = "ai-pending";
+      const asked = document.createElement("div");
+      asked.className = "ai-msg ai-question";
+      asked.append(Object.assign(document.createElement("p"), { textContent: question }));
+      const thinking = Object.assign(document.createElement("p"), { className: "ai-thinking", textContent: "Thinking…" });
+      thinking.setAttribute("role", "status");
+      pending.append(asked, thinking);
+      (thread.querySelector("#latest") ? thread.insertBefore(pending, thread.querySelector("#latest")) : thread.append(pending));
+      aiScroll(thread);
+      const controls = [...new Set([form, main].filter(Boolean))].flatMap(f => $$("button, textarea", f));
+      controls.forEach(el => { el.disabled = true; });
+      if (area) area.value = "";
+      try {
+        const res = await fetch(form.action, { method: "POST", body: new URLSearchParams(data),
+          headers: { "X-Requested-With": "fetch", "X-CSRF-Token": csrf } });
+        const out = await res.json().catch(() => ({ error: `Request failed (${res.status})` }));
+        if (!res.ok || out.error) throw new Error(out.error || `Request failed (${res.status})`);
+        const tpl = document.createElement("template");
+        tpl.innerHTML = out.html;
+        pending.replaceWith(tpl.content);
+        if (idField) idField.value = out.conversation_id;
+        if (box.matches?.(".ai-panel")) {
+          aiStore.set(out.conversation_id);
+          $("[data-ai-full]", box).href = out.url;
+        } else if (!location.pathname.endsWith(`/${out.conversation_id}`)) {
+          history.replaceState(null, "", out.url);
+        }
+      } catch (err) {
+        pending.remove();
+        if (area) area.value = question;
+        toast(err.message || "The assistant couldn't answer just now.", "error");
+      } finally {
+        controls.forEach(el => { el.disabled = false; });
+        aiScroll(thread);
+        area?.focus();
+      }
+    });
+  });
 })();

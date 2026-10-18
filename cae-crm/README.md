@@ -74,6 +74,19 @@ Under **Workspace → Integrations**. Each one is an OAuth sign-in with the serv
 - **Xero** (an admin connects the business). **Send to Xero** on an invoice, or **Send invoices to Xero** for everything not yet sent, creates approved sales invoices with UK tax types; the sync marks invoices paid here once they're paid in Xero. Create a Web app at developer.xero.com. If Xero's scopes have changed for your app, set `XERO_SCOPES`.
 - **HMRC Making Tax Digital for VAT** (an admin connects the business). **VAT returns** lists your VAT periods from HMRC and works out boxes 1 and 6 from your invoices by tax point; you enter purchases (boxes 4 and 7) from your own records, tick HMRC's declaration and submit. HMRC's fraud prevention headers are sent with every call. Register an application at developer.service.hmrc.gov.uk, subscribe it to the VAT (MTD) API, and test in the sandbox (`HMRC_ENV=sandbox`). Live submissions need HMRC's production approval, which includes checking the fraud prevention headers with HMRC's test API.
 
+## AI assistant
+
+An assistant that answers questions about a workspace's own records, explains how to use CAE CRM, and drafts emails and notes. It can **suggest** a task, a timeline note or a deal stage change, which shows up as a form with a **Confirm** button. Nothing changes until the person presses it, and the change then goes through the normal page, so permissions, timelines, workflows, webhooks and the audit trail all apply.
+
+- It runs on Claude through Anthropic's API, called from the server. Pages still load nothing from other websites.
+- It's hidden until `ANTHROPIC_API_KEY` is set. Then each workspace's admin turns it on under **Settings → AI assistant**, after reading what's shared with Anthropic.
+- Everyone in the workspace can then use it from **Assistant** in the sidebar, which works without JavaScript, or from the sparkle button in the top bar, which opens a side panel that knows which record you're on.
+- Every lookup is limited to the signed-in workspace. It has no tools for admin areas (billing, API keys, the audit trail). Record contents go to the model as data it's told never to take instructions from.
+- Each person can ask `CAE_AI_DAILY_LIMIT` questions a day (default 50). Token use is recorded per person per day.
+- Conversations are private to the person who had them, deleted after 30 days by the daily cron job, and deleted sooner on request. Erasing a contact deletes conversations that mention them.
+- `CAE_AI_MODEL` (default `claude-opus-5-5`) and `CAE_AI_EFFORT` (default `medium`) choose the model and how hard it thinks. If Claude declines a request, Anthropic's server-side fallback retries it on another Claude model.
+- An answer that needs several lookups can take 10 to 30 seconds. The assistant stops after 8 model calls or about 50 seconds, so check the function time limit on your Vercel plan allows at least 60 seconds.
+
 ## What's in it
 
 The sidebar groups pages the way a business works: **CRM** (Contacts, Companies, Deals, Tickets), **Sales** (Tasks, Quotes, Products), **Marketing** (Email, Forms), **Finance** (Invoices), **Delivery** (Projects), **Insight** (Reports) and **Workspace** (Team, Integrations). Admins also get **Settings** and **Import**.
@@ -267,6 +280,8 @@ service.py    tickets and service levels
 finance.py    invoices, VAT and aged debt
 dataio.py     CSV import and export, saved views
 settings.py   business details, VAT and invoice settings
+assistant.py  the AI assistant: settings, conversations, the Claude loop, suggestions
+assistant_tools.py  what the assistant can look up and suggest, all workspace-scoped
 db.py         schema, migrations, SQLite/PostgreSQL connection wrapper
 seed.py       sample data for a new workspace
 ukfmt.py      GBP, dates, VAT, postcodes, phone numbers, working hours, financial year

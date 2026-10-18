@@ -13,6 +13,7 @@ from db import get_db
 HUB = [
     ("settings", "cog", "Business details", "Your company details, VAT, invoice numbering and sales target.", True),
     ("auth.team", "users", "Team", "Who's on CAE CRM, their profiles, roles and access.", False),
+    ("assistant_settings", "sparkle", "AI assistant", "Let your team ask questions about your CRM data and get drafts.", True),
     ("integrations", "bolt", "Integrations", "Connect your email, Xero and HMRC.", False),
     ("imports", "upload", "Import", "Bring in contacts and companies from a spreadsheet.", True),
     ("custom_fields_page", "edit", "Custom fields", "Add your own fields to contacts, companies, deals and tickets.", True),
@@ -32,7 +33,9 @@ def register(app):
         """One place for everything about running the workspace."""
         from billing import state
         admin = g.user["role"] == "admin"
-        cards = [c for c in HUB if (admin or not c[4]) and (c[0] != "billing" or state(workspace())["enabled"])]
+        import assistant
+        cards = [c for c in HUB if (admin or not c[4]) and (c[0] != "billing" or state(workspace())["enabled"])
+                 and (c[0] != "assistant_settings" or assistant.configured())]
         return render_template("workspace.html", cards=cards)
 
     @app.route("/settings", methods=["GET", "POST"])

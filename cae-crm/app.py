@@ -12,6 +12,7 @@ from urllib.parse import urlencode
 from flask import Flask, abort, g, jsonify, redirect, render_template, request, session, url_for
 
 import api
+import assistant
 import audit
 import auth
 import billing
@@ -54,6 +55,7 @@ NAV = [
 ]
 # Everything about running the workspace sits behind one Settings link: (endpoint, label, admins only).
 SETTINGS_TABS = [("settings", "Business details", True), ("auth.team", "Team", False),
+                 ("assistant_settings", "AI assistant", True),
                  ("integrations", "Integrations", False), ("imports", "Import", True), ("billing", "Billing", True),
                  ("custom_fields_page", "Custom fields", True), ("workflows", "Workflows", True),
                  ("developers", "API and webhooks", True), ("vat", "VAT returns", True),
@@ -74,6 +76,12 @@ TWO_FACTOR_SETUP_ALLOWED = {"auth.two_factor_setup", "auth.logout", "static", "f
 # Forms embedded on other websites can't carry our session's CSRF token; they have their own spam checks.
 # Mail apps' one-click unsubscribe and Resend's webhooks post from elsewhere too; the webhook is signed.
 CSRF_EXEMPT = {"public_form", "unsubscribe", "resend_webhook", "stripe_webhook"}
+
+
+def assistant_nav():
+    """The sidebar with the AI assistant under Home, Tasks and Reports, for workspaces that have turned it on."""
+    (heading, items), *rest = NAV
+    return [(heading, items + [("assistant", "Assistant", "sparkle")]), *rest]
 
 
 def create_app(config=None):
@@ -163,9 +171,11 @@ def create_app(config=None):
         hour = now().hour
         return base | dict(
             billing=billing.state(w),
-            nav=NAV, nav_active=NAV_PARENT.get(request.endpoint, request.endpoint), workspace=w,
+            nav=assistant_nav() if assistant.enabled(w) else NAV,
+            nav_active=NAV_PARENT.get(request.endpoint, request.endpoint), workspace=w,
             settings_tabs=[t for t in SETTINGS_TABS if (not t[2] or g.user["role"] == "admin")
-                           and (t[0] != "billing" or billing.state(w)["enabled"])],
+                           and (t[0] != "billing" or billing.state(w)["enabled"])
+                           and (t[0] != "assistant_settings" or assistant.configured())],
             settings_active=SETTINGS_PARENT.get(request.endpoint, request.endpoint),
             pennies=lambda p: money(p, pennies=True),
             greeting="Good morning" if hour < 12 else "Good afternoon" if hour < 18 else "Good evening",
@@ -221,7 +231,8 @@ def create_app(config=None):
     app.register_blueprint(auth.bp)
     events.register(app)  # first, so its after_request hook runs last, once everything else is saved
     for module in (home, crm, sales, service, finance, quotes, webforms, campaigns, billing, integrations, xero, mtd,
-                   documents, notifications, files, fields, workflows, webhooks, api, legal, dataio, settings, audit):
+                   documents, notifications, files, fields, workflows, webhooks, api, legal, dataio, settings, audit,
+                   assistant):
         module.register(app)
     return app
 

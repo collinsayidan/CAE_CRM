@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}AI assistant{% endblock %}
+{% block heading %}AI assistant{% endblock %}
+{% block subtitle %}<p class="subtitle">Let your team ask questions about your CRM, get help using it, and have emails and notes drafted.</p>{% endblock %}
+
+{% block content %}
+<form method="post" action="{{ url_for('assistant_settings') }}" class="settings">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <section class="panel">
+    <h2 class="panel-title">What it does</h2>
+    <ul class="plain-list">
+      <li>Answers questions about your contacts, companies, deals, tickets, quotes, invoices and tasks.</li>
+      <li>Explains how to do things in CAE CRM.</li>
+      <li>Drafts emails and notes for you to copy. It can't send anything.</li>
+      <li>Suggests tasks, notes and deal stage changes. Nothing changes until the person using it presses Confirm.</li>
+    </ul>
+    <p class="form-hint">Everyone in the workspace can use it, up to {{ limit }} questions a person a day. It sees the same records
+      your team can see, but not admin areas such as billing, API keys or the audit trail.</p>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-title">What's shared, and with whom</h2>
+    <p>The assistant runs on Claude, made by Anthropic. When someone asks a question, the question and the records the
+      assistant looks up to answer it are sent to Anthropic, in the United States, to produce the answer.</p>
+    <ul class="plain-list">
+      <li>Anthropic doesn't use this data to train its models.</li>
+      <li>Anthropic deletes it from its systems within 30 days, unless it's needed to investigate misuse or by law.</li>
+      <li>Conversations are kept in CAE CRM for {{ keep_days }} days, visible only to the person who had them, and they can delete them sooner.</li>
+      <li>Erasing a contact also deletes conversations that mention them.</li>
+    </ul>
+    <p class="form-hint">Anthropic is listed as a sub-processor in our <a href="{{ url_for('legal', doc='dpa') }}">data processing agreement</a>
+      and <a href="{{ url_for('legal', doc='privacy') }}">privacy notice</a>. Before turning this on, check it fits how you've told
+      your own customers you use their data.</p>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-title">Turn it on or off</h2>
+    <label class="check"><input type="checkbox" name="enabled" {{ 'checked' if w.ai_enabled }}>
+      <span>Let everyone in {{ w.name }} use the AI assistant</span></label>
+    {% if w.ai_enabled and w.ai_enabled_by %}
+      <p class="form-hint">Turned on by {{ w.ai_enabled_by }} on {{ w.ai_enabled_at | uk_datetime }}.</p>
+    {% endif %}
+    {% if w.ai_enabled %}
+      <p class="form-hint">This month: {{ usage.questions }} {{ 'question' if usage.questions == 1 else 'questions' }} from {{ usage.people }} {{ 'person' if usage.people == 1 else 'people' }}.</p>
+    {% endif %}
+    <div class="form-actions"><button class="btn primary">Save</button></div>
+  </section>
+</form>
+{% endblock %}

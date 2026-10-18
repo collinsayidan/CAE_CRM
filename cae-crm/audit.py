@@ -46,9 +46,12 @@ LABELS = {
     "create_api_key": "Made an API key", "revoke_api_key": "Revoked an API key", "create_webhook": "Added a webhook",
     "delete_webhook": "Removed a webhook", "toggle_webhook": "Paused or resumed a webhook",
     "test_webhook": "Sent a test webhook",
+    "assistant_settings": "Turned the AI assistant on or off", "assistant_delete": "Deleted an assistant conversation",
+    "assistant_delete_all": "Deleted all their assistant conversations",
 }
 # Routine or high-volume actions that would bury the changes that matter.
-SKIP = {"auth.logout", "oauth_sync", "campaign_deliver", "auth.forgot"}
+# Asking the assistant changes no records, and a confirmed suggestion is recorded by the page it's passed on to.
+SKIP = {"auth.logout", "oauth_sync", "campaign_deliver", "auth.forgot", "assistant_ask", "assistant_confirm"}
 # Pages that sign someone in: the person comes from the new session, not from before the request.
 SIGN_IN_ENDPOINTS = {"auth.login", "auth.reset", "auth.signup", "auth.two_factor_check"}
 # How to name the record a change was about: URL argument -> (type, SQL for a name, or None to record a number only).

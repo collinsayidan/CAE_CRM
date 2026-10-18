@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}{{ conversation.title if conversation else 'Assistant' }}{% endblock %}
+{% block heading %}Assistant{% endblock %}
+{% block subtitle %}<p class="subtitle">Ask about your contacts, deals, tickets and invoices, get help using CAE CRM, or have it draft an email or note.</p>{% endblock %}
+{% block actions %}
+  {% if conversation %}<a class="btn ghost" href="{{ url_for('assistant') }}">{{ icon('plus') }} New conversation</a>{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="ai-layout">
+  <aside class="ai-history" aria-label="Your conversations">
+    <details class="ai-history-box" {{ 'open' if not conversation }}>
+      <summary>Your conversations <span class="muted">({{ chats | length }})</span></summary>
+      {% if chats %}
+        <ul class="ai-chats">
+          {% for c in chats %}
+            <li><a href="{{ url_for('assistant', conversation_id=c.id) }}" {% if conversation and c.id == conversation.id %}aria-current="page"{% endif %}>
+              <span>{{ c.title }}</span><small>{{ c.updated_at | relative_time }}</small></a></li>
+          {% endfor %}
+        </ul>
+        <form method="post" action="{{ url_for('assistant_delete_all') }}" data-confirm="Delete all your assistant conversations? This can't be undone.">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}">
+          <button class="text-link sm">Delete all my conversations</button>
+        </form>
+      {% else %}
+        <p class="muted small">None yet.</p>
+      {% endif %}
+      <p class="muted small">Only you can see your conversations. They're deleted after {{ keep_days }} days.</p>
+    </details>
+  </aside>
+
+  <section class="panel ai-chat" aria-label="Conversation">
+    <div class="ai-thread" data-ai-thread aria-live="polite">
+      {% if conversation %}
+        {% include "_assistant_items.html" %}
+      {% else %}
+        <div class="ai-empty">
+          <span class="stat-icon">{{ icon('sparkle') }}</span>
+          <p><b>What would you like to know?</b></p>
+          <form method="post" action="{{ url_for('assistant_ask') }}" class="ai-starters" data-ai-form>
+            <input type="hidden" name="csrf" value="{{ csrf_token }}">
+            {% for q in ["Which deals are due to close this month?", "What needs my attention today?",
+                         "Which invoices are overdue, and who owes the most?", "How do I send a quote?"] %}
+              <button class="chip-btn" name="question" value="{{ q }}">{{ q }}</button>
+            {% endfor %}
+          </form>
+        </div>
+      {% endif %}
+      <span id="latest"></span>
+    </div>
+    <form method="post" action="{{ url_for('assistant_ask') }}" class="ai-ask" data-ai-form>
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <input type="hidden" name="conversation_id" value="{{ conversation.id if conversation else '' }}">
+      <label class="sr-only" for="ai-question">Your question</label>
+      <textarea id="ai-question" name="question" rows="2" maxlength="4000" required placeholder="{{ 'Ask a follow-up…' if conversation else 'Ask anything about your CRM…' }}"></textarea>
+      <button class="btn primary">{{ icon('sparkle') }} Ask</button>
+    </form>
+    <div class="ai-foot small muted">
+      {{ left if left > 0 else 0 }} of {{ limit }} questions left today. The assistant can make mistakes, so check anything important.
+      It can suggest changes, but only you can confirm them.
+      {% if conversation %}
+        <form method="post" action="{{ url_for('assistant_delete', conversation_id=conversation.id) }}" class="inline" data-confirm="Delete this conversation?">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="text-link sm">Delete this conversation</button>
+        </form>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

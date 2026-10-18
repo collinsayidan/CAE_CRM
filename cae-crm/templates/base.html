@@ -56,6 +56,9 @@
         {{ icon('search') }}<span>Search contacts, companies, deals and tickets</span><kbd>Ctrl K</kbd>
       </button>
       <div class="top-actions">
+        {% if assistant_on %}
+        <a class="icon-btn" href="{{ url_for('assistant') }}" data-ai-open aria-label="Ask the assistant" title="Ask the assistant">{{ icon('sparkle') }}</a>
+        {% endif %}
         {% if bell %}
         <details class="bell">
           <summary class="icon-btn" aria-label="Notifications{{ ', ' ~ bell.unread ~ ' unread' if bell.unread }}">{{ icon('bell') }}{% if bell.unread %}<span class="bell-count">{{ bell.unread if bell.unread < 10 else '9+' }}</span>{% endif %}</summary>
@@ -126,6 +129,28 @@
     </div>
     <ul id="palette-results" role="listbox"></ul>
   </dialog>
+
+  {% if assistant_on and request.endpoint != 'assistant' %}
+  <aside class="ai-panel" id="ai-panel" aria-label="Assistant" hidden>
+    <header class="ai-panel-head">
+      <b>{{ icon('sparkle') }} Assistant</b>
+      <button type="button" class="text-link sm" data-ai-new>New</button>
+      <a class="text-link sm" href="{{ url_for('assistant') }}" data-ai-full>Full page</a>
+      <button type="button" class="icon-btn sm" data-ai-close aria-label="Close the assistant">{{ icon('x') }}</button>
+    </header>
+    <div class="ai-thread" data-ai-thread aria-live="polite">
+      <p class="ai-panel-hint muted small" data-ai-hint>Ask about this page or anything in your CRM, or ask for help with CAE CRM. It can suggest changes, but only you can confirm them.</p>
+    </div>
+    <form method="post" action="{{ url_for('assistant_ask') }}" class="ai-ask" data-ai-form>
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <input type="hidden" name="conversation_id" value="">
+      <input type="hidden" name="page" value="{{ request.path }}">
+      <label class="sr-only" for="ai-panel-question">Your question</label>
+      <textarea id="ai-panel-question" name="question" rows="2" maxlength="4000" required placeholder="Ask anything…"></textarea>
+      <button class="btn primary sm">{{ icon('sparkle') }} Ask</button>
+    </form>
+  </aside>
+  {% endif %}
 
   <div class="toasts" aria-live="polite">
     {% with messages = get_flashed_messages(with_categories=true) %}

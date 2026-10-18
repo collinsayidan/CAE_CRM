@@ -50,7 +50,7 @@
 <h2>Schedule 1: Details of the processing</h2>
 <dl class="legal-dl">
   <dt>Subject matter and duration</dt><dd>Providing CAE CRM, for as long as the terms last, plus the 30-day export and deletion period.</dd>
-  <dt>Nature and purpose</dt><dd>Storing, organising, displaying, searching, exporting, sending and deleting records, so you can manage customer relationships, sales, service tickets, quotes, invoices, email campaigns and web forms.</dd>
+  <dt>Nature and purpose</dt><dd>Storing, organising, displaying, searching, exporting, sending and deleting records, so you can manage customer relationships, sales, service tickets, quotes, invoices, email campaigns and web forms. If your admin turns on the AI assistant, looking up records to answer your team's questions and draft text for them.</dd>
   <dt>Types of personal data</dt><dd>
     <p>Whatever you put in. Typically:</p>
     <ul>
@@ -89,6 +89,7 @@
     <tr><td>Supabase Inc.</td><td>Database and file storage</td><td>{{ legal_detail('LEGAL_DATA_REGION') }}</td></tr>
     <tr><td>Resend</td><td>Sending email you send from CAE CRM, such as campaigns, quotes, invoices and reminders</td><td>United States</td></tr>
     <tr><td>Functional Software, Inc. (Sentry)</td><td>Error reports, with personal data removed, if switched on</td><td>{{ to_confirm('United States or EU') }}</td></tr>
+    <tr><td>Anthropic, PBC {{ to_confirm('contracting Anthropic entity') }}</td><td>The AI assistant, only if your admin turns it on: answering your team's questions using the records it looks up. Anthropic doesn't train its models on this data, and deletes it within 30 days unless it's flagged for breaking Anthropic's usage policy (kept for up to 2 years) or the law requires otherwise. Transfers are covered by the UK Addendum in Anthropic's data processing addendum.</td><td>United States</td></tr>
   </tbody>
 </table>
 </div>

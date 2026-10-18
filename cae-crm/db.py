@@ -68,7 +68,10 @@ CREATE TABLE IF NOT EXISTS workspaces (
     onboarding_done INTEGER NOT NULL DEFAULT 0,
     terms_version TEXT,
     terms_accepted_at TEXT,
-    terms_accepted_by TEXT
+    terms_accepted_by TEXT,
+    ai_enabled INTEGER NOT NULL DEFAULT 0,
+    ai_enabled_at TEXT,
+    ai_enabled_by TEXT
 );
 CREATE TABLE IF NOT EXISTS users (
     id {pk},
@@ -519,6 +522,34 @@ CREATE TABLE IF NOT EXISTS workflow_rules (
     created_by TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS ai_conversations (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS ai_messages (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    conversation_id INTEGER NOT NULL REFERENCES ai_conversations(id) ON DELETE CASCADE,
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    shown TEXT,
+    confirmed TEXT,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS ai_usage (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    day TEXT NOT NULL,
+    questions INTEGER NOT NULL DEFAULT 0,
+    input_tokens BIGINT NOT NULL DEFAULT 0,
+    output_tokens BIGINT NOT NULL DEFAULT 0,
+    UNIQUE (user_id, day)
+);
 """
 
 # Columns added after the first release. Databases created by an earlier version gain them on start-up.
@@ -534,7 +565,8 @@ ADDED_COLUMNS = {
                    "cancel_at_period_end INTEGER NOT NULL DEFAULT 0", "logo TEXT", "logo_updated TEXT",
                    "bank_account_name TEXT", "bank_sort_code TEXT", "bank_account_number TEXT", "payment_link TEXT",
                    "reminders_on INTEGER NOT NULL DEFAULT 0", "onboarding_done INTEGER NOT NULL DEFAULT 0",
-                   "terms_version TEXT", "terms_accepted_at TEXT", "terms_accepted_by TEXT"],
+                   "terms_version TEXT", "terms_accepted_at TEXT", "terms_accepted_by TEXT",
+                   "ai_enabled INTEGER NOT NULL DEFAULT 0", "ai_enabled_at TEXT", "ai_enabled_by TEXT"],
     "deals": ["workspace_id INTEGER", "contact_id INTEGER", "custom TEXT"],
     "tickets": ["custom TEXT"],
     "activities": ["workspace_id INTEGER", "contact_id INTEGER", "ticket_id INTEGER"],
@@ -701,6 +733,8 @@ def migrate(db, today):
         "CREATE INDEX IF NOT EXISTS ix_deliveries_due ON webhook_deliveries (status, next_attempt_at)",
         "CREATE INDEX IF NOT EXISTS ix_deliveries_hook ON webhook_deliveries (webhook_id, id)",
         "CREATE INDEX IF NOT EXISTS ix_workflow_trigger ON workflow_rules (workspace_id, on_event)",
+        "CREATE INDEX IF NOT EXISTS ix_ai_conversations_user ON ai_conversations (user_id, updated_at)",
+        "CREATE INDEX IF NOT EXISTS ix_ai_messages_conversation ON ai_messages (conversation_id, id)",
     ):
         db.execute(sql)
     if db.postgres:

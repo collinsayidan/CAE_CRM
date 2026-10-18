@@ -6,3 +6,4 @@ cryptography>=43
 sentry-sdk[flask]>=2.0
 segno>=1.6
 fpdf2>=2.8
+anthropic>=1.15

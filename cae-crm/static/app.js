@@ -372,14 +372,18 @@
         const stage = zone.dataset.stage || zone.closest("[data-stage]").dataset.stage;
         const from = card.closest("[data-stage]").dataset.stage;
         if (stage === from) return;
+        if (stage === "Lost") {  // a lost deal needs a reason, asked on its own page
+          location.href = `/deals/${card.dataset.deal}/lost?next=${encodeURIComponent(location.pathname + location.search)}`;
+          return;
+        }
         const home = card.parentElement, next = card.nextSibling;
-        if (stage === "Won" || stage === "Lost") card.remove();
+        if (stage === "Won") card.remove();
         else zone.prepend(card);
         refreshTotals();
         try {
           const res = await post(`/deals/${card.dataset.deal}/stage`, { stage });
           toast(res.message);
-          if (stage !== "Won" && stage !== "Lost") {
+          if (stage !== "Won") {
             // Keep the fallback menu in step with the card's new column.
             $$(".menu button[name=stage]", card).forEach(b => { b.hidden = b.value === stage; });
           }
@@ -887,5 +891,63 @@
         area?.focus();
       }
     });
+  });
+  /* Companies House: suggest companies from the register as a name is typed ------------------------------------ */
+  $$("form[data-ch-lookup]").forEach(form => {
+    const input = $("input[name=name]", form);
+    if (!input) return;
+    const list = document.createElement("ul");
+    list.className = "ch-suggest";
+    list.setAttribute("role", "listbox");
+    list.hidden = true;
+    input.setAttribute("autocomplete", "off");
+    input.closest(".field")?.append(list);
+    let timer, last = "";
+    const fill = item => {
+      input.value = item.name;
+      for (const [field, value] of [["company_no", item.number], ["address", item.address], ["city", item.city], ["postcode", item.postcode]]) {
+        const el = form.querySelector(`[name="${field}"]`);
+        if (el && value) el.value = value;
+      }
+      list.hidden = true;
+      toast(item.warn ? `${item.name} is ${item.status_label.toLowerCase()} according to Companies House.` : `Filled in from Companies House.`, item.warn ? "error" : "ok");
+    };
+    input.addEventListener("input", () => {
+      clearTimeout(timer);
+      const q = input.value.trim();
+      if (q.length < 3) { list.hidden = true; return; }
+      timer = setTimeout(async () => {
+        if (q === last) return;
+        last = q;
+        try {
+          const res = await fetch(`/companies-house/search?q=${encodeURIComponent(q)}`, { headers: { "X-Requested-With": "fetch" } });
+          const data = await res.json();
+          list.replaceChildren(...(data.results || []).map(item => {
+            const li = document.createElement("li");
+            li.setAttribute("role", "option");
+            li.tabIndex = -1;
+            const name = Object.assign(document.createElement("b"), { textContent: item.name });
+            const meta = Object.assign(document.createElement("small"), { textContent: `${item.number} · ${item.status_label}${item.snippet ? " · " + item.snippet : ""}` });
+            if (item.warn) meta.classList.add("bad");
+            li.append(name, meta);
+            li.addEventListener("mousedown", e => { e.preventDefault(); fill(item); });
+            li.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); fill(item); } });
+            return li;
+          }));
+          list.hidden = !list.children.length;
+        } catch (err) { list.hidden = true; }
+      }, 300);
+    });
+    input.addEventListener("keydown", e => {
+      if (e.key === "ArrowDown" && !list.hidden) { e.preventDefault(); list.firstElementChild?.focus(); }
+      if (e.key === "Escape") list.hidden = true;
+    });
+    list.addEventListener("keydown", e => {
+      const items = [...list.children], i = items.indexOf(document.activeElement);
+      if (e.key === "ArrowDown") { e.preventDefault(); items[Math.min(i + 1, items.length - 1)]?.focus(); }
+      if (e.key === "ArrowUp") { e.preventDefault(); (i > 0 ? items[i - 1] : input).focus(); }
+      if (e.key === "Escape") { list.hidden = true; input.focus(); }
+    });
+    input.addEventListener("blur", () => setTimeout(() => { if (!list.contains(document.activeElement)) list.hidden = true; }, 150));
   });
 })();

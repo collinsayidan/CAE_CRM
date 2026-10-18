@@ -48,6 +48,11 @@ LABELS = {
     "test_webhook": "Sent a test webhook",
     "assistant_settings": "Turned the AI assistant on or off", "assistant_delete": "Deleted an assistant conversation",
     "assistant_delete_all": "Deleted all their assistant conversations",
+    "companies_house_refresh": "Updated a company from Companies House",
+    "restore_from_bin": "Restored a record from the recycle bin", "delete_from_bin": "Deleted a record permanently",
+    "merge_duplicates": "Merged duplicate records", "dismiss_duplicates": "Marked two records as not duplicates",
+    "add_tag": "Tagged a record", "remove_tag": "Removed a tag from a record", "tags_settings": "Changed a tag",
+    "lose_deal": "Marked a deal as lost", "deal_reason": "Recorded why a deal was won or lost",
 }
 # Routine or high-volume actions that would bury the changes that matter.
 # Asking the assistant changes no records, and a confirmed suggestion is recorded by the page it's passed on to.

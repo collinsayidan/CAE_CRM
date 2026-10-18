@@ -44,6 +44,7 @@
               </details>
             </div>
             <p class="card-company">{{ d.company }}</p>
+            {% if d.id in quiet %}<p class="card-quiet"><span class="chip quiet" title="Nothing logged recently, or the close date has passed">{{ icon('clock') }} Gone quiet</span></p>{% endif %}
             <div class="card-foot">
               <span class="card-value">{{ d.value | money }}</span>
               <span class="card-date" title="Expected close {{ d.close_date | uk_date }}">{{ d.close_date | uk_date_short }}</span>

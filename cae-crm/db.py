@@ -34,6 +34,8 @@ TICKET_CATEGORIES = ["Billing", "Product question", "Problem", "Feature request"
 TICKET_SLA_HOURS = {"Urgent": (1, 4), "High": (4, 8), "Medium": (8, 24), "Low": (16, 40)}
 BILLING_PERIODS = ["One-off", "Monthly", "Annual"]
 DEFAULT_MONTHLY_TARGET = 15_670_000  # £156,700 in pence
+LOST_REASONS = ["Price", "Timing", "Went with a competitor", "No decision", "No budget", "Other"]
+WON_REASONS = ["Price", "Product fit", "Relationship", "Speed", "Recommendation", "Other"]
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS workspaces (
@@ -69,6 +71,7 @@ CREATE TABLE IF NOT EXISTS workspaces (
     terms_version TEXT,
     terms_accepted_at TEXT,
     terms_accepted_by TEXT,
+    quiet_days INTEGER NOT NULL DEFAULT 14,
     ai_enabled INTEGER NOT NULL DEFAULT 0,
     ai_enabled_at TEXT,
     ai_enabled_by TEXT
@@ -111,7 +114,10 @@ CREATE TABLE IF NOT EXISTS companies (
     phone TEXT,
     owner TEXT,
     created_at TEXT NOT NULL,
-    custom TEXT
+    custom TEXT,
+    ch_status TEXT,
+    ch_sic TEXT,
+    ch_checked_at TEXT
 );
 CREATE TABLE IF NOT EXISTS contacts (
     id {pk},
@@ -147,7 +153,10 @@ CREATE TABLE IF NOT EXISTS deals (
     close_date TEXT NOT NULL,
     closed_at TEXT,
     created_at TEXT NOT NULL,
-    custom TEXT
+    custom TEXT,
+    outcome_reason TEXT,
+    outcome_note TEXT,
+    quiet_since TEXT
 );
 CREATE TABLE IF NOT EXISTS activities (
     id {pk},
@@ -522,6 +531,46 @@ CREATE TABLE IF NOT EXISTS workflow_rules (
     created_by TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS tags (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS record_tags (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+    record_type TEXT NOT NULL,
+    record_id INTEGER NOT NULL,
+    UNIQUE (tag_id, record_type, record_id)
+);
+CREATE TABLE IF NOT EXISTS recycle_bin (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    record_type TEXT NOT NULL,
+    record_id INTEGER NOT NULL,
+    label TEXT NOT NULL,
+    deleted_by TEXT,
+    deleted_at TEXT NOT NULL,
+    snapshot TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS recycle_ids (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    table_name TEXT NOT NULL,
+    old_id INTEGER NOT NULL,
+    new_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS duplicate_dismissals (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    record_type TEXT NOT NULL,
+    low_id INTEGER NOT NULL,
+    high_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS ai_conversations (
     id {pk},
     workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -557,7 +606,8 @@ ADDED_COLUMNS = {
     "users": ["workspace_id INTEGER", "job_title TEXT", "department TEXT", "phone TEXT", "location TEXT",
               "linkedin TEXT", "bio TEXT", "photo TEXT", "photo_updated TEXT", "totp_secret TEXT", "totp_enabled_at TEXT",
               "totp_last_step INTEGER", "recovery_codes TEXT"],
-    "companies": ["workspace_id INTEGER", "website TEXT", "phone TEXT", "owner TEXT", "custom TEXT"],
+    "companies": ["workspace_id INTEGER", "website TEXT", "phone TEXT", "owner TEXT", "custom TEXT", "ch_status TEXT",
+                  "ch_sic TEXT", "ch_checked_at TEXT"],
     "contacts": ["workspace_id INTEGER", "lifecycle_stage TEXT", "lead_status TEXT", "owner TEXT", "unsubscribed_at TEXT",
                  "email_bounced_at TEXT", "custom TEXT"],
     "workspaces": ["reply_to TEXT", "plan_status TEXT", "trial_ends TEXT", "stripe_customer_id TEXT",
@@ -566,8 +616,10 @@ ADDED_COLUMNS = {
                    "bank_account_name TEXT", "bank_sort_code TEXT", "bank_account_number TEXT", "payment_link TEXT",
                    "reminders_on INTEGER NOT NULL DEFAULT 0", "onboarding_done INTEGER NOT NULL DEFAULT 0",
                    "terms_version TEXT", "terms_accepted_at TEXT", "terms_accepted_by TEXT",
-                   "ai_enabled INTEGER NOT NULL DEFAULT 0", "ai_enabled_at TEXT", "ai_enabled_by TEXT"],
-    "deals": ["workspace_id INTEGER", "contact_id INTEGER", "custom TEXT"],
+                   "ai_enabled INTEGER NOT NULL DEFAULT 0", "ai_enabled_at TEXT", "ai_enabled_by TEXT",
+                   "quiet_days INTEGER NOT NULL DEFAULT 14"],
+    "deals": ["workspace_id INTEGER", "contact_id INTEGER", "custom TEXT", "outcome_reason TEXT", "outcome_note TEXT",
+              "quiet_since TEXT"],
     "tickets": ["custom TEXT"],
     "activities": ["workspace_id INTEGER", "contact_id INTEGER", "ticket_id INTEGER"],
     "invoices": ["workspace_id INTEGER", "deal_id INTEGER", "xero_invoice_id TEXT", "sent_at TEXT", "sent_to TEXT"],
@@ -734,6 +786,9 @@ def migrate(db, today):
         "CREATE INDEX IF NOT EXISTS ix_deliveries_hook ON webhook_deliveries (webhook_id, id)",
         "CREATE INDEX IF NOT EXISTS ix_workflow_trigger ON workflow_rules (workspace_id, on_event)",
         "CREATE INDEX IF NOT EXISTS ix_ai_conversations_user ON ai_conversations (user_id, updated_at)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS ux_tags_name ON tags (workspace_id, name)",
+        "CREATE INDEX IF NOT EXISTS ix_record_tags_record ON record_tags (workspace_id, record_type, record_id)",
+        "CREATE INDEX IF NOT EXISTS ix_recycle_ids ON recycle_ids (workspace_id, table_name, old_id)",
         "CREATE INDEX IF NOT EXISTS ix_ai_messages_conversation ON ai_messages (conversation_id, id)",
     ):
         db.execute(sql)

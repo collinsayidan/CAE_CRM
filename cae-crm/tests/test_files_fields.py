@@ -71,11 +71,15 @@ def test_erasing_or_deleting_a_record_removes_its_files(app, client):
     attach(client, "contact", contact, name="passport-scan.jpg", data=b"\xff\xd8")
     attach(client, "deal", deal, name="po.pdf")
     client.post(f"/contacts/{contact}/erase", data={"csrf": client.csrf})
+    assert [r[1] for r in attachments(app, app.ws)] == ["deal"]
+    # Deleting puts a record in the recycle bin, and its files wait with it until the bin is emptied.
     client.post(f"/deals/{deal}/delete", data={"csrf": client.csrf})
-    assert attachments(app, app.ws) == []
     ticket = first_id(app, "tickets", app.ws)
     attach(client, "ticket", ticket, name="screenshot.png", data=b"\x89PNG")
     client.post("/bulk/tickets", data={"csrf": client.csrf, "action": "delete", "ids": [ticket]})
+    assert all(r[1].startswith("bin") for r in attachments(app, app.ws))
+    for (entry,) in query(app, "SELECT id FROM recycle_bin WHERE workspace_id=?", app.ws):
+        client.post(f"/settings/recycle-bin/{entry}/delete", data={"csrf": client.csrf})
     assert attachments(app, app.ws) == []
     assert not query(app, "SELECT 1 FROM tickets WHERE id=?", ticket)
 
@@ -126,8 +130,8 @@ def test_custom_values_are_saved_shown_and_exported(app, client):
     page = client.get(f"/contacts/{contact}").get_data(as_text=True)
     assert "31/03/2027" in page and "Gold" in page
     header, *lines = client.get("/export/contacts").get_data(as_text=True).splitlines()
-    assert header.endswith("Tier,Renewal,Seats,VIP")
-    assert any(line.endswith("Gold,31/03/2027,1200,Yes") for line in lines)
+    assert header.endswith("Tier,Renewal,Seats,VIP,Tags")
+    assert any(line.endswith("Gold,31/03/2027,1200,Yes,") for line in lines)
 
 
 def test_bad_values_are_flagged_and_other_posts_leave_fields_alone(app, client):

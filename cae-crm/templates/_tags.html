@@ -1,0 +1,29 @@
+{# The tags on a contact or company, with a way to add and remove them. Works without JavaScript. #}
+{% macro tags_panel(record_type, record_id, list_endpoint) -%}
+{% set mine = record_tags(record_type, record_id) %}
+<section class="panel tags-panel" aria-label="Tags">
+  <header class="panel-head"><h2>Tags</h2></header>
+  {% if mine %}
+    <ul class="tag-list">
+      {% for t in mine %}
+        <li class="tag">
+          <a href="{{ url_for(list_endpoint, tag=t.name) }}" title="Everyone tagged {{ t.name }}">{{ t.name }}</a>
+          <form method="post" action="{{ url_for('remove_tag', record_type=record_type, record_id=record_id) }}">
+            <input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="tag_id" value="{{ t.id }}">
+            <button aria-label="Remove the tag {{ t.name }}" title="Remove">&times;</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted small">No tags yet. Tags group records, such as "VIP" or "Trade show 2026", so you can filter lists by them.</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('add_tag', record_type=record_type, record_id=record_id) }}" class="tag-add">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <label class="sr-only" for="tag-name-{{ record_type }}">Add a tag</label>
+    <input id="tag-name-{{ record_type }}" name="name" maxlength="40" list="tag-names-{{ record_type }}" placeholder="Add a tag" autocomplete="off" required>
+    <datalist id="tag-names-{{ record_type }}">{% for n in all_tag_names() %}<option value="{{ n }}">{% endfor %}</datalist>
+    <button class="btn ghost sm">Add</button>
+  </form>
+</section>
+{%- endmacro %}

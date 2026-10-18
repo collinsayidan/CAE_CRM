@@ -32,7 +32,7 @@
 </dialog>
 
 <dialog class="sheet" id="dlg-customer" aria-labelledby="dlg-customer-title" {% if ce %}data-autoopen{% endif %}>
-  <form method="post" action="{{ url_for('create_company') }}" novalidate>
+  <form method="post" action="{{ url_for('create_company') }}" novalidate {% if companies_house_on() %}data-ch-lookup{% endif %}>
     <input type="hidden" name="csrf" value="{{ csrf_token }}">
     <header><h2 id="dlg-customer-title">New company</h2><button type="button" class="icon-btn" data-close aria-label="Close">{{ icon('x') }}</button></header>
     {% if ce %}<p class="form-alert" role="alert">Company not added. Check the highlighted fields.</p>{% endif %}

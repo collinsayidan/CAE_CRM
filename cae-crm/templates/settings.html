@@ -64,6 +64,7 @@
     <h2 class="panel-title">Sales target</h2>
     <div class="form-grid">
       {{ field('Monthly target, excluding VAT', 'monthly_target', form.monthly_target, errors=errors, required=true, hint='Drives the month track on Home. The quarterly quota is three times this.', extra='inputmode=decimal') }}
+      {{ field('A deal has gone quiet after this many days', 'quiet_days', form.quiet_days, errors=errors, required=true, hint='With nothing logged and no task coming up. Its owner is told once.', extra='inputmode=numeric') }}
     </div>
   </section>
 

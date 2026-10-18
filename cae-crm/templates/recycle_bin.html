@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Recycle bin{% endblock %}
+{% block heading %}Recycle bin{% endblock %}
+{% block subtitle %}<p class="subtitle">Deleted contacts, companies, deals and tickets stay here for {{ keep_days }} days, with everything deleted alongside them. Restore puts it all back.</p>{% endblock %}
+
+{% block content %}
+<section class="panel flush">
+  <div class="table-wrap">
+    <table class="records">
+      <thead><tr><th>What</th><th>Deleted</th><th>By</th><th>Emptied on</th><th></th></tr></thead>
+      <tbody>
+        {% for e in entries %}
+          <tr>
+            <td><span class="chip">{{ labels[e.record_type] }}</span> <b>{{ e.label }}</b></td>
+            <td>{{ e.deleted_at | uk_datetime }}</td>
+            <td>{{ e.deleted_by or '' }}</td>
+            <td>{{ expires[e.id] | uk_date }}</td>
+            <td class="row-actions">
+              <form method="post" action="{{ url_for('restore_from_bin', entry_id=e.id) }}" class="inline">
+                <input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn ghost sm">Restore</button></form>
+              <form method="post" action="{{ url_for('delete_from_bin', entry_id=e.id) }}" class="inline" data-confirm="Delete {{ e.label }} permanently? This can't be undone.">
+                <input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn ghost sm danger">{{ icon('trash') }} Delete permanently</button></form>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="empty-line">The recycle bin is empty.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+<p class="form-hint">To meet a UK GDPR erasure request for someone who's already in the bin, use Delete permanently. For anyone else, use Erase on their contact page.</p>
+{% endblock %}

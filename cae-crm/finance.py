@@ -5,6 +5,7 @@ from datetime import date, timedelta
 from flask import flash, redirect, render_template, request, url_for
 
 import ukfmt
+from events import emit
 from core import back, get_or_404, log_event, one, owned, rows, today, workspace, ws
 from db import get_db, next_invoice_number
 from ukfmt import fy_quarter, money, vat_amount, vat_quarter
@@ -32,6 +33,7 @@ def raise_invoice(company_id, description, lines, deal_id=None):
                   unit_price=price, discount_pct=discount, vat_rate=rate, net=line_net, vat=line_vat)
     log_event(f"Invoice {number} raised", f"{money(net + vat, pennies=True)} including VAT",
               company_id=company_id, deal_id=deal_id)
+    emit("invoice.created", invoice_id)
     return invoice_id, number, net + vat
 
 
@@ -131,6 +133,7 @@ def register(app):
         db = get_db()
         db.execute("UPDATE invoices SET paid_date=? WHERE id=? AND workspace_id=?", (today().isoformat(), invoice_id, ws()))
         log_event(f"Invoice {i['number']} paid", company_id=i["company_id"], deal_id=i["deal_id"])
+        emit("invoice.paid", invoice_id)
         db.commit()
         flash(f"Invoice {i['number']} marked as paid.", "ok")
         return back("invoices")

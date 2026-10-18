@@ -8,6 +8,7 @@ from flask import Response, abort, flash, g, redirect, render_template, request,
 
 import auth
 import ukfmt
+from events import emit
 from core import (OPEN_SQL, advance_lifecycle, back, chosen_owner, get_or_404, log_event, now, one, owned,
                   owner_names, rows, scalar, today, ws)
 from db import (ACTIVITY_KINDS, CALL_OUTCOMES, LAWFUL_BASES, LEAD_STATUSES, LIFECYCLE_STAGES, OPEN_STAGES, SOURCES,
@@ -211,6 +212,7 @@ def register(app):
         contact_id = db.insert("contacts", workspace_id=ws(), **data, created_at=today().isoformat(),
                                consent_date=today().isoformat() if data["marketing_consent"] else None)
         log_event("Contact created", f"Added by {g.user['name']}", contact_id=contact_id, company_id=data["company_id"])
+        emit("contact.created", contact_id)
         db.commit()
         flash(f"Contact added: {data['first_name']} {data['last_name']}.", "ok")
         return redirect(url_for("contact", contact_id=contact_id))
@@ -255,6 +257,7 @@ def register(app):
                    (data["first_name"], data["last_name"], data["email"], data["phone"], data["lawful_basis"], data["role"],
                     data["company_id"], data["lifecycle_stage"], data["lead_status"], data["owner"],
                     data["marketing_consent"], consent_date, contact_id, ws()))
+        emit("contact.updated", contact_id)
         db.commit()
         flash("Contact updated.", "ok")
         return redirect(url_for("contact", contact_id=contact_id))
@@ -314,6 +317,7 @@ def register(app):
         db = get_db()
         company_id = db.insert("companies", workspace_id=ws(), **data, created_at=today().isoformat())
         log_event("Company created", f"Added by {g.user['name']}", company_id=company_id)
+        emit("company.created", company_id)
         db.commit()
         flash(f"Company added: {data['name']}.", "ok")
         return redirect(url_for("company", company_id=company_id))
@@ -353,6 +357,7 @@ def register(app):
                    " website=?, phone=?, owner=? WHERE id=? AND workspace_id=?",
                    (data["name"], data["company_no"], data["vat_no"], data["industry"], data["address"], data["city"],
                     data["postcode"], data["region"], data["website"], data["phone"], data["owner"], company_id, ws()))
+        emit("company.updated", company_id)
         db.commit()
         flash("Company updated.", "ok")
         return redirect(url_for("company", company_id=company_id))
@@ -428,6 +433,7 @@ def register(app):
                    (title, company_id, contact_id, close_date, value, owner, source, deal_id, ws()))
         if contact_id and old["stage"] in OPEN_STAGES:
             advance_lifecycle(contact_id, "Opportunity", f"Linked to the deal {title}")
+        emit("deal.updated", deal_id)
         db.commit()
         flash("Deal updated.", "ok")
         return redirect(url_for("deal", deal_id=deal_id))

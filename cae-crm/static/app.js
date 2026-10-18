@@ -89,6 +89,18 @@
     sel.form.querySelector("[name=page]")?.remove();
     sel.form.requestSubmit ? sel.form.requestSubmit() : sel.form.submit();
   }));
+  // Parts of a form that only apply to one choice, e.g. data-show-when="action=task". Hidden parts aren't sent.
+  const showWhen = () => $$("[data-show-when]").forEach(el => {
+    const [name, value] = el.dataset.showWhen.split("=");
+    const chooser = el.closest("form")?.querySelector(`[name="${name}"]`);
+    const on = !chooser || chooser.value === value;
+    el.hidden = !on;
+    el.querySelectorAll("input, select, textarea").forEach(i => { i.disabled = !on; });
+  });
+  if ($("[data-show-when]")) {
+    document.addEventListener("change", e => { if (e.target.closest("form [name]")) showWhen(); });
+    showWhen();
+  }
   $$("input[data-autosubmit-file]").forEach(input => input.addEventListener("change", () => {
     if (input.files.length) input.form.requestSubmit ? input.form.requestSubmit() : input.form.submit();
   }));

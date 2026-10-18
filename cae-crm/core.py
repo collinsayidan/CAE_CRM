@@ -5,7 +5,7 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
-from flask import abort, current_app, g, redirect, request, url_for
+from flask import abort, current_app, g, redirect, request, session, url_for
 
 from db import LIFECYCLE_STAGES, OPEN_STAGES, get_db
 
@@ -84,7 +84,16 @@ def owner_names():
 
 
 def chosen_owner(value):
-    return value if value in owner_names() else g.user["name"]
+    if value in owner_names():
+        return value
+    return g.user["name"] if g.get("user") else g.api_key["created_by"]  # the API key's maker owns what it adds
+
+
+def actor_name():
+    """Who is making a change, for timelines: the signed-in person, or the API key."""
+    if g.get("user"):
+        return g.user["name"]
+    return f"API key {g.api_key['name']}" if g.get("api_key") else "CAE CRM"
 
 
 def company_options():
@@ -117,6 +126,16 @@ def advance_lifecycle(contact_id, stage, reason):
     if LIFECYCLE_STAGES.index(stage) > LIFECYCLE_STAGES.index(current) and current != "Other":
         get_db().execute("UPDATE contacts SET lifecycle_stage=? WHERE id=?", (stage, contact_id))
         log_event(f"Lifecycle stage changed to {stage}", reason, contact_id=contact_id, company_id=row["company_id"])
+
+
+def error_flashes():
+    return sum(1 for category, _ in session.get("_flashes", []) if category == "error")
+
+
+def change_failed():
+    """Whether this request said something didn't work (a flashed error). Errors left over from an earlier request,
+    not yet shown, don't count."""
+    return error_flashes() > g.get("errors_at_start", 0)
 
 
 def wants_json():

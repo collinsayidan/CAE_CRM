@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta
 from flask import abort, flash, g, jsonify, redirect, render_template, request, url_for
 
 import ukfmt
+from events import emit
 from core import (OPEN_SQL, advance_lifecycle, back, chosen_owner, get_or_404, log_event, one, owned, owner_names, rows,
                   scalar, today, wants_json, ws)
 from crm import line_totals, render_index, resolve_links
@@ -43,6 +44,10 @@ def set_stage(deal, stage, reason=None):
     db.execute("UPDATE deals SET stage=?, probability=?, closed_at=? WHERE id=? AND workspace_id=?",
                (stage, STAGE_PROBABILITY[stage], closed, deal["id"], ws()))
     links = dict(deal_id=deal["id"], company_id=deal["company_id"], contact_id=deal["contact_id"])
+    if stage != deal["stage"]:
+        emit("deal.stage_changed", deal["id"], value=stage, previous_stage=deal["stage"])
+        if stage in ("Won", "Lost"):
+            emit(f"deal.{stage.lower()}", deal["id"])
     if stage == "Won":
         db.insert("projects", workspace_id=ws(), company_id=deal["company_id"], deal_id=deal["id"],
                   name=f"Deliver: {deal['title']}", owner=deal["owner"], status="On track", progress=0,
@@ -99,6 +104,7 @@ def register(app):
         log_event("Deal created", f"{f['title'].strip()}, {money(value)}, in {stage}", deal_id=deal_id,
                   company_id=company_id, contact_id=contact_id)
         advance_lifecycle(contact_id, "Opportunity", f"Linked to the deal {f['title'].strip()}")
+        emit("deal.created", deal_id)
         db.commit()
         flash(f"Deal added: {f['title'].strip()}. Add products to build its value.", "ok")
         return redirect(url_for("deal", deal_id=deal_id))

@@ -9,6 +9,7 @@ from flask import abort, current_app, flash, g, redirect, render_template, reque
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 import auth
+from events import emit
 import mail
 import ukfmt
 from core import (advance_lifecycle, get_or_404, log_event, now, one, owner_names, rows, today, workspace, ws)
@@ -217,12 +218,15 @@ def register(app):
                                    marketing_consent=int(consent), consent_date=t.isoformat() if consent else None,
                                    lifecycle_stage=form["lifecycle_stage"], lead_status="New", owner=form["owner"],
                                    created_at=t.isoformat())
+            emit("contact.created", contact_id)
         record = {"first_name": first, "last_name": last, "email": email, "phone": phone, "company": company_name,
                   "job_title": job, "message": message, "marketing_consent": consent,
                   "consent_wording": form["consent_text"] if consent else None,
                   "page": (request.referrer or "")[:300]}
         db.insert("form_submissions", workspace_id=ws(), form_id=form["id"], contact_id=contact_id,
                   data=json.dumps(record), ip=client_ip(), created_at=now().isoformat(timespec="minutes"))
+        emit("form.submitted", contact_id, value=str(form["id"]), form={"id": form["id"], "name": form["name"]},
+             submission={k: v for k, v in record.items() if k != "consent_wording"})
         contact_company = one("SELECT company_id FROM contacts WHERE id=?", contact_id)["company_id"]
         body = message or "No message."
         if consent:

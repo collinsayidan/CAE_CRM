@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, field, select %}
+{% block title %}API and webhooks{% endblock %}
+{% block heading %}API and webhooks{% endblock %}
+{% block subtitle %}<p class="subtitle">Connect other systems, Zapier, Make or Power BI to {{ workspace.name }}'s CRM data.</p>{% endblock %}
+
+{% block content %}
+{% if new_key %}
+<section class="panel key-reveal" role="status">
+  <h2 class="panel-title">Your new key: {{ new_key.name }}</h2>
+  <p>Copy it now. For your security it won't be shown again. If you lose it, revoke it and make another.</p>
+  <div class="copy-field">
+    <input id="new-key" value="{{ new_key.raw }}" readonly aria-label="Your new API key">
+    <button type="button" class="btn primary sm" data-copy="#new-key">Copy</button>
+  </div>
+</section>
+{% endif %}
+
+<section class="panel flush" id="keys">
+  <div class="panel-head pad"><h2>API keys</h2></div>
+  <p class="muted small pad">Send a key as <code>Authorization: Bearer &lt;key&gt;</code> to <code>{{ base }}</code>. Keys belong to the workspace, not to a person, and keep working if their maker leaves. Each can make 120 requests a minute.</p>
+  <ul class="field-list">
+    {% for k in keys %}
+      <li>
+        <span><b>{{ k.name }}</b>
+          <small><code>{{ k.prefix }}…</code> · {{ 'Read and write' if k.access == 'write' else 'Read only' }} · made by {{ k.created_by }} {{ k.created_at | uk_date }} · {{ ('last used ' ~ (k.last_used_at | relative_time)) if k.last_used_at else 'never used' }}</small></span>
+        <form method="post" action="{{ url_for('revoke_api_key', key_id=k.id) }}" data-confirm="Revoke {{ k.name }}? Anything using it stops working straight away.">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}">
+          <button class="btn ghost sm">Revoke</button>
+        </form>
+      </li>
+    {% else %}
+      <li class="empty-line">No keys yet.</li>
+    {% endfor %}
+  </ul>
+  <form method="post" action="{{ url_for('create_api_key') }}" class="inline-add pad">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <div class="form-grid">
+      {{ field('Name', 'name', required=true, placeholder='Power BI, Zapier, website', extra='maxlength=60') }}
+      {{ select('It can', 'access', ['Read only', 'Read and write'], values=['read', 'write']) }}
+    </div>
+    <button class="btn primary">{{ icon('plus') }} Make a key</button>
+  </form>
+</section>
+
+<section class="panel flush panel-gap" id="webhooks">
+  <div class="panel-head pad"><h2>Webhooks</h2></div>
+  <p class="muted small pad">We'll POST each event you choose to your address as JSON, signed with the webhook's secret in the <code>CAE-Signature</code> header. Failed deliveries are retried for about two days.</p>
+  {% for h in hooks %}
+    <article class="hook">
+      <header>
+        <span><b class="hook-url">{{ h.url }}</b>
+          <small>{{ (h.events | fromjson | length) }} event{{ 's' if (h.events | fromjson | length) != 1 }} · added by {{ h.created_by }}
+            {% if not h.active %}· <span class="chip bad">Paused</span>{% elif h.failures %}· <span class="chip bad">{{ h.failures }} failed in a row</span>{% endif %}</small></span>
+        <span class="hook-actions">
+          <form method="post" action="{{ url_for('test_webhook', hook_id=h.id) }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn ghost sm">Send a test</button></form>
+          <form method="post" action="{{ url_for('toggle_webhook', hook_id=h.id) }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn ghost sm">{{ 'Pause' if h.active else 'Turn on' }}</button></form>
+          <form method="post" action="{{ url_for('delete_webhook', hook_id=h.id) }}" data-confirm="Remove this webhook?"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="icon-btn sm" aria-label="Remove webhook">{{ icon('trash') }}</button></form>
+        </span>
+      </header>
+      <details>
+        <summary>Signing secret and events</summary>
+        <div class="copy-field"><input id="secret-{{ h.id }}" value="{{ h.secret }}" readonly aria-label="Signing secret"><button type="button" class="btn ghost sm" data-copy="#secret-{{ h.id }}">Copy</button></div>
+        <p class="small muted">{{ (h.events | fromjson) | join(', ') }}</p>
+      </details>
+      {% if recent[h.id] %}
+        <table class="records compact">
+          <thead><tr><th>Event</th><th>Sent</th><th>Result</th></tr></thead>
+          <tbody>
+            {% for d in recent[h.id] %}
+              <tr><td><code>{{ d.event }}</code></td><td><small>{{ d.created_at[:16] | replace('T', ' ') }} UTC</small></td>
+                <td>{% if d.status == 'delivered' %}<span class="chip ok">Delivered</span>{% elif d.status == 'failed' %}<span class="chip bad">Gave up</span>{% else %}<span class="chip">Retrying</span>{% endif %}
+                  {% if d.last_error and d.status != 'delivered' %}<small class="muted">{{ d.last_error }}</small>{% endif %}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+    </article>
+  {% else %}
+    <p class="empty-line pad">No webhooks yet.</p>
+  {% endfor %}
+  <form method="post" action="{{ url_for('create_webhook') }}" class="inline-add pad">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    {{ field('Address', 'url', required=true, placeholder='https://hooks.zapier.com/...', extra='inputmode=url maxlength=500') }}
+    <fieldset class="event-choices">
+      <legend class="field-label">Send these events</legend>
+      {% for name, label in events %}
+        <label class="check small"><input type="checkbox" name="events" value="{{ name }}"><span>{{ label }} <code>{{ name }}</code></span></label>
+      {% endfor %}
+    </fieldset>
+    <button class="btn primary">{{ icon('plus') }} Add webhook</button>
+  </form>
+</section>
+
+<section class="panel panel-gap" id="power-bi">
+  <h2 class="panel-title">Power BI and Excel</h2>
+  <p>Each table below is a live, read-only feed in CSV, with amounts in pounds and your custom fields as columns.</p>
+  <ol class="how-to">
+    <li>Make a <b>Read only</b> key above, called Power BI.</li>
+    <li>In Power BI Desktop, choose <b>Get data → Web</b> and paste a feed address.</li>
+    <li>When asked how to sign in, choose <b>Basic</b>. Type <b>api</b> as the user name and your key as the password.</li>
+    <li>Repeat for each table, then join them on the <code>_id</code> columns. Scheduled refresh in the Power BI service uses the same sign-in.</li>
+  </ol>
+  {% for f in feeds %}
+    <div class="copy-field">
+      <input id="feed-{{ f }}" value="{{ base }}feed/{{ f }}" readonly aria-label="{{ f }} feed">
+      <button type="button" class="btn ghost sm" data-copy="#feed-{{ f }}">Copy</button>
+    </div>
+  {% endfor %}
+  <p class="muted small">Add <code>?format=json</code> to any address for JSON. The feeds include personal data, so keep the key as safe as a password, and revoke it if a report is shared outside your business.</p>
+</section>
+{% endblock %}

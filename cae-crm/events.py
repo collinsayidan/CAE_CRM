@@ -26,6 +26,8 @@ EVENTS = {
     "quote.declined": ("A quote is declined", "quote"),
     "invoice.created": ("An invoice is raised", "invoice"),
     "invoice.paid": ("An invoice is paid", "invoice"),
+    "invoice.payment_received": ("A payment is recorded on an invoice", "invoice"),
+    "credit_note.created": ("A credit note is raised against an invoice", "invoice"),
     "form.submitted": ("A web form is submitted", "contact"),
 }
 

@@ -309,6 +309,8 @@ def register(app):
             if time.monotonic() - started > 45:  # leave the rest for the next run
                 break
             results.append({"connection": conn["id"], "result": run_sync(conn)})
+        import recurring
+        recurring_raised = recurring.run_due()
         import documents
         reminders = documents.send_due_reminders()
         import webhooks
@@ -328,4 +330,4 @@ def register(app):
         return jsonify(synced=len(results), results=results, reminders=reminders, webhooks=delivered,
                        assistant_conversations_deleted=assistant.purge(), quiet_deals=notify_quiet(),
                        companies_checked=companies_house.refresh_due(), recycle_bin_emptied=recycle.purge(),
-                       summaries_sent=summaries, chats_deleted=chats_deleted)
+                       summaries_sent=summaries, chats_deleted=chats_deleted, recurring_invoices=recurring_raised)

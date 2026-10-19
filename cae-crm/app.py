@@ -18,6 +18,8 @@ import auth
 import billing
 import campaigns
 import chat
+import payments
+import recurring
 import companies_house
 import crm
 import dataio
@@ -64,7 +66,7 @@ NAV = [
     ("Marketing", [("campaigns", "Email", "mail"), ("forms", "Forms", "list")]),
 ]
 # Everything about running the workspace sits behind one Settings link: (endpoint, label, admins only).
-SETTINGS_TABS = [("settings", "Business details", True), ("auth.team", "Team", False),
+SETTINGS_TABS = [("settings", "Business details", True), ("payment_settings", "Payments", True), ("auth.team", "Team", False),
                  ("assistant_settings", "AI assistant", True),
                  ("integrations", "Integrations", False), ("imports", "Import", True), ("billing", "Billing", True),
                  ("custom_fields_page", "Custom fields", True), ("tags_settings", "Tags", True),
@@ -77,22 +79,25 @@ SETTINGS_TABS = [("settings", "Business details", True), ("auth.team", "Team", F
 # Which nav item lights up for pages that aren't in the nav themselves.
 NAV_PARENT = {"contact": "contacts", "company": "companies", "deal": "pipeline", "ticket": "tickets",
               "invoice": "invoices", "quote": "quotes", "web_form": "forms",
-              "campaign": "campaigns"}
+              "campaign": "campaigns", "recurring_invoices": "invoices"}
 # Which settings tab lights up for pages inside one.
 SETTINGS_PARENT = {"auth.member": "auth.team", "auth.edit_member": "auth.team", "import_map": "imports",
                    "vat_return": "vat"}
 # Pages anyone can reach without signing in.
 PUBLIC_ENDPOINTS = {"landing", "favicon", "auth.login", "auth.signup", "auth.setup", "auth.forgot", "auth.reset",
                     "auth.two_factor_check", "static", "auth.verify_email", "auth.accept_invite", "survey", "summary_off", "help_index", "help_article", "chat_widget",
-                    "chat_page", "chat_message", "chat_handover",
+                    "chat_page", "chat_message", "chat_handover", "pay_invoice", "pay_invoice_pdf", "pay_by_card",
+                    "stripe_connect_webhook",
                     "public_form", "public_quote", "accept_quote", "decline_quote", "unsubscribe", "resend_webhook",
                     "stripe_webhook", "cron_sync", "workspace_logo", "public_quote_pdf", "legal", "legal_index"}
 TWO_FACTOR_SETUP_ALLOWED = {"auth.two_factor_setup", "auth.logout", "static", "favicon", "auth.verify_email"}
 # Forms embedded on other websites can't carry our session's CSRF token; they have their own spam checks.
 # Mail apps' one-click unsubscribe and Resend's webhooks post from elsewhere too; the webhook is signed.
 # The website chat runs in a frame on businesses' own sites, without cookies; each chat has its own secret token.
+# An invoice's payment page is opened from an email, so its Pay by card button has no session either; it only starts
+# a Stripe Checkout for what's owed.
 CSRF_EXEMPT = {"public_form", "unsubscribe", "resend_webhook", "stripe_webhook", "summary_off", "chat_message",
-               "chat_handover"}
+               "chat_handover", "pay_by_card", "stripe_connect_webhook"}
 
 
 def assistant_nav():
@@ -139,6 +144,10 @@ def create_app(config=None):
         STRIPE_PRICE_ID=os.environ.get("STRIPE_PRICE_ID", ""),
         STRIPE_WEBHOOK_SECRET=os.environ.get("STRIPE_WEBHOOK_SECRET", ""),
         STRIPE_TAX_RATE_ID=os.environ.get("STRIPE_TAX_RATE_ID", ""),
+        # Card payments on businesses' own invoices, through Stripe Connect: the platform's Connect client id and the
+        # signing secret of the webhook that listens to connected accounts. The same STRIPE_SECRET_KEY is used.
+        STRIPE_CONNECT_CLIENT_ID=os.environ.get("STRIPE_CONNECT_CLIENT_ID", ""),
+        STRIPE_CONNECT_WEBHOOK_SECRET=os.environ.get("STRIPE_CONNECT_WEBHOOK_SECRET", ""),
         SEAT_PRICE=int(os.environ.get("CAE_SEAT_PRICE") or 1500),
         TRIAL_DAYS=int(os.environ.get("CAE_TRIAL_DAYS") or 14),
         BILLING_EXEMPT=os.environ.get("CAE_BILLING_EXEMPT", ""),
@@ -256,7 +265,7 @@ def create_app(config=None):
     for module in (home, crm, sales, service, finance, quotes, webforms, campaigns, billing, integrations, xero, mtd,
                    documents, notifications, files, fields, workflows, webhooks, api, legal, dataio, settings, audit,
                    assistant, tags, duplicates, companies_house, recycle, support, digest, helpers,
-                   inbound, helpcentre, chat):
+                   inbound, helpcentre, chat, payments, recurring):
         module.register(app)
     return app
 

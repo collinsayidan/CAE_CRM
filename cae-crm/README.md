@@ -35,6 +35,7 @@ Open http://127.0.0.1:5000 and choose **Create a workspace**. Leave the sample d
    - `CAE_SETUP_CODE`: an invite code of your choosing. People need it to create a workspace.
    - `RESEND_API_KEY`, `CAE_MAIL_FROM` and optionally `RESEND_WEBHOOK_SECRET`: to send email. See **Email** below.
    - The `STRIPE_…` settings and `CAE_BILLING_EXEMPT`: to charge for CAE CRM. See **Billing** below.
+   - `STRIPE_CONNECT_CLIENT_ID` and `STRIPE_CONNECT_WEBHOOK_SECRET`: to let businesses take card payments on their invoices. See **Getting paid** below.
    - The integration settings and `CRON_SECRET`: for Gmail, Outlook, Xero and HMRC. See **Integrations** below.
    - Optionally `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` and `CAE_STORAGE_BUCKET`: to keep attached files in a private Supabase Storage bucket rather than the database. See **Files and custom fields** below.
 4. **Redeploy.** Then open the site and create your workspace.
@@ -66,6 +67,20 @@ Without `STRIPE_SECRET_KEY`, billing is off and every workspace has full access.
 3. Under **Developers → Webhooks**, add `https://<your site>/webhooks/stripe` for `checkout.session.completed` and `customer.subscription.created`, `.updated` and `.deleted`. Copy the signing secret to `STRIPE_WEBHOOK_SECRET`.
 4. Turn on the **customer portal** (Settings → Billing → Customer portal) so customers can update cards, see invoices and cancel.
 5. Add `STRIPE_SECRET_KEY` (start with a `sk_test_…` key), set `CAE_BILLING_EXEMPT` to your own workspace's id, and redeploy.
+
+## Getting paid
+
+Each invoice has a private payment page (`/pay/<token>`) showing what's left to pay, the bank details and the PDF. Invoice emails, reminders and PDFs link to it.
+
+- **Card payments** use [Stripe Connect](https://docs.stripe.com/connect/oauth-standard-accounts). Each business clicks **Connect Stripe** under Settings, Payments and signs in to its own Stripe account; CAE CRM keeps only the account id. The payment page then opens Stripe Checkout on that account, so the money goes straight to the business and Stripe's fees are theirs. The payment is recorded on the invoice when the customer comes back, and by the webhook, once either way. To set it up once:
+  1. In Stripe, open **Settings → Connect**, choose to build a platform, and under **Onboarding options → OAuth** turn on OAuth for Standard accounts. Add `https://<your site>/settings/payments/stripe/return` as a redirect URI, and copy the `ca_…` client id to `STRIPE_CONNECT_CLIENT_ID`.
+  2. Under **Developers → Webhooks**, add an endpoint that listens to **events on connected accounts**: `https://<your site>/webhooks/stripe-connect`, for `checkout.session.completed`, `checkout.session.async_payment_succeeded` and `account.application.deauthorized`. Copy its signing secret to `STRIPE_CONNECT_WEBHOOK_SECRET`.
+  3. `STRIPE_SECRET_KEY` is the same key billing uses. Redeploy.
+- **Part payments:** **Record payment** on an invoice (bank transfer, card, cash, cheque or other). It's marked paid once nothing is left, and aged debt counts only what's left. Admins can remove a payment entered by mistake.
+- **Credit notes** (CN-0001, CN-0002…) against an invoice, for some or all of it, with a reason and a PDF. The VAT is credited in the same proportion as the invoice and comes off the VAT quarter's total.
+- **Recurring invoices** (Invoices, Recurring): monthly, quarterly or yearly, raised by the daily cron job and emailed to the chosen contact with the PDF attached. The owner is notified each time. A schedule on the 31st uses the last day of shorter months, and a paused one carries on from its next date rather than catching up.
+- **Reminders:** besides 3, 14 and 30 days late, one goes 3 days before the due date (admins can switch it off). Admins can change the wording of each under Settings, Payments, with `{first_name}`, `{number}`, `{amount_due}`, `{due_date}`, `{days_late}` and `{business}`.
+- **Late payment charges:** overdue invoices show the interest (8% over the Bank of England reference rate, a day at a time) and fixed compensation (£40, £70 or £100) that the Late Payment of Commercial Debts (Interest) Act 1998 allows, and **Add late payment charges** adds them to the invoice without VAT. The reference rate is a setting (default 3.75%); check it each January and July.
 
 ## Integrations
 
@@ -344,6 +359,8 @@ helpers.py    AI helpers: summaries, briefings, draft replies and ticket triage
 inbound.py    email-to-ticket: receiving customers' emails into tickets
 helpcentre.py help articles and their public pages
 chat.py       the website chatbot: the embed script, chat page, answers and handover to a ticket
+payments.py   part payments, credit notes, late payment charges, payment pages and Stripe Connect
+recurring.py  recurring invoices
 db.py         schema, migrations, SQLite/PostgreSQL connection wrapper
 seed.py       sample data for a new workspace
 ukfmt.py      GBP, dates, VAT, postcodes, phone numbers, working hours, financial year

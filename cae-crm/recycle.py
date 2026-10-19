@@ -32,7 +32,7 @@ DEPENDENTS = {
     "contacts": [("engagements", "contact_id", "cascade", None), ("form_submissions", "contact_id", "cascade", None),
                  ("campaign_recipients", "contact_id", "cascade", None), ("deals", "contact_id", "unlink", None),
                  ("activities", "contact_id", "unlink", None), ("tickets", "contact_id", "unlink", None),
-                 ("quotes", "contact_id", "unlink", None)],
+                 ("quotes", "contact_id", "unlink", None), ("recurring_invoices", "contact_id", "unlink", None)],
     "tickets": [("engagements", "ticket_id", "cascade", None)],
     "quotes": [("quote_lines", "quote_id", "cascade", None)],
 }

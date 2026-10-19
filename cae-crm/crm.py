@@ -611,6 +611,8 @@ def delete_company_records(company_id):
     """Delete a company, keeping its people as contacts. Returns a reason if it must be kept."""
     if scalar("SELECT COUNT(*) FROM invoices WHERE workspace_id=? AND company_id=?", ws(), company_id):
         return "This company has invoices, which UK law requires you to keep for 6 years, so it can't be deleted."
+    if scalar("SELECT COUNT(*) FROM recurring_invoices WHERE workspace_id=? AND company_id=?", ws(), company_id):
+        return "This company has a recurring invoice. Stop it under Invoices, Recurring, then delete the company."
     # To the recycle bin. Its people stay as contacts without a company, and notes also on a person's timeline stay.
     import recycle
     recycle.delete("companies", company_id)

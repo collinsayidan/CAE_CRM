@@ -44,11 +44,13 @@ FIELDS = {
     "tickets": ["id", "subject", "description", "status", "priority", "category", "source", "owner", "company_id",
                 "contact_id", "created_at", "first_response_due", "resolution_due", "first_responded_at", "closed_at"],
     "invoices": ["id", "number", "company_id", "deal_id", "description", "net", "vat", "issue_date", "due_date",
-                 "paid_date", "sent_at"],
+                 "paid_date", "sent_at", "amount_paid", "credited", "late_interest", "late_compensation"],
     "quotes": ["id", "number", "title", "deal_id", "company_id", "contact_id", "status", "net", "vat", "issue_date",
                "expiry_date", "decided_at", "signer_name"],
 }
-RENAMED = {"value": "value_pence", "net": "net_pence", "vat": "vat_pence"}
+RENAMED = {"value": "value_pence", "net": "net_pence", "vat": "vat_pence", "amount_paid": "paid_pence",
+           "credited": "credited_pence", "late_interest": "late_interest_pence",
+           "late_compensation": "late_compensation_pence"}
 PAGES = {"contacts": "contact", "companies": "company", "deals": "deal", "tickets": "ticket", "invoices": "invoice",
          "quotes": "quote"}
 ARGS = {"contacts": "contact_id", "companies": "company_id", "deals": "deal_id", "tickets": "ticket_id",
@@ -109,6 +111,8 @@ def serialise(obj, row):
     if obj in ("invoices", "quotes"):
         out["gross_pence"] = row["net"] + row["vat"]
     if obj == "invoices":
+        from payments import balance
+        out["balance_pence"] = balance(row)
         out["status"] = ("Paid" if row["paid_date"] else
                          "Overdue" if row["due_date"] < today().isoformat() else "Due")
     custom = custom_out(obj, row)

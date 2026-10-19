@@ -1,0 +1,51 @@
+{% extends "public/_layout.html" %}
+{% block title %}Invoice {{ i.number }}{% endblock %}
+{% block head_actions %}<a class="btn ghost sm" href="{{ url_for('pay_invoice_pdf', token=token) }}">Download PDF</a>{% endblock %}
+{% block main_class %}is-narrow{% endblock %}
+
+{% block content %}
+{% if notice %}<div class="public-banner {{ 'ok' if 'Thank you' in notice else '' }}" role="status">{{ notice }}</div>{% endif %}
+{% if i.paid_date %}<div class="public-banner ok" role="status"><b>Paid in full on {{ i.paid_date | uk_date }}.</b> Thank you.</div>{% endif %}
+
+<section class="panel public-form-card pay-card">
+  <p class="muted small">Invoice from {{ business.legal_name or business.name }} to {{ company.name }}</p>
+  <h1>Invoice {{ i.number }}</h1>
+  <dl class="facts tight">
+    <dt>Issued</dt><dd>{{ i.issue_date | uk_date }}</dd>
+    <dt>Due</dt><dd>{{ i.due_date | uk_date }}</dd>
+    <dt>For</dt><dd>{{ i.description }}</dd>
+  </dl>
+  <table class="pay-totals">
+    <tbody>
+      <tr><td>Total including VAT</td><td class="num">{{ gbp(total) }}</td></tr>
+      {% if late %}<tr><td>Late payment interest and compensation</td><td class="num">{{ gbp(late) }}</td></tr>{% endif %}
+      {% for c in credits %}<tr><td>Credit note {{ c.number }}</td><td class="num">−{{ gbp(c.net + c.vat) }}</td></tr>{% endfor %}
+      {% for p in payments %}<tr><td>Paid {{ p.paid_on | uk_date }}</td><td class="num">−{{ gbp(p.amount) }}</td></tr>{% endfor %}
+    </tbody>
+    <tfoot><tr><td>Left to pay</td><td class="num">{{ gbp([left, 0] | max) }}</td></tr></tfoot>
+  </table>
+
+  {% if not i.paid_date and left > 0 %}
+    {% if card %}
+      <form method="post" action="{{ url_for('pay_by_card', token=token) }}" class="pay-action">
+        <button class="btn primary">Pay {{ gbp(left) }} by card</button>
+        <p class="small muted">You'll pay on a secure Stripe page. {{ business.name }} receives the payment directly.</p>
+      </form>
+    {% elif business.payment_link %}
+      <p class="pay-action"><a class="btn primary" href="{{ business.payment_link }}" rel="noopener">Pay online</a></p>
+    {% endif %}
+    {% if business.bank_account_number %}
+      <div class="pay-bank">
+        <h2>{{ 'Or pay' if card or business.payment_link else 'Pay' }} by bank transfer</h2>
+        <dl class="facts tight">
+          <dt>Account name</dt><dd>{{ business.bank_account_name or business.legal_name or business.name }}</dd>
+          <dt>Sort code</dt><dd>{{ business.bank_sort_code }}</dd>
+          <dt>Account number</dt><dd>{{ business.bank_account_number }}</dd>
+          <dt>Reference</dt><dd>{{ i.number }}</dd>
+        </dl>
+      </div>
+    {% endif %}
+  {% endif %}
+  <p class="small muted">Questions about this invoice? Reply to the email it came with{% if business.reply_to %} or write to {{ business.reply_to }}{% endif %}.</p>
+</section>
+{% endblock %}

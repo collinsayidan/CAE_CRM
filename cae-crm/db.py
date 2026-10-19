@@ -83,6 +83,12 @@ CREATE TABLE IF NOT EXISTS workspaces (
     chat_greeting TEXT,
     chat_owner TEXT,
     chat_daily_cap INTEGER NOT NULL DEFAULT 300,
+    stripe_account_id TEXT,
+    stripe_account_name TEXT,
+    stripe_connected_at TEXT,
+    stripe_connected_by TEXT,
+    remind_before INTEGER NOT NULL DEFAULT 1,
+    late_rate_bp INTEGER NOT NULL DEFAULT 375,
     ai_enabled INTEGER NOT NULL DEFAULT 0,
     ai_enabled_at TEXT,
     ai_enabled_by TEXT
@@ -205,6 +211,13 @@ CREATE TABLE IF NOT EXISTS invoices (
     xero_invoice_id TEXT,
     sent_at TEXT,
     sent_to TEXT,
+    pay_token TEXT,
+    amount_paid BIGINT NOT NULL DEFAULT 0,
+    credited BIGINT NOT NULL DEFAULT 0,
+    late_interest BIGINT NOT NULL DEFAULT 0,
+    late_compensation BIGINT NOT NULL DEFAULT 0,
+    late_charged_on TEXT,
+    recurring_id INTEGER,
     UNIQUE (workspace_id, number)
 );
 CREATE TABLE IF NOT EXISTS invoice_lines (
@@ -478,6 +491,56 @@ CREATE TABLE IF NOT EXISTS audit_events (
     summary TEXT,
     ip TEXT,
     created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS invoice_payments (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    invoice_id INTEGER NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+    amount BIGINT NOT NULL,
+    paid_on TEXT NOT NULL,
+    method TEXT NOT NULL,
+    reference TEXT,
+    stripe_session TEXT UNIQUE,
+    recorded_by TEXT,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS credit_notes (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    invoice_id INTEGER NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+    number TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    net BIGINT NOT NULL,
+    vat BIGINT NOT NULL,
+    issue_date TEXT NOT NULL,
+    created_by TEXT,
+    UNIQUE (workspace_id, number)
+);
+CREATE TABLE IF NOT EXISTS recurring_invoices (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    contact_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL,
+    description TEXT NOT NULL,
+    lines TEXT NOT NULL,
+    frequency TEXT NOT NULL,
+    anchor_day INTEGER NOT NULL,
+    next_date TEXT NOT NULL,
+    end_date TEXT,
+    active INTEGER NOT NULL DEFAULT 1,
+    owner TEXT,
+    created_by TEXT,
+    created_at TEXT NOT NULL,
+    last_invoice_id INTEGER REFERENCES invoices(id) ON DELETE SET NULL,
+    last_error TEXT
+);
+CREATE TABLE IF NOT EXISTS reminder_templates (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    stage INTEGER NOT NULL,
+    subject TEXT NOT NULL,
+    body TEXT NOT NULL,
+    UNIQUE (workspace_id, stage)
 );
 CREATE TABLE IF NOT EXISTS invoice_reminders (
     id {pk},
@@ -754,12 +817,17 @@ ADDED_COLUMNS = {
                    "bank_holiday_region TEXT NOT NULL DEFAULT 'england-and-wales'", "csat_on INTEGER NOT NULL DEFAULT 0",
                    "inbound_on INTEGER NOT NULL DEFAULT 0", "inbound_owner TEXT", "inbound_token TEXT",
                    "site_token TEXT", "chat_on INTEGER NOT NULL DEFAULT 0", "chat_domains TEXT", "chat_greeting TEXT",
-                   "chat_owner TEXT", "chat_daily_cap INTEGER NOT NULL DEFAULT 300"],
+                   "chat_owner TEXT", "chat_daily_cap INTEGER NOT NULL DEFAULT 300", "stripe_account_id TEXT",
+                   "stripe_account_name TEXT", "stripe_connected_at TEXT", "stripe_connected_by TEXT",
+                   "remind_before INTEGER NOT NULL DEFAULT 1", "late_rate_bp INTEGER NOT NULL DEFAULT 375"],
     "deals": ["workspace_id INTEGER", "contact_id INTEGER", "custom TEXT", "outcome_reason TEXT", "outcome_note TEXT",
               "quiet_since TEXT"],
     "tickets": ["custom TEXT"],
     "activities": ["workspace_id INTEGER", "contact_id INTEGER", "ticket_id INTEGER"],
-    "invoices": ["workspace_id INTEGER", "deal_id INTEGER", "xero_invoice_id TEXT", "sent_at TEXT", "sent_to TEXT"],
+    "invoices": ["workspace_id INTEGER", "deal_id INTEGER", "xero_invoice_id TEXT", "sent_at TEXT", "sent_to TEXT",
+                 "pay_token TEXT", "amount_paid BIGINT NOT NULL DEFAULT 0", "credited BIGINT NOT NULL DEFAULT 0",
+                 "late_interest BIGINT NOT NULL DEFAULT 0", "late_compensation BIGINT NOT NULL DEFAULT 0",
+                 "late_charged_on TEXT", "recurring_id INTEGER"],
     "projects": ["workspace_id INTEGER"],
 }
 # Run once, when a column is first added to an existing database.
@@ -938,6 +1006,11 @@ def migrate(db, today):
         "CREATE INDEX IF NOT EXISTS ix_ai_messages_conversation ON ai_messages (conversation_id, id)",
         "CREATE UNIQUE INDEX IF NOT EXISTS ux_workspaces_inbound ON workspaces (inbound_token)",
         "CREATE UNIQUE INDEX IF NOT EXISTS ux_workspaces_site ON workspaces (site_token)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS ux_invoices_pay ON invoices (pay_token)",
+        "CREATE INDEX IF NOT EXISTS ix_workspaces_stripe ON workspaces (stripe_account_id)",
+        "CREATE INDEX IF NOT EXISTS ix_payments_invoice ON invoice_payments (workspace_id, invoice_id)",
+        "CREATE INDEX IF NOT EXISTS ix_credit_notes_invoice ON credit_notes (workspace_id, invoice_id)",
+        "CREATE INDEX IF NOT EXISTS ix_recurring_due ON recurring_invoices (active, next_date)",
         "CREATE INDEX IF NOT EXISTS ix_chat_messages_ws ON chat_messages (workspace_id, role, created_at)",
         "CREATE INDEX IF NOT EXISTS ix_chat_sessions_visitor ON chat_sessions (workspace_id, visitor)",
         "CREATE INDEX IF NOT EXISTS ix_inbound_sender ON inbound_emails (workspace_id, sender, created_at)",

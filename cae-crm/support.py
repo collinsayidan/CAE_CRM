@@ -123,9 +123,12 @@ def register(app):
             return back
         w = workspace()
         footer = f"You're getting this because you contacted {w['name']} about request #{t['id']}. Reply to this email to answer."
+        import inbound  # with email-to-ticket on, the customer's reply comes back to this ticket
+        if "[#" not in subject:
+            subject = f"{subject} [#{t['id']}]"
         try:
             mail.send(mail.message(contact["email"], subject, email_html(w, paragraphs(body), footer),
-                                   f"{body}\n\n--\n{footer}\n", w["name"], w["reply_to"],
+                                   f"{body}\n\n--\n{footer}\n", w["name"], inbound.reply_to_for(t),
                                    headers={"X-CAE-Ticket": str(t["id"])}))
         except mail.MailError as e:
             flash(f"Reply not sent. {e}", "error")

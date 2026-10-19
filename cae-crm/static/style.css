@@ -1688,3 +1688,8 @@ a.tag:hover, .tag a:hover { text-decoration: underline; }
 .ai-output .ai-msg { max-width: none; }
 .triage-card { max-width: none; margin-top: 16px; }
 .triage-ask, .draft-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 16px 0 0; }
+
+/* Support email ------------------------------------------------------------------------------------------------- */
+.inbound-address code { display: inline-block; padding: 8px 12px; border-radius: var(--r-md); background: var(--surface-2); border: 1px solid var(--line); font-size: 14px; word-break: break-all; }
+.narrow-field { max-width: 360px; margin-top: 14px; }
+.panel-head.pad { padding: 16px 20px 0; }

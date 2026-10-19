@@ -313,6 +313,14 @@ def register(app):
             abort(401)
         event = json.loads(body or b"{}")
         kind, data = event.get("type", ""), event.get("data") or {}
+        if kind == "email.received":  # a customer's email to a support address (inbound.py)
+            import inbound
+            try:
+                current_app.logger.info("Inbound email: %s", inbound.receive(data))
+            except inbound.InboundError as e:
+                current_app.logger.warning("Inbound email not handled yet: %s", e)
+                return "", 503  # Resend tries again later
+            return "", 204
         r = one("SELECT * FROM campaign_recipients WHERE provider_id=?", data.get("email_id") or "-")
         if r is None:
             return "", 204  # not a campaign email (a quote or a test), nothing to record

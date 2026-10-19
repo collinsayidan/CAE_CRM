@@ -48,6 +48,9 @@ LABELS = {
     "test_webhook": "Sent a test webhook",
     "assistant_settings": "Turned the AI assistant on or off", "assistant_delete": "Deleted an assistant conversation",
     "assistant_delete_all": "Deleted all their assistant conversations",
+    "auth.accept_invite": "Accepted their invite and signed in", "auth.resend_invite": "Sent an invite again",
+    "auth.resend_verification": "Asked for a new email confirmation link", "auth.end_session": "Signed out a device",
+    "auth.end_other_sessions": "Signed out everywhere else",
     "companies_house_refresh": "Updated a company from Companies House",
     "restore_from_bin": "Restored a record from the recycle bin", "delete_from_bin": "Deleted a record permanently",
     "merge_duplicates": "Merged duplicate records", "dismiss_duplicates": "Marked two records as not duplicates",
@@ -58,7 +61,7 @@ LABELS = {
 # Asking the assistant changes no records, and a confirmed suggestion is recorded by the page it's passed on to.
 SKIP = {"auth.logout", "oauth_sync", "campaign_deliver", "auth.forgot", "assistant_ask", "assistant_confirm"}
 # Pages that sign someone in: the person comes from the new session, not from before the request.
-SIGN_IN_ENDPOINTS = {"auth.login", "auth.reset", "auth.signup", "auth.two_factor_check"}
+SIGN_IN_ENDPOINTS = {"auth.login", "auth.reset", "auth.signup", "auth.two_factor_check", "auth.accept_invite"}
 # How to name the record a change was about: URL argument -> (type, SQL for a name, or None to record a number only).
 TARGETS = {
     "company_id": ("Company", "SELECT name FROM companies WHERE id=? AND workspace_id=?"),

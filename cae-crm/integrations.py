@@ -314,6 +314,8 @@ def register(app):
         import webhooks
         delivered = webhooks.retry_due(budget=20)
         import assistant
+        import security
+        security.purge()
         from sales import notify_quiet
         import companies_house
         import recycle

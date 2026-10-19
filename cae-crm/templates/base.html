@@ -96,6 +96,12 @@
         <a class="plan-banner" href="{{ url_for('billing') }}"><b>{{ billing.days_left }} {{ 'day' if billing.days_left == 1 else 'days' }} left in your free trial.</b> Subscribe to keep everything running &rarr;</a>
       {% endif %}
     {% endif %}
+    {% if needs_verify %}
+      <div class="plan-banner verify-banner" role="status">
+        <span><b>Confirm your email address.</b> We sent a link to {{ current_user.email }}. Until then you can't send emails or invite your team.</span>
+        <form method="post" action="{{ url_for('auth.resend_verification') }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="text-link sm">Send a new link</button></form>
+      </div>
+    {% endif %}
     <main id="content">
       {% if settings_active in (settings_tabs | map(attribute=0) | list) %}
         <nav class="settings-tabs" aria-label="Settings">

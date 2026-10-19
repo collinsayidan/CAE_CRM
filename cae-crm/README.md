@@ -17,10 +17,13 @@ Open http://127.0.0.1:5000 and choose **Create a workspace**. Leave the sample d
 ## Workspaces and accounts
 
 - **Sign-up:** whoever creates a workspace becomes its first **admin**. Set `CAE_SETUP_CODE` and sign-up asks for that code, so only people you invite can open a workspace.
-- **Teams:** admins add people from **Team** with a temporary password, and can reset passwords, change roles or remove people.
+- **Teams:** admins invite people from **Team**. With email set up, the colleague gets a link (valid 7 days) to choose their own password; without it, the admin sets a temporary password to share. Admins can resend or cancel invites, reset passwords, change roles or remove people.
+- **Confirming email:** whoever signs up gets a link to confirm their email address. Until they do, they can use the CRM but can't send emails (campaigns, invoices, reminders, quotes) or invite colleagues, and a banner offers a new link. Accepting an invite or resetting a password also confirms the address. People who signed up before this existed count as confirmed.
 - **Roles:** members do the everyday work. Only admins can change settings, manage the team, import, export lists, delete records or erase a contact's personal data.
 - **Separation:** every record carries its workspace. Every query is filtered by it, and links between records are checked against it, so one business can't read or reference another's data. `tests/test_isolation.py` checks this page by page.
-- **Passwords:** at least 10 characters, stored as scrypt hashes. After 5 wrong attempts an account locks for 15 minutes. Sign-ins last 12 hours, and session cookies are HTTP-only, SameSite=Lax and Secure when hosted.
+- **Passwords:** at least 10 characters, stored as scrypt hashes, and checked against Have I Been Pwned's breach data (only the first 5 characters of a SHA-1 hash are sent; if the service is down the password is allowed; `CAE_BREACH_CHECK=0` turns it off). After 5 wrong attempts an account locks for 15 minutes, and after 20 failed sign-ins in 15 minutes an IP address has to wait.
+- **Sessions:** each sign-in is recorded on the server. **Profile and password** lists where you're signed in, with **Sign out** for each device and **Sign out everywhere else**. Signing out, changing your password, or an admin resetting it ends sessions for real. A sign-in ends after 12 hours unused. Session cookies are HTTP-only, SameSite=Lax and Secure when hosted.
+- **New sign-in alerts:** a sign-in from a browser the person hasn't used before (recognised by the `cae_device` cookie) sends them an email with the device, IP address and time.
 
 ## Deploy to Vercel
 
@@ -282,6 +285,7 @@ To run every test against PostgreSQL as well, point `CAE_TEST_POSTGRES_URL` at a
 app.py        app factory, navigation, filters and request guard
 core.py       workspace-scoped query helpers, timeline logging, service-level states
 auth.py       sign-up, sign-in, team and password management
+security.py   email confirmation, invites, sessions and devices, sign-in limits, breached-password check
 home.py       landing page, Home dashboard, search and Reports
 crm.py        contacts, companies, deal pages, timeline, list views and bulk actions
 sales.py      deals board, line items, products, tasks and projects

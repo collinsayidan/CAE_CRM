@@ -1,0 +1,21 @@
+{% extends "auth/_layout.html" %}
+{% from "_macros.html" import field %}
+{% block title %}{{ 'Invite expired' if invalid else 'Join ' ~ w.name }}{% endblock %}
+{% block content %}
+{% if invalid %}
+  <h1>This invite has expired</h1>
+  <p class="auth-lede">Invite links last 7 days and work once. Ask whoever invited you to send a new one. If you've already joined, sign in instead.</p>
+  <a class="btn primary wide" href="{{ url_for('auth.login') }}">Sign in</a>
+{% else %}
+  {% if logo %}<img class="invite-logo" src="{{ logo }}" alt="{{ w.name }}">{% endif %}
+  <h1>Join {{ w.name }}</h1>
+  <p class="auth-lede">{{ person.invited_by or 'Your team' }} invited you to {{ w.name }} on CAE CRM. Choose a password to finish setting up your account for {{ person.email }}.</p>
+  <form method="post" class="auth-form" novalidate>
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    {{ field('Choose a password', 'password', type='password', errors=errors, required=true, hint='At least 10 characters. A few unrelated words works well.', extra='autocomplete=new-password autofocus') }}
+    {{ field('Confirm password', 'confirm', type='password', required=true, extra='autocomplete=new-password') }}
+    <button class="btn primary wide">Join {{ w.name }}</button>
+  </form>
+  <p class="auth-note">By joining, you'll use CAE CRM under {{ w.name }}'s agreement with us. See our <a href="{{ url_for('legal', doc='privacy') }}">privacy notice</a>.</p>
+{% endif %}
+{% endblock %}

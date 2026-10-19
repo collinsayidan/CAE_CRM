@@ -97,7 +97,12 @@ CREATE TABLE IF NOT EXISTS users (
     totp_secret TEXT,
     totp_enabled_at TEXT,
     totp_last_step INTEGER,
-    recovery_codes TEXT
+    recovery_codes TEXT,
+    email_verified_at TEXT,
+    verify_sent_at TEXT,
+    invited_at TEXT,
+    invited_by TEXT,
+    invite_accepted_at TEXT
 );
 CREATE TABLE IF NOT EXISTS companies (
     id {pk},
@@ -426,6 +431,29 @@ CREATE TABLE IF NOT EXISTS password_resets (
     ip TEXT,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS user_sessions (
+    id {pk},
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL UNIQUE,
+    device_id TEXT,
+    ip TEXT,
+    user_agent TEXT,
+    created_at TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS known_devices (
+    id {pk},
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    device_id TEXT NOT NULL,
+    first_seen_at TEXT NOT NULL,
+    UNIQUE (user_id, device_id)
+);
+CREATE TABLE IF NOT EXISTS sign_in_failures (
+    id {pk},
+    ip TEXT,
+    created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS audit_events (
     id {pk},
     workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -605,7 +633,8 @@ CREATE TABLE IF NOT EXISTS ai_usage (
 ADDED_COLUMNS = {
     "users": ["workspace_id INTEGER", "job_title TEXT", "department TEXT", "phone TEXT", "location TEXT",
               "linkedin TEXT", "bio TEXT", "photo TEXT", "photo_updated TEXT", "totp_secret TEXT", "totp_enabled_at TEXT",
-              "totp_last_step INTEGER", "recovery_codes TEXT"],
+              "totp_last_step INTEGER", "recovery_codes TEXT", "email_verified_at TEXT", "verify_sent_at TEXT",
+              "invited_at TEXT", "invited_by TEXT", "invite_accepted_at TEXT"],
     "companies": ["workspace_id INTEGER", "website TEXT", "phone TEXT", "owner TEXT", "custom TEXT", "ch_status TEXT",
                   "ch_sic TEXT", "ch_checked_at TEXT"],
     "contacts": ["workspace_id INTEGER", "lifecycle_stage TEXT", "lead_status TEXT", "owner TEXT", "unsubscribed_at TEXT",
@@ -624,6 +653,11 @@ ADDED_COLUMNS = {
     "activities": ["workspace_id INTEGER", "contact_id INTEGER", "ticket_id INTEGER"],
     "invoices": ["workspace_id INTEGER", "deal_id INTEGER", "xero_invoice_id TEXT", "sent_at TEXT", "sent_to TEXT"],
     "projects": ["workspace_id INTEGER"],
+}
+# Run once, when a column is first added to an existing database.
+BACKFILL = {
+    # People who signed up before email confirmation existed aren't asked to confirm now.
+    ("users", "email_verified_at"): "UPDATE users SET email_verified_at=created_at",
 }
 SCOPED_TABLES = ["users", "companies", "contacts", "deals", "activities", "invoices", "projects"]
 
@@ -750,6 +784,8 @@ def migrate(db, today):
         for col in cols:
             if col.split()[0] not in existing[table]:
                 db.execute(f"ALTER TABLE {table} ADD COLUMN {col}")
+                if (table, col.split()[0]) in BACKFILL:
+                    db.execute(BACKFILL[table, col.split()[0]])
     if upgrading:
         # Before the new tables exist, so renaming invoices can't rewrite their references.
         _relax_v1_constraints(db)
@@ -785,6 +821,8 @@ def migrate(db, today):
         "CREATE INDEX IF NOT EXISTS ix_deliveries_due ON webhook_deliveries (status, next_attempt_at)",
         "CREATE INDEX IF NOT EXISTS ix_deliveries_hook ON webhook_deliveries (webhook_id, id)",
         "CREATE INDEX IF NOT EXISTS ix_workflow_trigger ON workflow_rules (workspace_id, on_event)",
+        "CREATE INDEX IF NOT EXISTS ix_user_sessions_user ON user_sessions (user_id, last_seen_at)",
+        "CREATE INDEX IF NOT EXISTS ix_sign_in_failures_ip ON sign_in_failures (ip, created_at)",
         "CREATE INDEX IF NOT EXISTS ix_ai_conversations_user ON ai_conversations (user_id, updated_at)",
         "CREATE UNIQUE INDEX IF NOT EXISTS ux_tags_name ON tags (workspace_id, name)",
         "CREATE INDEX IF NOT EXISTS ix_record_tags_record ON record_tags (workspace_id, record_type, record_id)",

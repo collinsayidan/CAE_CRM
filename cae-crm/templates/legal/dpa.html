@@ -71,7 +71,7 @@
 <h2 id="security">Schedule 2: Security measures</h2>
 <ul>
   <li><b>Encryption:</b> all connections use HTTPS. Tokens for connected services (Gmail, Outlook, Xero, HMRC) are encrypted in the database.</li>
-  <li><b>Signing in:</b> passwords are stored as salted scrypt hashes. Accounts lock for 15 minutes after 5 failed sign-ins. Admins must use two-factor sign-in. Sessions end after 12 hours.</li>
+  <li><b>Signing in:</b> passwords are stored as salted scrypt hashes, and new ones are checked against known breached passwords. Accounts lock for 15 minutes after 5 failed sign-ins, and a network is paused after 20 failures in 15 minutes. Admins must use two-factor sign-in. Sessions end after 12 hours unused, and people can see and end their sessions. Sign-ins from a new browser are emailed to the person.</li>
   <li><b>Keeping businesses apart:</b> every query is limited to the signed-in workspace, and this is covered by automated tests. Row-level security is on for every database table, so the database provider's public interface can't read them.</li>
   <li><b>API and webhooks:</b> API keys are stored only as hashes, can be limited to reading, and are rate-limited. Webhooks are signed, go only to public HTTPS addresses, and don't follow redirects.</li>
   <li><b>Files:</b> attachments are kept in a private storage bucket and downloaded through links that expire after a minute, or in the database where no bucket is set up. File types that could run code are refused.</li>

@@ -18,7 +18,8 @@ WRITING_STATUSES = {"active", "past_due"}
 # What a read-only workspace can still do: sign out, manage its own sign-in, pay, and meet UK GDPR duties.
 ALWAYS_ALLOWED = {"auth.logout", "auth.account", "auth.account_profile", "billing", "billing_checkout", "billing_portal",
                   "billing_return", "erase_contact", "oauth_disconnect", "static", "assistant_settings", "assistant_delete",
-                  "assistant_delete_all", "delete_from_bin"}
+                  "assistant_delete_all", "auth.end_session", "auth.end_other_sessions", "auth.resend_verification",
+                  "delete_from_bin"}
 
 
 def trial_days():

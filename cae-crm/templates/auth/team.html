@@ -20,7 +20,14 @@
       <p class="record-chips">
         {% if u.role == 'admin' %}<span class="chip ok">Admin</span>{% else %}<span class="chip">Member</span>{% endif %}
         {% if current_user.role == 'admin' and u.locked_until and u.locked_until > now %}<span class="chip bad">Locked</span>{% endif %}
+        {% if u.invited_at and not u.invite_accepted_at %}<span class="chip status-waiting-on-us" title="Invited {{ u.invited_at | uk_date }}">Invited, not joined yet</span>{% endif %}
       </p>
+      {% if current_user.role == 'admin' and u.invited_at and not u.invite_accepted_at %}
+        <div class="team-card-invite">
+          <form method="post" action="{{ url_for('auth.resend_invite', user_id=u.id) }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="text-link sm">Resend invite</button></form>
+          <form method="post" action="{{ url_for('auth.remove_user', user_id=u.id) }}" data-confirm="Cancel the invite for {{ u.name }}?"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="text-link sm">Cancel invite</button></form>
+        </div>
+      {% endif %}
       <div class="team-card-contact">
         <a href="mailto:{{ u.email }}" title="Email {{ u.name }}">{{ icon('mail') }}<span>{{ u.email }}</span></a>
         {% if u.phone %}<a href="tel:{{ u.phone | replace(' ', '') }}" title="Call {{ u.name }}">{{ icon('phone') }}<span>{{ u.phone }}</span></a>{% endif %}
@@ -39,10 +46,13 @@
       {{ field('Name', 'name', form.name, errors=errors, required=true) }}
       {{ field('Email', 'email', form.email, type='email', errors=errors, required=true) }}
       {{ field('Job title', 'job_title', form.job_title, errors=errors, placeholder='Account manager', extra='maxlength=80') }}
+      {% if not inviting %}
       {{ field('Temporary password', 'password', type='password', errors=errors, required=true, hint='Share it with them directly. They can change it from Profile and password.', extra='autocomplete=new-password') }}
+      {% endif %}
       {{ select('Role', 'role', ['Member', 'Admin'], form.role or 'member', values=roles | reverse | list) }}
     </div>
-    <footer><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Add team member</button></footer>
+    {% if inviting %}<p class="form-hint">We'll email them a link to choose their own password. It lasts 7 days.</p>{% endif %}
+    <footer><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">{{ 'Send invite' if inviting else 'Add team member' }}</button></footer>
   </form>
 </dialog>
 {% endif %}

@@ -75,10 +75,10 @@ SETTINGS_PARENT = {"auth.member": "auth.team", "auth.edit_member": "auth.team", 
                    "vat_return": "vat"}
 # Pages anyone can reach without signing in.
 PUBLIC_ENDPOINTS = {"landing", "favicon", "auth.login", "auth.signup", "auth.setup", "auth.forgot", "auth.reset",
-                    "auth.two_factor_check", "static",
+                    "auth.two_factor_check", "static", "auth.verify_email", "auth.accept_invite",
                     "public_form", "public_quote", "accept_quote", "decline_quote", "unsubscribe", "resend_webhook",
                     "stripe_webhook", "cron_sync", "workspace_logo", "public_quote_pdf", "legal", "legal_index"}
-TWO_FACTOR_SETUP_ALLOWED = {"auth.two_factor_setup", "auth.logout", "static", "favicon"}
+TWO_FACTOR_SETUP_ALLOWED = {"auth.two_factor_setup", "auth.logout", "static", "favicon", "auth.verify_email"}
 # Forms embedded on other websites can't carry our session's CSRF token; they have their own spam checks.
 # Mail apps' one-click unsubscribe and Resend's webhooks post from elsewhere too; the webhook is signed.
 CSRF_EXEMPT = {"public_form", "unsubscribe", "resend_webhook", "stripe_webhook"}
@@ -112,6 +112,8 @@ def create_app(config=None):
         MISSING_SETTINGS=[name for name, ok in (("CAE_SECRET_KEY", secret), (database_setting, database)) if hosted and not ok],
         # When set, creating a new workspace needs this invite code.
         SIGNUP_CODE=os.environ.get("CAE_SETUP_CODE", ""),
+        # Refuse new passwords found in Have I Been Pwned's breach data (set CAE_BREACH_CHECK=0 to turn off).
+        BREACH_CHECK=os.environ.get("CAE_BREACH_CHECK", "1") != "0",
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=hosted,
         PERMANENT_SESSION_LIFETIME=timedelta(hours=12),

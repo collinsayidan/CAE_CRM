@@ -1,0 +1,53 @@
+{% extends "public/_layout.html" %}
+{# The chat window: inside an iframe on the business's website (embed=1), or as a page of its own. Works without
+   JavaScript: each message and the handover form are ordinary form posts. #}
+{% block title %}Chat with {{ business.name }}{% endblock %}
+{% block main_class %}is-narrow chat-main{% endblock %}
+{% block content %}
+<section class="panel chat-window" data-chat data-token="{{ token }}" data-session="{{ session.token if session else '' }}">
+  <header class="chat-head">
+    <div><b>{{ business.name }}</b><span class="chat-ai">AI assistant</span></div>
+  </header>
+  <p class="chat-note">You're chatting with an AI that answers from {{ business.name }}'s help articles. It can make mistakes. Messages are kept for 30 days. You can ask for a person at any time.</p>
+
+  <div class="chat-thread" data-chat-thread aria-live="polite">
+    <div class="chat-msg bot"><p>{{ business.chat_greeting or ('Hello! How can I help you today?') }}</p></div>
+    {% for m in items %}
+      <div class="chat-msg {{ 'visitor' if m.role == 'visitor' else 'bot' }}">
+        {% if m.role == 'visitor' %}<p>{{ m.body }}</p>{% else %}{{ m.body | article }}{% endif %}
+        {% if m.links %}<p class="chat-sources">From: {% for l in m.links %}<a href="{{ url_for('help_article', token=token, article_id=l.id) }}" target="_blank" rel="noopener">{{ l.title }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
+      </div>
+    {% endfor %}
+    {% if notice %}<p class="chat-notice" role="status">{{ notice }}</p>{% endif %}
+    <span id="latest"></span>
+  </div>
+
+  {% if not handed %}
+    <form method="post" action="{{ url_for('chat_message', token=token, embed='1' if embed else none) }}" class="chat-ask" data-chat-form>
+      <input type="hidden" name="session" value="{{ session.token if session else '' }}">
+      <label class="sr-only" for="chat-message">Your message</label>
+      <textarea id="chat-message" name="message" rows="2" maxlength="1000" required placeholder="Ask a question…"></textarea>
+      <button class="btn primary sm">Send</button>
+    </form>
+
+    <details class="chat-person" data-chat-person {{ 'open' if items and items[-1].offer_person }}>
+      <summary>Talk to a person</summary>
+      <form method="post" action="{{ url_for('chat_handover', token=token, embed='1' if embed else none) }}" class="chat-person-form" data-chat-person-form>
+        <input type="hidden" name="session" value="{{ session.token if session else '' }}">
+        <p class="small muted">Leave your details and the team will reply by email. We'll send them this chat too.</p>
+        <label class="field"><span class="field-label">Your name</span><input name="name" maxlength="120" required autocomplete="name"></label>
+        <label class="field"><span class="field-label">Email</span><input type="email" name="email" maxlength="200" required autocomplete="email"></label>
+        <label class="field"><span class="field-label">How can we help?</span><textarea name="message" rows="3" maxlength="4000" required></textarea></label>
+        <button class="btn primary sm">Send to the team</button>
+      </form>
+    </details>
+  {% endif %}
+
+  {% if articles and not items %}
+    <div class="chat-articles"><p class="small muted">Popular answers</p>
+      <ul>{% for a in articles %}<li><a href="{{ url_for('help_article', token=token, article_id=a.id) }}" target="_blank" rel="noopener">{{ a.title }}</a></li>{% endfor %}</ul></div>
+  {% endif %}
+</section>
+<script src="{{ url_for('static', filename='chat.js') }}" defer></script>
+{% endblock %}
+{% block foot %}{{ business.name }} · <a href="{{ url_for('help_index', token=token) }}" target="_blank" rel="noopener">Help articles</a>{% endblock %}

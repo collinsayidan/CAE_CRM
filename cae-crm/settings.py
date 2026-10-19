@@ -20,6 +20,8 @@ HUB = [
     ("tags_settings", "list", "Tags", "Rename, merge or delete the tags on contacts and companies.", True),
     ("saved_replies_page", "mail", "Saved replies", "Answers your team sends often from tickets.", True),
     ("support_email_settings", "mail", "Support email", "Turn customers' emails into tickets, with replies threading back.", True),
+    ("help_articles", "note", "Help articles", "Answers for your customers, with public pages the website chat uses.", True),
+    ("chat_settings", "sparkle", "Website chat", "An AI chat for your website that hands over to your team as a ticket.", True),
     ("workflows", "bolt", "Workflows", "Create tasks, assign owners and notify people automatically.", True),
     ("developers", "columns", "API and webhooks", "Connect other systems, Zapier or Power BI to your CRM data.", True),
     ("billing", "pound", "Billing", "Your plan, number of users and payments.", True),
@@ -40,7 +42,8 @@ def register(app):
         import assistant
         cards = [c for c in HUB if (admin or not c[4]) and (c[0] != "billing" or state(workspace())["enabled"])
                  and (c[0] != "assistant_settings" or assistant.configured())
-                 and (c[0] != "support_email_settings" or __import__("inbound").configured())]
+                 and (c[0] != "support_email_settings" or __import__("inbound").configured())
+                 and (c[0] != "chat_settings" or __import__("chat").configured())]
         return render_template("workspace.html", cards=cards)
 
     @app.route("/settings", methods=["GET", "POST"])

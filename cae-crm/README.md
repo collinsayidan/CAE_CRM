@@ -112,6 +112,14 @@ Where the assistant is on, everyday pages get four helpers. Each sends one recor
 
 Summaries, briefings and drafts count as daily questions; triage doesn't. Outputs are visible only to the person who asked, shown for an hour on the page and deleted after 30 days, or when a contact they mention is erased.
 
+### Help articles and website chat
+
+- **Help articles** (Settings, Help articles): short answers a business writes for its customers, as drafts or published. Published articles get plain public pages at `/help/<token>`, using the same simple formatting as email campaigns.
+- **Website chat** (Settings, Website chat, shown once `ANTHROPIC_API_KEY` is set): a chat window the business adds to its website with one line of script. It answers visitors only from the published articles, links to the ones it used, says when it doesn't know, and offers **Talk to a person**, which opens a ticket (source Chat) with the whole chat on it and adds the visitor as a contact (lawful basis "Legitimate interests", no marketing consent).
+- **Adding it:** the settings page shows the snippet to paste before `</body>`, and a link to a standalone chat page for businesses without a website editor. The chat only appears on the website addresses the admin lists (the page sends a `frame-ancestors` policy), needs no cookies, and works without JavaScript on the standalone page.
+- **Limits:** each business allows up to 300 visitor messages a day (admins can set lower), each visitor 30 messages in 10 minutes and each chat 40 messages. After that, visitors are asked to leave their details instead. Each message costs about 1p with Claude Opus 5.5, as the articles are cached between messages.
+- **Safety:** the chatbot never sees CRM records and has no tools, so it can only reply. It's told to treat visitors' messages as questions, not instructions, and never to guess prices or policies. Visitors are told they're chatting with an AI, and chats that don't become tickets are deleted after 30 days by the daily cron job.
+
 ## What's in it
 
 The sidebar groups pages the way a business works: **CRM** (Contacts, Companies, Deals, Tickets), **Sales** (Tasks, Quotes, Products), **Marketing** (Email, Forms), **Finance** (Invoices), **Delivery** (Projects), **Insight** (Reports) and **Workspace** (Team, Integrations). Admins also get **Settings** and **Import**.
@@ -334,6 +342,8 @@ digest.py     the daily summary email
 ukholidays.py bank holidays for each UK nation
 helpers.py    AI helpers: summaries, briefings, draft replies and ticket triage
 inbound.py    email-to-ticket: receiving customers' emails into tickets
+helpcentre.py help articles and their public pages
+chat.py       the website chatbot: the embed script, chat page, answers and handover to a ticket
 db.py         schema, migrations, SQLite/PostgreSQL connection wrapper
 seed.py       sample data for a new workspace
 ukfmt.py      GBP, dates, VAT, postcodes, phone numbers, working hours, financial year

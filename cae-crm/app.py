@@ -17,6 +17,7 @@ import audit
 import auth
 import billing
 import campaigns
+import chat
 import companies_house
 import crm
 import dataio
@@ -28,6 +29,7 @@ import documents
 import duplicates
 import events
 import finance
+import helpcentre
 import home
 import inbound
 import integrations
@@ -67,6 +69,7 @@ SETTINGS_TABS = [("settings", "Business details", True), ("auth.team", "Team", F
                  ("integrations", "Integrations", False), ("imports", "Import", True), ("billing", "Billing", True),
                  ("custom_fields_page", "Custom fields", True), ("tags_settings", "Tags", True),
                  ("saved_replies_page", "Saved replies", True), ("support_email_settings", "Support email", True),
+                 ("help_articles", "Help articles", True), ("chat_settings", "Website chat", True),
                  ("workflows", "Workflows", True),
                  ("developers", "API and webhooks", True), ("vat", "VAT returns", True),
                  ("recycle_bin", "Recycle bin", True),
@@ -80,13 +83,16 @@ SETTINGS_PARENT = {"auth.member": "auth.team", "auth.edit_member": "auth.team", 
                    "vat_return": "vat"}
 # Pages anyone can reach without signing in.
 PUBLIC_ENDPOINTS = {"landing", "favicon", "auth.login", "auth.signup", "auth.setup", "auth.forgot", "auth.reset",
-                    "auth.two_factor_check", "static", "auth.verify_email", "auth.accept_invite", "survey", "summary_off",
+                    "auth.two_factor_check", "static", "auth.verify_email", "auth.accept_invite", "survey", "summary_off", "help_index", "help_article", "chat_widget",
+                    "chat_page", "chat_message", "chat_handover",
                     "public_form", "public_quote", "accept_quote", "decline_quote", "unsubscribe", "resend_webhook",
                     "stripe_webhook", "cron_sync", "workspace_logo", "public_quote_pdf", "legal", "legal_index"}
 TWO_FACTOR_SETUP_ALLOWED = {"auth.two_factor_setup", "auth.logout", "static", "favicon", "auth.verify_email"}
 # Forms embedded on other websites can't carry our session's CSRF token; they have their own spam checks.
 # Mail apps' one-click unsubscribe and Resend's webhooks post from elsewhere too; the webhook is signed.
-CSRF_EXEMPT = {"public_form", "unsubscribe", "resend_webhook", "stripe_webhook", "summary_off"}
+# The website chat runs in a frame on businesses' own sites, without cookies; each chat has its own secret token.
+CSRF_EXEMPT = {"public_form", "unsubscribe", "resend_webhook", "stripe_webhook", "summary_off", "chat_message",
+               "chat_handover"}
 
 
 def assistant_nav():
@@ -191,7 +197,8 @@ def create_app(config=None):
             settings_tabs=[t for t in SETTINGS_TABS if (not t[2] or g.user["role"] == "admin")
                            and (t[0] != "billing" or billing.state(w)["enabled"])
                            and (t[0] != "assistant_settings" or assistant.configured())
-                           and (t[0] != "support_email_settings" or inbound.configured())],
+                           and (t[0] != "support_email_settings" or inbound.configured())
+                           and (t[0] != "chat_settings" or chat.configured())],
             settings_active=SETTINGS_PARENT.get(request.endpoint, request.endpoint),
             pennies=lambda p: money(p, pennies=True),
             greeting="Good morning" if hour < 12 else "Good afternoon" if hour < 18 else "Good evening",
@@ -249,7 +256,7 @@ def create_app(config=None):
     for module in (home, crm, sales, service, finance, quotes, webforms, campaigns, billing, integrations, xero, mtd,
                    documents, notifications, files, fields, workflows, webhooks, api, legal, dataio, settings, audit,
                    assistant, tags, duplicates, companies_house, recycle, support, digest, helpers,
-                   inbound):
+                   inbound, helpcentre, chat):
         module.register(app)
     return app
 

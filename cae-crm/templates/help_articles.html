@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Help articles{% endblock %}
+{% block heading %}Help articles{% endblock %}
+{% block subtitle %}<p class="subtitle">Short answers for your customers. Published articles have public pages and are what the website chat answers from.</p>{% endblock %}
+{% block actions %}{% if token %}<a class="btn ghost" href="{{ url_for('help_index', token=token) }}" target="_blank" rel="noopener">{{ icon('external') }} View public page</a>{% endif %}{% endblock %}
+
+{% block content %}
+<div class="layout-even">
+  <section class="panel">
+    <h2 class="panel-title">{{ 'Edit ' ~ edit.title if edit else 'Write an article' }}</h2>
+    <form method="post" action="{{ url_for('help_articles') }}" class="reason-form">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      {% if edit %}<input type="hidden" name="article_id" value="{{ edit.id }}">{% endif %}
+      <label class="field"><span class="field-label">Title</span><input name="title" maxlength="120" required value="{{ edit.title if edit else '' }}" placeholder="What are your opening hours?"></label>
+      <label class="field"><span class="field-label">Answer</span>
+        <textarea name="body" rows="12" required placeholder="We're open Monday to Friday, 9am to 5pm.">{{ edit.body if edit else '' }}</textarea>
+        <span class="field-hint">Blank lines make paragraphs, a dash and a space at the start of a line makes a list, and **bold** and [link text](https://...) work too.</span></label>
+      <label class="check"><input type="checkbox" name="published" {{ 'checked' if (edit and edit.published) or not edit }}> <span>Published</span></label>
+      <div class="form-actions">
+        {% if edit %}<a class="btn ghost" href="{{ url_for('help_articles') }}">Cancel</a>{% endif %}
+        <button class="btn primary">{{ 'Save changes' if edit else 'Save article' }}</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel flush">
+    <ul class="saved-reply-list">
+      {% for a in articles %}
+        <li>
+          <div><b>{{ a.title }}</b> {% if not a.published %}<span class="chip">Draft</span>{% endif %}
+            <p class="muted small">{{ a.body | truncate(120) }}</p></div>
+          <div class="row-actions">
+            {% if a.published and token %}<a class="btn ghost sm" href="{{ url_for('help_article', token=token, article_id=a.id) }}" target="_blank" rel="noopener" title="View">{{ icon('external') }}</a>{% endif %}
+            <a class="btn ghost sm" href="{{ url_for('help_articles', edit=a.id) }}">{{ icon('edit') }} Edit</a>
+            <form method="post" action="{{ url_for('help_articles') }}" class="inline" data-confirm="Delete {{ a.title }}?">
+              <input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="article_id" value="{{ a.id }}">
+              <input type="hidden" name="action" value="delete"><button class="btn ghost sm danger">{{ icon('trash') }}</button></form>
+          </div>
+        </li>
+      {% else %}
+        <li class="empty-line">No articles yet. Start with the questions customers ask most.</li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+{% endblock %}

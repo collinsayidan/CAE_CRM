@@ -1,0 +1,12 @@
+{% extends "public/_layout.html" %}
+{% block title %}{{ a.title }}{% endblock %}
+{% block main_class %}is-narrow{% endblock %}
+{% block content %}
+<article class="panel public-form-card help-article">
+  <p class="small"><a class="text-link" href="{{ url_for('help_index', token=token) }}">All help articles</a></p>
+  <h1>{{ a.title }}</h1>
+  <div class="help-body">{{ a.body | article }}</div>
+  <p class="small muted">Updated {{ a.updated_at | uk_date }}</p>
+  {% if chat_on %}<p class="small"><a class="text-link" href="{{ url_for('chat_page', token=token) }}">Still need help? Ask in the chat</a></p>{% endif %}
+</article>
+{% endblock %}

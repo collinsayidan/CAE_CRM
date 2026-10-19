@@ -104,6 +104,7 @@ def test_people_from_before_are_already_confirmed(app):
     """Upgrading a database adds the column and counts everyone already there as confirmed."""
     with app.app_context():
         get_db().execute("ALTER TABLE users DROP COLUMN email_verified_at")
+        get_db().execute("DELETE FROM schema_state")  # a database from an older version of the code
         get_db().commit()
     init_db(app.config["DATABASE"], app.config["TODAY"])
     assert all(r[0] for r in query(app, "SELECT email_verified_at FROM users"))

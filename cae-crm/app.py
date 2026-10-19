@@ -52,8 +52,8 @@ import webforms
 import webhooks
 import workflows
 import xero
-from core import days_until, now, relative_time, scalar, today, workspace
-from db import close_db, init_db, is_postgres
+from core import days_until, now, relative_time, today, workspace
+from db import close_db, get_db, init_db, is_postgres
 from ukfmt import money
 
 # Sidebar sections, HubSpot-style: (heading, [(endpoint, label, icon)]).
@@ -104,6 +104,17 @@ def assistant_nav():
     """The sidebar with the AI assistant under Home, Tasks and Reports, for workspaces that have turned it on."""
     (heading, items), *rest = NAV
     return [(heading, items + [("assistant", "Assistant", "sparkle")]), *rest]
+
+
+def sidebar_counts(workspace_id, t):
+    """The badges beside Deals, Tickets, Tasks and Invoices, in one query rather than four."""
+    row = get_db().execute(
+        "SELECT (SELECT COUNT(*) FROM deals WHERE workspace_id=? AND stage NOT IN ('Won','Lost')),"
+        " (SELECT COUNT(*) FROM tickets WHERE workspace_id=? AND status <> 'Closed'),"
+        " (SELECT COUNT(*) FROM activities WHERE workspace_id=? AND done=0 AND substr(due_at,1,10) <= ?),"
+        " (SELECT COUNT(*) FROM invoices WHERE workspace_id=? AND paid_date IS NULL AND due_date < ?)",
+        (workspace_id, workspace_id, workspace_id, t.isoformat(), workspace_id, t.isoformat())).fetchone()
+    return dict(zip(("pipeline", "tickets", "tasks", "invoices"), (int(v or 0) for v in row)))
 
 
 def create_app(config=None):
@@ -213,14 +224,7 @@ def create_app(config=None):
             pennies=lambda p: money(p, pennies=True),
             greeting="Good morning" if hour < 12 else "Good afternoon" if hour < 18 else "Good evening",
             first_name=g.user["name"].split()[0],
-            counts=dict(
-                pipeline=scalar("SELECT COUNT(*) FROM deals WHERE workspace_id=? AND stage NOT IN ('Won','Lost')", w["id"]),
-                tickets=scalar("SELECT COUNT(*) FROM tickets WHERE workspace_id=? AND status <> 'Closed'", w["id"]),
-                tasks=scalar("SELECT COUNT(*) FROM activities WHERE workspace_id=? AND done=0 AND substr(due_at,1,10) <= ?",
-                             w["id"], t.isoformat()),
-                invoices=scalar("SELECT COUNT(*) FROM invoices WHERE workspace_id=? AND paid_date IS NULL AND due_date < ?",
-                                w["id"], t.isoformat()),
-            ),
+            counts=sidebar_counts(w["id"], t),
             count_titles={"pipeline": "Open deals", "tickets": "Open tickets", "tasks": "Due today or overdue",
                           "invoices": "Overdue invoices"},
             alert_counts={"invoices", "tasks"},

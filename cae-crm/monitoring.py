@@ -28,8 +28,8 @@ def start(app):
         return False
     import sentry_sdk
     sentry_sdk.init(dsn=dsn, send_default_pii=False, before_send=scrub,
-                    environment=os.environ.get("VERCEL_ENV", "local"),
-                    release=os.environ.get("VERCEL_GIT_COMMIT_SHA") or None,
+                    environment=os.environ.get("VERCEL_ENV") or os.environ.get("CAE_ENV", "local"),
+                    release=os.environ.get("VERCEL_GIT_COMMIT_SHA") or os.environ.get("SOURCE_COMMIT") or None,
                     traces_sample_rate=float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE") or 0))
     return True
 

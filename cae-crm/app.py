@@ -21,6 +21,7 @@ import companies_house
 import crm
 import dataio
 import fields
+import helpers
 import files
 import digest
 import documents
@@ -245,7 +246,7 @@ def create_app(config=None):
     events.register(app)  # first, so its after_request hook runs last, once everything else is saved
     for module in (home, crm, sales, service, finance, quotes, webforms, campaigns, billing, integrations, xero, mtd,
                    documents, notifications, files, fields, workflows, webhooks, api, legal, dataio, settings, audit,
-                   assistant, tags, duplicates, companies_house, recycle, support, digest):
+                   assistant, tags, duplicates, companies_house, recycle, support, digest, helpers):
         module.register(app)
     return app
 

@@ -1,0 +1,24 @@
+{# Summarise and Brief me on a record page, with the person's latest output shown under the buttons. #}
+{% from "_macros.html" import icon %}
+{% from "_ai_output.html" import ai_output %}
+{% macro ai_helpers(kind, record_id, briefing=true) -%}
+{% if ai_helpers_on() %}
+<section class="panel ai-helpers" aria-label="AI helpers">
+  <div class="ai-helper-buttons">
+    <form method="post" action="{{ url_for('ai_helper', task='summary', kind=kind, record_id=record_id) }}" data-ai-helper>
+      <input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn ghost sm">{{ icon('sparkle') }} Summarise</button></form>
+    {% if briefing %}
+    <form method="post" action="{{ url_for('ai_helper', task='briefing', kind=kind, record_id=record_id) }}" data-ai-helper>
+      <input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn ghost sm">{{ icon('sparkle') }} Brief me</button></form>
+    {% endif %}
+    <span class="muted small">Uses the AI assistant. Each counts as one of your daily questions.</span>
+  </div>
+  <div data-ai-helper-output>
+    {% set out = ai_latest('briefing', kind, record_id) if briefing else none %}
+    {% set summary = ai_latest('summary', kind, record_id) %}
+    {% set out = summary if (summary and (not out or summary.id > out.id)) else out %}
+    {{ ai_output(out) }}
+  </div>
+</section>
+{% endif %}
+{%- endmacro %}

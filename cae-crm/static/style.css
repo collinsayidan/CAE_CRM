@@ -1677,3 +1677,14 @@ a.tag:hover, .tag a:hover { text-decoration: underline; }
 .survey-choice:has(input:checked) { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); background: var(--accent-soft); }
 .csat-score { font-size: 34px; font-weight: 700; margin: 0; }
 .csat-bars { display: grid; gap: 6px; margin: 12px 0; }
+
+/* AI helpers ----------------------------------------------------------------------------------------------------- */
+.ai-helpers { display: grid; gap: 12px; padding: 14px 18px; }
+.ai-helper-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.ai-helper-buttons form { margin: 0; }
+.ai-output { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line-soft); }
+.ai-output-head { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.ai-output-head .icon { width: 16px; height: 16px; color: var(--primary); }
+.ai-output .ai-msg { max-width: none; }
+.triage-card { max-width: none; margin-top: 16px; }
+.triage-ask, .draft-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 16px 0 0; }

@@ -304,8 +304,10 @@ def register(app):
         from files import delete_for
         delete_for("contact", contact_id)
         tags.forget("contact", contact_id)
-        import assistant  # conversations that mention them go too
+        import assistant  # conversations, summaries and briefings that mention them go too
         assistant.forget(ws(), f"{c['first_name']} {c['last_name']}", c["email"])
+        import helpers
+        helpers.forget("contact", contact_id, f"{c['first_name']} {c['last_name']}", c["email"])
         if c["company_id"]:
             log_event("A contact's personal data was erased", f"Erased by {g.user['name']}", company_id=c["company_id"])
         db.commit()

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon, avatar, logo, field, select, stage_chip with context %}
 {% from "_tags.html" import tags_panel with context %}
+{% from "_ai_helpers.html" import ai_helpers with context %}
 {% from "_record.html" import composer, timeline, upcoming_tasks, assoc, prop, custom_props, custom_inputs, files_panel with context %}
 {% set name = c.first_name ~ ' ' ~ c.last_name %}
 {% block title %}{{ name }}{% endblock %}
@@ -61,6 +62,7 @@
   <section class="record-mid">
     {{ composer(record, call_outcomes, owners) }}
     {{ upcoming_tasks(upcoming) }}
+    {{ ai_helpers('contact', c.id) }}
     {{ timeline(entries) }}
   </section>
 

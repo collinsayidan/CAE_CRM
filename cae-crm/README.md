@@ -90,6 +90,17 @@ An assistant that answers questions about a workspace's own records, explains ho
 - `CAE_AI_MODEL` (default `claude-opus-5-5`) and `CAE_AI_EFFORT` (default `medium`) choose the model and how hard it thinks. If Claude declines a request, Anthropic's server-side fallback retries it on another Claude model.
 - An answer that needs several lookups can take 10 to 30 seconds. The assistant stops after 8 model calls or about 50 seconds, so check the function time limit on your Vercel plan allows at least 60 seconds.
 
+### AI helpers
+
+Where the assistant is on, everyday pages get four helpers. Each sends one record's details to Claude, marked as data rather than instructions:
+
+- **Summarise** (contacts, companies, deals, tickets): a few bullet points on where things stand, what's agreed, open problems and a next step.
+- **Brief me** (contacts, companies, deals): a one-page brief before a meeting or call.
+- **Draft with AI** (ticket replies): a reply written from the ticket, put in the box to check and edit. Nothing is sent until you press Send.
+- **Triage** (new tickets): a suggested category, priority and owner, with flags if the customer sounds upset or it looks urgent. It loads in the background when a new ticket is opened (or with **Suggest triage**), once per ticket, and a person presses **Apply** or **Dismiss**.
+
+Summaries, briefings and drafts count as daily questions; triage doesn't. Outputs are visible only to the person who asked, shown for an hour on the page and deleted after 30 days, or when a contact they mention is erased.
+
 ## What's in it
 
 The sidebar groups pages the way a business works: **CRM** (Contacts, Companies, Deals, Tickets), **Sales** (Tasks, Quotes, Products), **Marketing** (Email, Forms), **Finance** (Invoices), **Delivery** (Projects), **Insight** (Reports) and **Workspace** (Team, Integrations). Admins also get **Settings** and **Import**.
@@ -310,6 +321,7 @@ recycle.py    the 30-day recycle bin for deleted records
 support.py    ticket replies, saved replies and the satisfaction survey
 digest.py     the daily summary email
 ukholidays.py bank holidays for each UK nation
+helpers.py    AI helpers: summaries, briefings, draft replies and ticket triage
 db.py         schema, migrations, SQLite/PostgreSQL connection wrapper
 seed.py       sample data for a new workspace
 ukfmt.py      GBP, dates, VAT, postcodes, phone numbers, working hours, financial year

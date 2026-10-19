@@ -645,6 +645,30 @@ CREATE TABLE IF NOT EXISTS ai_messages (
     confirmed TEXT,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS ai_outputs (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    task TEXT NOT NULL,
+    record_type TEXT NOT NULL,
+    record_id INTEGER NOT NULL,
+    body TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS ticket_triage (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    ticket_id INTEGER NOT NULL UNIQUE REFERENCES tickets(id) ON DELETE CASCADE,
+    category TEXT NOT NULL,
+    priority TEXT NOT NULL,
+    owner TEXT NOT NULL,
+    upset INTEGER NOT NULL DEFAULT 0,
+    urgent INTEGER NOT NULL DEFAULT 0,
+    reason TEXT,
+    created_at TEXT NOT NULL,
+    resolved TEXT,
+    resolved_by TEXT
+);
 CREATE TABLE IF NOT EXISTS ai_usage (
     id {pk},
     workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -858,6 +882,7 @@ def migrate(db, today):
         "CREATE INDEX IF NOT EXISTS ix_record_tags_record ON record_tags (workspace_id, record_type, record_id)",
         "CREATE INDEX IF NOT EXISTS ix_recycle_ids ON recycle_ids (workspace_id, table_name, old_id)",
         "CREATE INDEX IF NOT EXISTS ix_ai_messages_conversation ON ai_messages (conversation_id, id)",
+        "CREATE INDEX IF NOT EXISTS ix_ai_outputs_record ON ai_outputs (workspace_id, user_id, task, record_type, record_id)",
     ):
         db.execute(sql)
     if db.postgres:

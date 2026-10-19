@@ -1,0 +1,12 @@
+{% from "_macros.html" import icon %}
+{# A summary or briefing just made for the person looking at the record. Rendered on its own for fetch requests. #}
+{% macro ai_output(out) -%}
+{% if out %}
+  <div class="ai-output" id="ai-output">
+    <p class="ai-output-head">{{ icon('sparkle') }} <b>{{ 'Summary' if out.task == 'summary' else 'Briefing' }}</b>
+      <span class="muted small">made {{ out.created_at | uk_datetime }} · only you can see this · check anything important</span></p>
+    <div class="ai-msg ai-answer">{{ out.html }}</div>
+  </div>
+{% endif %}
+{%- endmacro %}
+{% if out is defined %}{{ ai_output(out) }}{% endif %}

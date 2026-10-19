@@ -6,10 +6,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CAE CRM: sales, support and invoicing for UK businesses</title>
-  <meta name="description" content="One workspace for your pipeline, support tickets, VAT invoices and UK GDPR, built for UK businesses. Every feature included. Free {{ trial_days }}-day trial.">
+  <meta name="description" content="Contacts, deals, support tickets, quotes and VAT invoices in one CRM, built for UK businesses. Every feature included. Free {{ trial_days }}-day trial.">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="CAE CRM: sales, support and invoicing for UK businesses">
-  <meta property="og:description" content="Win more customers, serve them better and get paid faster, from one workspace. Free {{ trial_days }}-day trial.">
+  <meta property="og:title" content="CAE CRM: the CRM that already knows how UK business works">
+  <meta property="og:description" content="Sales, support and invoicing in one place, with every feature included. Free {{ trial_days }}-day trial.">
   <meta property="og:image" content="{{ url_for('static', filename='brand/icon-512.png', _external=True) }}">
   <link rel="canonical" href="{{ url_for('landing', _external=True) }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
@@ -18,7 +18,7 @@
   <script>document.documentElement.classList.add("js"); try { document.documentElement.dataset.theme = localStorage.getItem("cae-theme") || "dark"; } catch (e) { document.documentElement.dataset.theme = "dark"; }</script>
   <script type="application/ld+json">
   {"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "CAE CRM", "applicationCategory": "BusinessApplication",
-   "operatingSystem": "Web browser", "description": "Sales pipeline, customer support, quotes, invoicing and UK compliance in one workspace for UK businesses.",
+   "operatingSystem": "Web browser", "description": "Contacts, deals, support tickets, quotes and VAT invoicing in one CRM for UK businesses.",
    "offers": {"@type": "Offer", "price": "{{ '%.2f' | format(seat_price / 100) }}", "priceCurrency": "GBP", "description": "Per user a month. Every feature included."}}
   </script>
 </head>
@@ -28,266 +28,93 @@
   <header class="lp-header" data-lp-header>
     <div class="lp-wrap lp-header-row">
       <a class="lp-logo" href="{{ url_for('landing') }}"><img src="{{ url_for('static', filename='brand/icon.svg') }}" alt="" width="30" height="30">CAE CRM</a>
-      <nav class="lp-nav" id="lp-nav" aria-label="Main">
-        <a href="#features">Features</a>
-        <a href="#pricing">Pricing</a>
-        <a href="#security">Security</a>
-        <a href="#faq">FAQ</a>
-        <a class="lp-nav-signin" href="{{ url_for('auth.login') }}">Sign in</a>
-      </nav>
       <div class="lp-header-actions">
         <button type="button" class="lp-icon-btn" data-lp-theme aria-label="Switch between light and dark">{{ icon('moon') }}</button>
         <a class="lp-signin" href="{{ url_for('auth.login') }}">Sign in</a>
-        <a class="lp-btn lp-btn-primary" href="{{ url_for('auth.signup') }}">Start free trial</a>
-        <button type="button" class="lp-icon-btn lp-menu-btn" data-lp-menu aria-controls="lp-nav" aria-expanded="false" aria-label="Menu">{{ icon('menu') }}</button>
+        <a class="lp-btn lp-btn-primary" href="{{ url_for('auth.signup') }}">Create a workspace</a>
       </div>
     </div>
   </header>
 
   <main id="main">
-    <!-- Hero -->
     <section class="lp-hero">
       <div class="lp-wrap lp-hero-grid">
         <div class="lp-hero-copy">
-          <p class="lp-eyebrow">{{ icon('flag') }} For UK businesses</p>
-          <h1>Win more customers. Serve them better. Get paid faster.</h1>
-          <p class="lp-lede">CAE CRM brings your sales pipeline, customer support, quotes, invoicing and UK compliance together in one workspace. No separate systems, no add-ons, no surprises.</p>
+          <p class="lp-eyebrow">Sales · Support · Invoicing · UK compliance</p>
+          <h1>The CRM that already knows how UK business works.</h1>
+          <p class="lp-lede">Win more customers, serve them better and get paid faster. Contacts, deals, support tickets, quotes and VAT invoices in one place, with every feature included for every team member.</p>
           <div class="lp-actions">
-            <a class="lp-btn lp-btn-primary lp-btn-lg" href="{{ url_for('auth.signup') }}">Start your {{ trial_days }}-day free trial</a>
-            {% if demo_url %}<a class="lp-btn lp-btn-ghost lp-btn-lg" href="{{ demo_url }}">Book a demo</a>{% endif %}
+            <a class="lp-btn lp-btn-primary lp-btn-lg" href="{{ url_for('auth.signup') }}">Start your free trial</a>
+            {% if demo_url %}<a class="lp-btn lp-btn-ghost lp-btn-lg" href="{{ demo_url }}">Book a demo</a>
+            {% else %}<a class="lp-btn lp-btn-ghost lp-btn-lg" href="{{ url_for('auth.login') }}">Sign in</a>{% endif %}
           </div>
           <ul class="lp-assurances">
+            <li>{{ icon('check') }} {{ trial_days }} days free</li>
             <li>{{ icon('check') }} No card needed</li>
-            <li>{{ icon('check') }} Every feature included</li>
-            <li>{{ icon('check') }} Cancel any time</li>
+            <li>{{ icon('check') }} {{ price }} per user a month{{ ' plus VAT' if vat }}</li>
           </ul>
         </div>
 
-        <figure class="lp-dash lp-reveal" aria-label="Sample CAE CRM dashboard">
-          <div class="lp-dash-bar"><i></i><i></i><i></i><span>Home · October</span><em>Sample data</em></div>
-          <div class="lp-dash-body">
-            <div class="lp-target">
-              <div class="lp-target-head">
-                <span>Won this month</span>
-                <b><span data-count="91740" data-prefix="£">£91,740</span> <small>of £156,700</small></b>
-              </div>
-              <div class="lp-meter" style="--p: 58.5%"><span></span><i style="--at: 55%"></i></div>
-              <p class="lp-up">{{ icon('trend') }} Ahead of pace, +21% on last month</p>
-            </div>
-            <div class="lp-kpis">
-              <div class="lp-kpi"><span>Pipeline value</span><b data-count="382000" data-prefix="£">£382,000</b></div>
-              <div class="lp-kpi"><span>Deals won</span><b data-count="37">37</b></div>
-              <div class="lp-kpi"><span>New leads</span><b data-count="164">164</b></div>
-              <div class="lp-kpi"><span>Support SLA met</span><b data-count="98.4" data-suffix="%" data-decimals="1">98.4%</b></div>
-              <div class="lp-kpi lp-kpi-warn"><span>Outstanding invoices</span><b data-count="12440" data-prefix="£">£12,440</b></div>
-              <div class="lp-kpi"><span>Open tickets</span><b data-count="12">12</b></div>
-            </div>
-            <div class="lp-bars" aria-hidden="true">
-              {% for h, m in [(38, 'May'), (46, 'Jun'), (41, 'Jul'), (55, 'Aug'), (62, 'Sep'), (78, 'Oct')] %}
-                <div class="lp-bar" style="--h: {{ h }}%"><span></span><small>{{ m }}</small></div>
-              {% endfor %}
-            </div>
+        <figure class="lp-track lp-reveal" aria-label="Sample sales target tracker">
+          <div class="lp-track-top"><span>Won in October</span><em>Sample data</em></div>
+          <p class="lp-figure"><b data-count="91740" data-prefix="£">£91,740</b> <span>of £156,700</span></p>
+          <div class="lp-rail" style="--won: 58.5%; --pace: 55%">
+            <span class="lp-rail-fill"></span><i class="lp-rail-pace"></i>
+            <div class="lp-rail-ticks" aria-hidden="true">{% for _ in range(10) %}<s></s>{% endfor %}</div>
+          </div>
+          <p class="lp-note">{{ icon('trend') }} £6,267 ahead of pace, with 10 working days left</p>
+          <div class="lp-mini">
+            <div><span>Pipeline</span><b data-count="382000" data-prefix="£">£382,000</b></div>
+            <div><span>Tickets within SLA</span><b data-count="98.4" data-suffix="%" data-decimals="1">98.4%</b></div>
+            <div><span>Owed to you</span><b class="lp-warn" data-count="12440" data-prefix="£">£12,440</b></div>
           </div>
         </figure>
       </div>
     </section>
 
-    <!-- Built for -->
-    <section class="lp-built" aria-labelledby="built-title">
-      <div class="lp-wrap">
-        <h2 id="built-title" class="lp-built-title">Built for growing UK businesses</h2>
-        <ul class="lp-chips">
-          {% for kind in ['Consultancies', 'Agencies', 'Construction firms', 'Trades and field teams', 'Professional services', 'Service businesses'] %}
-            <li>{{ kind }}</li>
-          {% endfor %}
-        </ul>
-      </div>
-    </section>
-
-    <!-- Problem -->
-    <section class="lp-section" aria-labelledby="problem-title">
-      <div class="lp-wrap lp-split">
-        <div class="lp-reveal">
-          <h2 id="problem-title">Stop running your business across five different systems</h2>
-          <p class="lp-sub">Separate tools mean typing the same details twice, chasing information across tabs, and paying for several subscriptions.</p>
-        </div>
-        <ul class="lp-problems lp-reveal">
-          {% for p in ['Spreadsheets for customers', 'A separate invoicing tool', 'A separate help desk', 'Several subscriptions to pay for', 'No single view of a customer', 'Reports pieced together by hand'] %}
-            <li>{{ icon('x') }} {{ p }}</li>
-          {% endfor %}
-        </ul>
-      </div>
-    </section>
-
-    <!-- Features -->
-    <section class="lp-section" id="features" aria-labelledby="features-title">
-      <div class="lp-wrap">
-        <div class="lp-head lp-reveal">
-          <h2 id="features-title">Everything you need in one place</h2>
-          <p class="lp-sub">Every stage of the customer journey, from first enquiry to paid invoice, in a single workspace.</p>
-        </div>
-        <div class="lp-cards">
-          {% for ic, title, points in [
-            ('pipeline', 'Sales', ['Drag-and-drop pipeline', 'Quotes customers sign online', 'Automatic follow-up tasks', 'Forecast against your target']),
-            ('lifebuoy', 'Support', ['Service levels in UK working hours', 'Customer emails become tickets', 'Saved replies', 'Satisfaction surveys']),
-            ('pound', 'Getting paid', ['VAT invoices and card payments', 'Part payments and credit notes', 'Recurring invoices', 'Automatic reminders and aged debt']),
-            ('building', 'Tax and accounts', ['Making Tax Digital VAT returns', 'Sent straight to HMRC', 'Xero sync', 'VAT for the quarter on one page']),
-            ('shield', 'UK GDPR', ['Lawful basis and consent per person', 'Subject access export in one click', 'Erasure when asked', 'Full audit trail']),
-            ('sparkle', 'AI assistant', ['Summaries of any record', 'A daily briefing', 'Draft replies and ticket triage', 'Website chat that answers from your help articles'])] %}
-            <article class="lp-card lp-reveal">
-              <span class="lp-card-icon">{{ icon(ic) }}</span>
-              <h3>{{ title }}</h3>
-              <ul>{% for pt in points %}<li>{{ pt }}</li>{% endfor %}</ul>
+    <section class="lp-body" aria-label="What's included">
+      <div class="lp-wrap lp-narrow">
+        <div class="lp-pillars">
+          {% for ic, title, text in [
+            ('users', 'Contacts, companies and deals', 'One timeline of notes, calls, emails and meetings for every record. A drag-and-drop pipeline, and quotes your customers sign online.'),
+            ('lifebuoy', 'Support tickets with real service levels', "Deadlines count UK working hours and skip bank holidays. Customers' emails become tickets, and replies thread back."),
+            ('pound', 'Invoices HMRC would recognise', 'VAT invoices from your deals, card payments, automatic reminders and aged debt. Send Making Tax Digital VAT returns to HMRC.'),
+            ('shield', 'UK GDPR built in', "Record a lawful basis and marketing consent for every person. Export or erase someone's data in one click, with a full audit trail.")] %}
+            <article class="lp-pillar lp-reveal">
+              <span class="lp-pillar-icon">{{ icon(ic) }}</span>
+              <h2>{{ title }}</h2>
+              <p>{{ text }}</p>
             </article>
           {% endfor %}
         </div>
-        <p class="lp-also lp-reveal"><b>Also included:</b> email campaigns, web forms, Gmail and Outlook logging, workflows, custom fields, file attachments, an API, webhooks and a Power BI feed.</p>
-      </div>
-    </section>
+        <p class="lp-also lp-reveal">{{ icon('sparkle') }} <span><b>Also included:</b> an AI assistant, workflows, email campaigns, web forms, Gmail and Outlook logging, Xero sync, an API and a Power BI feed.</span></p>
 
-    <!-- Showcase -->
-    <section class="lp-section lp-showcase" aria-labelledby="showcase-title">
-      <div class="lp-wrap">
-        <div class="lp-head lp-reveal">
-          <h2 id="showcase-title">See your whole business at a glance</h2>
-          <p class="lp-sub">Sales, support and money on one screen, so you always know where you stand.</p>
-        </div>
-        <div class="lp-stage lp-reveal" aria-label="Sample figures">
-          <div class="lp-chart">
-            <div class="lp-chart-head"><span>Revenue this year</span><em>Sample data</em></div>
-            <svg viewBox="0 0 600 220" preserveAspectRatio="none" aria-hidden="true">
-              <defs><linearGradient id="lp-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".35"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs>
-              <path class="lp-area" d="M0 190 L60 176 L120 182 L180 150 L240 158 L300 120 L360 128 L420 92 L480 84 L540 52 L600 30 L600 220 L0 220 Z" fill="url(#lp-fill)"/>
-              <path class="lp-line" d="M0 190 L60 176 L120 182 L180 150 L240 158 L300 120 L360 128 L420 92 L480 84 L540 52 L600 30" fill="none" stroke="currentColor" stroke-width="3" vector-effect="non-scaling-stroke"/>
-            </svg>
+        <section class="lp-compare lp-reveal" aria-labelledby="compare-title">
+          <h2 id="compare-title">What you'd pay extra for elsewhere, included</h2>
+          <div class="lp-table-wrap">
+            <table class="lp-table">
+              <thead><tr><th scope="col">Feature</th><th scope="col">CAE CRM</th><th scope="col">Typical CRM starter plan</th></tr></thead>
+              <tbody>
+                {% for feature, typical in [('Products and line items on deals', 'Higher tier'), ('Quotes signed online', 'Higher tier'),
+                                            ('Help desk with service levels', 'Separate product'), ('UK VAT invoicing and aged debt', 'Integration needed'),
+                                            ('Making Tax Digital VAT returns', 'Not available'), ('Working days and UK bank holidays', 'Not available'),
+                                            ('Companies House numbers and UK postcodes checked', 'Not available'), ('Workflow automation', 'Higher tier')] %}
+                  <tr><th scope="row">{{ feature }}</th><td class="lp-yes">{{ icon('check') }} Included</td><td>{{ typical }}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
           </div>
-          <div class="lp-float lp-float-a">
-            <span class="lp-float-label">{{ icon('pipeline') }} Pipeline</span>
-            <b><span data-count="42">42</span> qualified opportunities</b>
-            <small>Estimated value <strong data-count="138000" data-prefix="£">£138,000</strong></small>
-          </div>
-          <div class="lp-float lp-float-b">
-            <span class="lp-float-label">{{ icon('lifebuoy') }} Support</span>
-            <b><span data-count="12">12</span> open tickets</b>
-            <small>First reply in 42 minutes · <strong data-count="98.4" data-suffix="%" data-decimals="1">98.4%</strong> within SLA</small>
-          </div>
-          <div class="lp-float lp-float-c">
-            <span class="lp-float-label">{{ icon('pound') }} Revenue</span>
-            <b data-count="91740" data-prefix="£">£91,740</b>
-            <small>Target £156,700 · <span class="lp-ok">ahead of pace</span></small>
-          </div>
-        </div>
+          <p class="lp-footnote">Based on the published starter plans of popular CRMs, October 2026.</p>
+        </section>
       </div>
     </section>
 
-    <!-- Comparison -->
-    <section class="lp-section" aria-labelledby="compare-title">
-      <div class="lp-wrap lp-narrow">
-        <div class="lp-head lp-reveal">
-          <h2 id="compare-title">What others charge extra for</h2>
-          <p class="lp-sub">Most CRMs charge more for the things a business needs every day. CAE CRM includes them from day one.</p>
-        </div>
-        <div class="lp-table-wrap lp-reveal">
-          <table class="lp-table">
-            <thead><tr><th scope="col">Feature</th><th scope="col">CAE CRM</th><th scope="col">Typical CRM starter plan</th></tr></thead>
-            <tbody>
-              {% for feature, typical in [('Sales pipeline', 'Included'), ('Help desk with service levels', 'Separate product'),
-                                          ('UK VAT invoicing', 'Integration needed'), ('Making Tax Digital VAT returns', 'Not available'),
-                                          ('Quotes signed online', 'Higher tier'), ('Workflow automation', 'Higher tier'),
-                                          ('UK GDPR tools', 'Limited'), ('UK bank holidays in service levels', 'Not available')] %}
-                <tr><th scope="row">{{ feature }}</th><td class="lp-yes">{{ icon('check') }} Included</td><td>{{ typical }}</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        <p class="lp-footnote">Based on the published starter plans of popular CRMs, October 2026.</p>
-      </div>
-    </section>
-
-    <!-- Benefits -->
-    <section class="lp-section" aria-labelledby="why-title">
-      <div class="lp-wrap">
-        <div class="lp-head lp-reveal"><h2 id="why-title">Why businesses choose CAE CRM</h2></div>
-        <div class="lp-benefits">
-          {% for ic, title, text in [('clock', 'Less admin', 'One record per customer, and tasks created for you when things happen.'),
-                                      ('mail', 'Faster replies', "See a customer's whole history before you answer them."),
-                                      ('pound', 'Get paid sooner', 'Invoice straight from the deal, take card payments and send reminders automatically.'),
-                                      ('trend', 'Better decisions', 'Sales, support and money in the same reports, always up to date.')] %}
-            <div class="lp-benefit lp-reveal"><span class="lp-card-icon">{{ icon(ic) }}</span><h3>{{ title }}</h3><p>{{ text }}</p></div>
-          {% endfor %}
-        </div>
-      </div>
-    </section>
-
-    <!-- Security -->
-    <section class="lp-section" id="security" aria-labelledby="security-title">
-      <div class="lp-wrap lp-split">
-        <div class="lp-reveal">
-          <h2 id="security-title">Security built in</h2>
-          <p class="lp-sub">Your customers' data is kept private to your business, and every change is recorded. Read how in our <a href="{{ url_for('legal', doc='dpa') }}">data processing agreement</a>.</p>
-        </div>
-        <ul class="lp-checks lp-reveal">
-          {% for item in ['UK GDPR tools', 'Encrypted connections', 'Encrypted storage', 'Two-factor sign-in, required for admins',
-                          'Admin and member roles', 'Full audit trail', "Each business's data kept separate", 'Automatic lockout after failed sign-ins'] %}
-            <li>{{ icon('check') }} {{ item }}</li>
-          {% endfor %}
-        </ul>
-      </div>
-    </section>
-
-    <!-- Pricing -->
-    <section class="lp-section" id="pricing" aria-labelledby="pricing-title">
-      <div class="lp-wrap lp-narrow">
-        <div class="lp-head lp-reveal">
-          <h2 id="pricing-title">Simple pricing</h2>
-          <p class="lp-sub">One plan with everything in it. No tiers, no add-ons.</p>
-        </div>
-        <div class="lp-price lp-reveal">
-          <div>
-            <p class="lp-price-figure"><b>{{ price }}</b> per user a month{{ ' plus VAT' if vat }}</p>
-            <p class="lp-price-note">{{ trial_days }}-day free trial. No card needed. Cancel any time.</p>
-            <a class="lp-btn lp-btn-primary lp-btn-lg" href="{{ url_for('auth.signup') }}">Start free trial</a>
-          </div>
-          <ul class="lp-checks">
-            {% for item in ['Every feature, for every user', 'Sales, support and invoicing', 'MTD VAT returns and Xero', 'AI assistant and website chat', 'API, webhooks and Power BI feed', 'Export your data any time'] %}
-              <li>{{ icon('check') }} {{ item }}</li>
-            {% endfor %}
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <!-- FAQ -->
-    <section class="lp-section" id="faq" aria-labelledby="faq-title">
-      <div class="lp-wrap lp-narrow">
-        <div class="lp-head lp-reveal"><h2 id="faq-title">Frequently asked questions</h2></div>
-        {% set faqs = [
-          ('Is CAE CRM suitable for small businesses?', 'Yes. You can start with one user and add people as you grow. Every feature is included from the start.'),
-          ('Does it include invoicing?', 'Yes. VAT invoices, card payments, reminders, credit notes, recurring invoices and Making Tax Digital VAT returns are all included.'),
-          ('Does it help with UK GDPR?', "It records the lawful basis and marketing consent for every person, and can export or erase someone's data in one click. You're still responsible for how you use it."),
-          ('Can I bring my existing data?', "Yes. Import contacts and companies from a spreadsheet, or from another CRM's CSV export."),
-          ('What happens when the trial ends?', "Subscribe to keep going. If you don't, your workspace becomes read-only, and you can still see and export everything.")] %}
-        {% if company.data_region %}{% set faqs = faqs + [('Where is my data stored?', 'In ' ~ company.data_region ~ '. See our privacy notice for the services we use.')] %}{% endif %}
-        <div class="lp-faq lp-reveal">
-          {% for q, a in faqs %}
-            <details><summary>{{ q }}</summary><p>{{ a }}</p></details>
-          {% endfor %}
-        </div>
-        <script type="application/ld+json">
-        {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [
-          {% for q, a in faqs %}{"@type": "Question", "name": {{ q | tojson }}, "acceptedAnswer": {"@type": "Answer", "text": {{ a | tojson }}}}{{ ',' if not loop.last }}{% endfor %}
-        ]}
-        </script>
-      </div>
-    </section>
-
-    <!-- Final call to action -->
-    <section class="lp-final">
+    <section class="lp-cta">
       <div class="lp-wrap lp-reveal">
-        <h2>Ready to run your business from one place?</h2>
-        <p>Start free with sample data to explore, or import your own.</p>
+        <h2>Set up your business in two minutes.</h2>
+        <p>Start with sample data to look around, or import your contacts from a spreadsheet. {{ price }} per user a month{{ ' plus VAT' if vat }} after your {{ trial_days }}-day trial, with every feature included.</p>
         <div class="lp-actions lp-actions-center">
-          <a class="lp-btn lp-btn-primary lp-btn-lg" href="{{ url_for('auth.signup') }}">Start free trial</a>
+          <a class="lp-btn lp-btn-primary lp-btn-lg" href="{{ url_for('auth.signup') }}">Create your workspace</a>
           {% if demo_url %}<a class="lp-btn lp-btn-ghost lp-btn-lg" href="{{ demo_url }}">Book a demo</a>{% endif %}
         </div>
       </div>
@@ -295,32 +122,19 @@
   </main>
 
   <footer class="lp-footer">
-    <div class="lp-wrap lp-footer-grid">
-      <div>
-        <a class="lp-logo" href="{{ url_for('landing') }}"><img src="{{ url_for('static', filename='brand/icon.svg') }}" alt="" width="26" height="26">CAE CRM</a>
-        <p>CAE CRM is built for UK businesses. Amounts in pounds sterling.</p>
-      </div>
-      <nav aria-label="Product">
-        <h3>Product</h3>
-        <a href="#features">Features</a><a href="#pricing">Pricing</a><a href="#security">Security</a><a href="#faq">FAQ</a>
-        <a href="{{ url_for('auth.login') }}">Sign in</a>
-      </nav>
+    <div class="lp-wrap lp-footer-row">
+      <p>CAE CRM is built for UK businesses. Amounts in pounds sterling.</p>
       <nav aria-label="Legal">
-        <h3>Legal</h3>
-        <a href="{{ url_for('legal', doc='privacy') }}">Privacy notice</a>
+        <a href="{{ url_for('legal', doc='terms') }}">Terms</a>
+        <a href="{{ url_for('legal', doc='privacy') }}">Privacy</a>
+        <a href="{{ url_for('legal', doc='dpa') }}">Data processing</a>
         <a href="{{ url_for('legal', doc='cookies') }}">Cookies</a>
-        <a href="{{ url_for('legal', doc='terms') }}">Terms of service</a>
-        <a href="{{ url_for('legal', doc='dpa') }}">Data processing agreement</a>
         <a href="{{ url_for('legal', doc='accessibility') }}">Accessibility</a>
+        {% if company.email %}<a href="mailto:{{ company.email }}">Contact</a>{% endif %}
       </nav>
-      <div>
-        <h3>Company</h3>
-        {% if company.email %}<a href="mailto:{{ company.email }}">{{ company.email }}</a>{% endif %}
-        {% if demo_url %}<a href="{{ demo_url }}">Book a demo</a>{% endif %}
-      </div>
     </div>
     <p class="lp-wrap lp-legal-line">
-      {{ company.company_name or 'Collinalitics Ltd' }}{% if company.company_number %}, a company registered in the UK, number {{ company.company_number }}{% endif %}{% if company.address %}. Registered office: {{ company.address }}{% endif %}.
+      © {{ company.company_name or 'Collinalitics Ltd' }}{% if company.company_number %}, a company registered in the UK, number {{ company.company_number }}{% endif %}{% if company.address %}. Registered office: {{ company.address }}{% endif %}.
     </p>
   </footer>
   <script src="{{ url_for('static', filename='landing.js') }}" defer></script>

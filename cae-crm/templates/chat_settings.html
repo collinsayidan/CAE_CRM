@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Website chat{% endblock %}
+{% block heading %}Website chat{% endblock %}
+{% block subtitle %}<p class="subtitle">A chat window for your website that answers from your help articles and passes visitors to your team when it can't help.</p>{% endblock %}
+
+{% block content %}
+<form method="post" action="{{ url_for('chat_settings') }}" class="settings">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <section class="panel">
+    <h2 class="panel-title">Set up</h2>
+    {% if not articles %}<p class="form-alert" role="status">You have no published help articles yet, so the chatbot won't be able to answer much. <a class="text-link" href="{{ url_for('help_articles') }}">Write some first</a>.</p>{% endif %}
+    <label class="check"><input type="checkbox" name="enabled" {{ 'checked' if w.chat_on }}>
+      <span>Show the chat on {{ w.name }}'s website</span></label>
+    <div class="form-grid">
+      <label class="field span-2"><span class="field-label">Your website addresses</span>
+        <textarea name="domains" rows="3" placeholder="thistle.co.uk">{{ w.chat_domains or '' }}</textarea>
+        <span class="field-hint">One per line. The chat only appears on these sites, so nobody else can put your chatbot on theirs.</span></label>
+      <label class="field span-2"><span class="field-label">Greeting <span class="optional">(optional)</span></span>
+        <input name="greeting" maxlength="300" value="{{ w.chat_greeting or '' }}" placeholder="Hello! How can I help you today?"></label>
+      <label class="field"><span class="field-label">Tickets from the chat go to</span>
+        <select name="owner">{% for name in team %}<option {{ 'selected' if name == owner }}>{{ name }}</option>{% endfor %}</select></label>
+      <label class="field"><span class="field-label">Most visitor messages a day</span>
+        <input name="cap" inputmode="numeric" value="{{ w.chat_daily_cap or cap_limit }}">
+        <span class="field-hint">Up to {{ cap_limit }}. Each message costs about 1p. Used today: {{ used }}.</span></label>
+    </div>
+    <div class="form-actions"><button class="btn primary">Save</button></div>
+  </section>
+</form>
+
+{% if w.chat_on %}
+<section class="panel">
+  <h2 class="panel-title">Add it to your website</h2>
+  <p>Paste this just before <code>&lt;/body&gt;</code> on every page, or ask whoever looks after your website to:</p>
+  <pre class="snippet"><code>&lt;script src="{{ url_for('chat_widget', _external=True) }}" data-chat="{{ token }}" async&gt;&lt;/script&gt;</code></pre>
+  <p class="form-hint">No website editor? Link to the chat page instead: <a class="text-link" href="{{ url_for('chat_page', token=token) }}" target="_blank" rel="noopener">{{ url_for('chat_page', token=token, _external=True) }}</a></p>
+  <p class="form-hint">Visitors are told they're chatting with an AI and that messages are kept for 30 days. Say in your own privacy notice that your website chat uses CAE CRM and Anthropic's Claude.</p>
+</section>
+
+<section class="panel flush">
+  <header class="panel-head pad"><h2>Recent chats</h2></header>
+  <div class="table-wrap">
+    <table class="records">
+      <thead><tr><th>Started</th><th>First message</th><th class="num">Messages</th><th>Ticket</th></tr></thead>
+      <tbody>
+        {% for s in recent %}
+          <tr><td>{{ s.started_at | uk_datetime }}</td><td>{{ (s.first or '') | truncate(80) }}</td><td class="num">{{ s.messages }}</td>
+            <td>{% if s.ticket_id %}<a class="text-link sm" href="{{ url_for('ticket', ticket_id=s.ticket_id) }}">#{{ s.ticket_id }}</a>{% endif %}</td></tr>
+        {% else %}
+          <tr><td colspan="4" class="empty-line">No chats yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

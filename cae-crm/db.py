@@ -77,6 +77,12 @@ CREATE TABLE IF NOT EXISTS workspaces (
     inbound_on INTEGER NOT NULL DEFAULT 0,
     inbound_owner TEXT,
     inbound_token TEXT,
+    site_token TEXT,
+    chat_on INTEGER NOT NULL DEFAULT 0,
+    chat_domains TEXT,
+    chat_greeting TEXT,
+    chat_owner TEXT,
+    chat_daily_cap INTEGER NOT NULL DEFAULT 300,
     ai_enabled INTEGER NOT NULL DEFAULT 0,
     ai_enabled_at TEXT,
     ai_enabled_by TEXT
@@ -580,6 +586,38 @@ CREATE TABLE IF NOT EXISTS record_tags (
     record_id INTEGER NOT NULL,
     UNIQUE (tag_id, record_type, record_id)
 );
+CREATE TABLE IF NOT EXISTS help_articles (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    published INTEGER NOT NULL DEFAULT 1,
+    created_by TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS chat_sessions (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    token TEXT NOT NULL UNIQUE,
+    visitor TEXT,
+    started_at TEXT NOT NULL,
+    last_at TEXT NOT NULL,
+    messages INTEGER NOT NULL DEFAULT 0,
+    ticket_id INTEGER REFERENCES tickets(id) ON DELETE SET NULL
+);
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    session_id INTEGER NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,
+    role TEXT NOT NULL,
+    body TEXT NOT NULL,
+    sources TEXT,
+    offer_person INTEGER NOT NULL DEFAULT 0,
+    input_tokens INTEGER NOT NULL DEFAULT 0,
+    output_tokens INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS inbound_emails (
     id {pk},
     workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -714,7 +752,9 @@ ADDED_COLUMNS = {
                    "ai_enabled INTEGER NOT NULL DEFAULT 0", "ai_enabled_at TEXT", "ai_enabled_by TEXT",
                    "quiet_days INTEGER NOT NULL DEFAULT 14",
                    "bank_holiday_region TEXT NOT NULL DEFAULT 'england-and-wales'", "csat_on INTEGER NOT NULL DEFAULT 0",
-                   "inbound_on INTEGER NOT NULL DEFAULT 0", "inbound_owner TEXT", "inbound_token TEXT"],
+                   "inbound_on INTEGER NOT NULL DEFAULT 0", "inbound_owner TEXT", "inbound_token TEXT",
+                   "site_token TEXT", "chat_on INTEGER NOT NULL DEFAULT 0", "chat_domains TEXT", "chat_greeting TEXT",
+                   "chat_owner TEXT", "chat_daily_cap INTEGER NOT NULL DEFAULT 300"],
     "deals": ["workspace_id INTEGER", "contact_id INTEGER", "custom TEXT", "outcome_reason TEXT", "outcome_note TEXT",
               "quiet_since TEXT"],
     "tickets": ["custom TEXT"],
@@ -897,6 +937,9 @@ def migrate(db, today):
         "CREATE INDEX IF NOT EXISTS ix_recycle_ids ON recycle_ids (workspace_id, table_name, old_id)",
         "CREATE INDEX IF NOT EXISTS ix_ai_messages_conversation ON ai_messages (conversation_id, id)",
         "CREATE UNIQUE INDEX IF NOT EXISTS ux_workspaces_inbound ON workspaces (inbound_token)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS ux_workspaces_site ON workspaces (site_token)",
+        "CREATE INDEX IF NOT EXISTS ix_chat_messages_ws ON chat_messages (workspace_id, role, created_at)",
+        "CREATE INDEX IF NOT EXISTS ix_chat_sessions_visitor ON chat_sessions (workspace_id, visitor)",
         "CREATE INDEX IF NOT EXISTS ix_inbound_sender ON inbound_emails (workspace_id, sender, created_at)",
         "CREATE INDEX IF NOT EXISTS ix_inbound_message ON inbound_emails (workspace_id, message_id)",
         "CREATE INDEX IF NOT EXISTS ix_ai_outputs_record ON ai_outputs (workspace_id, user_id, task, record_type, record_id)",

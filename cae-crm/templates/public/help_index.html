@@ -1,0 +1,14 @@
+{% extends "public/_layout.html" %}
+{% block title %}Help{% endblock %}
+{% block main_class %}is-narrow{% endblock %}
+{% block content %}
+<section class="panel public-form-card">
+  <h1>How can we help?</h1>
+  {% if articles %}
+    <ul class="help-list">{% for a in articles %}<li><a href="{{ url_for('help_article', token=token, article_id=a.id) }}">{{ a.title }}</a></li>{% endfor %}</ul>
+  {% else %}
+    <p class="muted">No help articles yet.</p>
+  {% endif %}
+  {% if business.chat_on %}<p class="small muted"><a class="text-link" href="{{ url_for('chat_page', token=token) }}">Ask a question in the chat</a></p>{% endif %}
+</section>
+{% endblock %}

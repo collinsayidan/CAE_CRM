@@ -1,4 +1,4 @@
-/* The public homepage: theme switch, mobile menu, sticky header border, reveal on scroll and counting numbers.
+/* The public homepage: theme switch, sticky header border, reveal on scroll and counting numbers.
    Everything on the page works and reads correctly without this script. */
 (() => {
   const root = document.documentElement;
@@ -9,14 +9,6 @@
     root.dataset.theme = root.dataset.theme === "light" ? "dark" : "light";
     try { localStorage.setItem("cae-theme", root.dataset.theme); } catch (e) { /* storage unavailable */ }
   });
-
-  // Mobile menu.
-  const menuBtn = document.querySelector("[data-lp-menu]");
-  const nav = document.getElementById("lp-nav");
-  const setMenu = open => { nav.classList.toggle("is-open", open); menuBtn.setAttribute("aria-expanded", String(open)); };
-  menuBtn?.addEventListener("click", () => setMenu(!nav.classList.contains("is-open")));
-  nav?.addEventListener("click", e => { if (e.target.closest("a")) setMenu(false); });
-  document.addEventListener("keydown", e => { if (e.key === "Escape" && nav?.classList.contains("is-open")) { setMenu(false); menuBtn.focus(); } });
 
   // A border under the header once the page has scrolled.
   const header = document.querySelector("[data-lp-header]");

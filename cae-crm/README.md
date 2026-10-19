@@ -275,6 +275,15 @@ To connect Power BI:
 
 Scheduled refresh in the Power BI service uses the same sign-in. Cells that a spreadsheet could run as a formula are neutralised, but numbers and phone numbers are left as they are.
 
+### Homepage
+
+`/welcome` is the public homepage, dark by default with a light/dark switch. It only claims what the app does today: there are no testimonials or uptime figures, and the dashboard figures are labelled as sample data.
+
+- **Price, trial and VAT** come from the billing settings (`CAE_SEAT_PRICE`, `CAE_TRIAL_DAYS`). "plus VAT" appears only once `STRIPE_TAX_RATE_ID` is set.
+- **Book a demo** appears once `CAE_DEMO_URL` is set. Point it at a web form in your own workspace.
+- **Company details** in the footer come from the `LEGAL_…` settings.
+- **Nothing is loaded from other websites**, and all motion stops for people who ask their device to reduce it.
+
 ### Legal pages
 
 `/legal` has draft **terms of service**, a **privacy notice**, a **data processing agreement** (covering what UK GDPR Article 28 requires) and a **cookies and storage** statement. They're written to match what CAE CRM actually does. **A solicitor must review them before they're relied on.**

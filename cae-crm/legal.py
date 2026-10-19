@@ -14,6 +14,7 @@ DOCS = {
     "privacy": "Privacy notice",
     "dpa": "Data processing agreement",
     "cookies": "Cookies and storage",
+    "accessibility": "Accessibility statement",
 }
 # Changes whenever the wording changes, so each workspace's record shows which version it agreed to.
 VERSION = "2026-10-19.4 draft"

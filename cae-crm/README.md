@@ -45,6 +45,8 @@ To run locally against Supabase, copy `.env.example` to `.env`, fill it in and r
 
 The app creates and upgrades its tables when it starts. On PostgreSQL it also turns on row level security for every table, so Supabase's public Data API can't read or change CRM data; the app connects as the tables' owner and isn't affected. A database from the first release is upgraded in place, and its records move into a workspace called "My business". If a required setting is missing, the site shows a "Finish setting up" page naming it, rather than running without it.
 
+**Speed.** Keep the app and the database in the same region. Every page runs a few dozen small queries, and a round trip across the Atlantic adds about 80ms to each. `vercel.json` runs the app in London (`lhr1`), next to a Supabase project in `eu-west-2`. If your Supabase project is somewhere else, change `regions` to the nearest Vercel region. The app also skips its schema check on start-up when nothing has changed, and keeps its database connection open between requests on the same server.
+
 Vercel finds the app through `wsgi.py`, which `pyproject.toml` names in `[tool.vercel] entrypoint = "wsgi:app"`.
 
 ## Email

@@ -61,7 +61,7 @@ def tell_owner(q, title, body):
 
 
 def client_ip():
-    # Vercel puts the visitor's address in X-Real-IP and overwrites any value the visitor sends.
+    # Vercel and Coolify's proxy both put the visitor's address in X-Real-IP, replacing any value the visitor sends.
     return (request.headers.get("X-Real-IP") or (request.access_route[0] if request.access_route else "")
             or request.remote_addr or "")[:64]
 

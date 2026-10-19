@@ -35,3 +35,26 @@ jobs:
           cache-dependency-path: cae-crm/requirements*.txt
       - run: pip install -r requirements-dev.txt
       - run: python -m pytest -q
+
+  docker-image:
+    # The image Coolify builds: it must build, start, answer its health check and serve pages.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t cae-crm cae-crm
+      - name: Start the container
+        run: |
+          docker run -d --name cae -p 8000:8000 \
+            -e CAE_SECRET_KEY=ci-only-secret -e DATABASE_URL=/app/instance/ci.sqlite3 cae-crm
+      - name: Check it serves pages
+        run: |
+          for i in $(seq 1 30); do curl -fsS http://localhost:8000/healthz && break; sleep 2; done
+          curl -fsS http://localhost:8000/healthz | grep -qx ok
+          curl -fsS -H "X-Forwarded-Proto: https" -H "X-Forwarded-Host: cae.example.co.uk" http://localhost:8000/welcome \
+            | grep -q 'href="https://cae.example.co.uk/welcome"'
+          for i in $(seq 1 30); do [ "$(docker inspect -f '{{.State.Health.Status}}' cae)" = healthy ] && break; sleep 3; done
+          docker inspect -f '{{.State.Health.Status}}' cae | grep -qx healthy
+      - name: Container logs
+        if: always()
+        run: docker logs cae

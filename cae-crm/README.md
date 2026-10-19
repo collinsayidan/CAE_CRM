@@ -49,6 +49,30 @@ The app creates and upgrades its tables when it starts. On PostgreSQL it also tu
 
 Vercel finds the app through `wsgi.py`, which `pyproject.toml` names in `[tool.vercel] entrypoint = "wsgi:app"`.
 
+## Deploy to Coolify (or any Docker host)
+
+The `Dockerfile` runs the app with gunicorn on port 8000, as an ordinary user, with a health check at `/healthz`. It sets `CAE_HOSTED=1`, so the app:
+- uses secure cookies;
+- refuses to start without its key and database;
+- trusts the proxy's `X-Forwarded-*` headers for the visitor's scheme, host and address.
+
+1. **Add the app.** In Coolify, open your project and choose **+ Add Resource → Public/Private repository** (GitHub App or deploy key for a private repository). Pick this repository and branch `main`.
+   - **Build pack:** Dockerfile.
+   - **Base directory:** `/cae-crm`.
+   - **Port:** 8000.
+2. **Domain.** Set it, for example `https://cae.collinalitics.co.uk`, and point an `A` record for that name at the server. Coolify gets the HTTPS certificate.
+3. **Environment variables.** Use the same ones as on Vercel (`.env.example` lists them):
+   - `DATABASE_URL` and `CAE_SECRET_KEY`. Use the **same** secret key as Vercel, so people stay signed in when you switch.
+   - Email, Stripe, integrations, `CRON_SECRET`, and the `LEGAL_…` settings.
+   - `CAE_BASE_URL`: the public address, for example `https://cae.collinalitics.co.uk`. The daily job uses it to build links in emails.
+   - Optionally `CAE_WORKERS`: gunicorn processes, default 2.
+4. **Daily job.** Under the application's **Scheduled Tasks**, add `python cron.py` at `0 6 * * *`. Run it **once a day only**, because each run sends a reminder for every overdue invoice. Turn it on only after Vercel's cron has stopped, or reminders will go out twice.
+5. **Preview deployments.** Leave them **off**, unless they have their own database. A preview runs unreviewed code, and would otherwise use the live `DATABASE_URL`.
+6. **Switching over.**
+   - Deploy and check the app at its new address.
+   - Update the web addresses registered with integrations (Google, Microsoft, Xero, HMRC, Stripe and Resend webhooks) to the new domain.
+   - Then remove the Vercel project, or its cron and domain.
+
 ## Email
 
 CAE CRM sends through [Resend](https://resend.com). Every business sends from the one address in `CAE_MAIL_FROM`, shown with the business's own name, and replies go to the reply-to email in **Settings**.

@@ -84,7 +84,7 @@ NAV_PARENT = {"contact": "contacts", "company": "companies", "deal": "pipeline",
 SETTINGS_PARENT = {"auth.member": "auth.team", "auth.edit_member": "auth.team", "import_map": "imports",
                    "vat_return": "vat"}
 # Pages anyone can reach without signing in.
-PUBLIC_ENDPOINTS = {"landing", "favicon", "auth.login", "auth.signup", "auth.setup", "auth.forgot", "auth.reset",
+PUBLIC_ENDPOINTS = {"landing", "favicon", "healthz", "auth.login", "auth.signup", "auth.setup", "auth.forgot", "auth.reset",
                     "auth.two_factor_check", "static", "auth.verify_email", "auth.accept_invite", "survey", "summary_off", "help_index", "help_article", "chat_widget",
                     "chat_page", "chat_message", "chat_handover", "pay_invoice", "pay_invoice_pdf", "pay_by_card",
                     "stripe_connect_webhook",
@@ -119,7 +119,13 @@ def sidebar_counts(workspace_id, t):
 
 def create_app(config=None):
     app = Flask(__name__, instance_relative_config=True)
-    hosted = bool(os.environ.get("VERCEL"))
+    # Hosted on Vercel, or in the Docker image (Coolify), which sets CAE_HOSTED=1.
+    hosted = bool(os.environ.get("VERCEL") or os.environ.get("CAE_HOSTED"))
+    if os.environ.get("CAE_HOSTED") and not os.environ.get("VERCEL"):
+        # Behind Coolify's proxy, which ends HTTPS and forwards the visitor's scheme, host and address. Without this,
+        # links in emails and redirects would say http://, and every visitor would seem to come from the proxy.
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     preview = os.environ.get("VERCEL_ENV") == "preview"
     if preview:
         # Preview deployments (one per pull request) must never touch live data, even if DATABASE_URL is shared
@@ -259,6 +265,11 @@ def create_app(config=None):
         if request.path == "/":
             return redirect(url_for("landing"))
         return redirect(url_for("auth.login", next=request.full_path.rstrip("?")))
+
+    @app.get("/healthz")
+    def healthz():
+        """For the host's health check: the app is up and answering."""
+        return "ok", 200, {"Cache-Control": "no-store", "Content-Type": "text/plain"}
 
     @app.get("/favicon.ico")
     def favicon():

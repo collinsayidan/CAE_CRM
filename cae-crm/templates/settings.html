@@ -60,7 +60,7 @@
     </div>
     <label class="check"><input type="checkbox" name="reminders_on" {{ 'checked' if form.reminders_on }}>
       <span>Send polite reminders for overdue invoices, 3, 14 and 30 days after the due date</span></label>
-    <p class="form-hint">Only invoices you've emailed from CAE CRM are chased, to the address you sent them to. Reminders stop when an invoice is marked paid.</p>
+    <p class="form-hint">Only invoices you've emailed from CAE CRM are chased, to the address you sent them to. Reminders stop when an invoice is paid. <a class="text-link" href="{{ url_for('payment_settings') }}">Change the wording, card payments and late payment interest</a>.</p>
   </section>
 
   <section class="panel">

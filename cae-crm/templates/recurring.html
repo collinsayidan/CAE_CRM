@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Recurring invoices{% endblock %}
+{% block heading %}Recurring invoices{% endblock %}
+{% block subtitle %}<p class="subtitle">Invoices raised on a schedule and emailed to your customer with the PDF attached. Each one is raised early in the morning on its date.</p>{% endblock %}
+{% block actions %}<a class="btn ghost" href="{{ url_for('invoices') }}">All invoices</a>{% endblock %}
+
+{% block content %}
+<section class="panel flush">
+  <div class="table-wrap">
+    <table class="records">
+      <thead><tr><th>Customer</th><th>How often</th><th class="num">Each invoice</th><th>Next</th><th>Emailed to</th><th></th></tr></thead>
+      <tbody>
+        {% for r in schedules %}
+          <tr>
+            <td><b>{{ r.company }}</b><small>{{ r.description }}</small>
+              {% if r.last_error %}<small class="field-error">{{ r.last_error }}</small>{% endif %}</td>
+            <td>{{ frequencies[r.frequency][0] }}{% if r.end_date %}<small>until {{ r.end_date | uk_date }}</small>{% endif %}</td>
+            <td class="num">{{ pennies(totals[r.id]) }}<small>incl. VAT</small></td>
+            <td>{% if r.active %}{{ r.next_date | uk_date }}{% else %}<span class="chip">{{ 'Finished' if r.end_date and r.next_date > r.end_date else 'Paused' }}</span>{% endif %}</td>
+            <td>{% if r.email %}{{ r.first_name }} {{ r.last_name }}<small>{{ r.email }}</small>{% else %}<span class="muted">Nobody yet</span>{% endif %}</td>
+            <td class="row-actions">
+              <a class="btn ghost sm" href="{{ url_for('recurring_invoices', edit=r.id) }}">{{ icon('edit') }} Edit</a>
+              <form method="post" action="{{ url_for('recurring_invoices') }}" class="inline">
+                <input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="schedule_id" value="{{ r.id }}">
+                <input type="hidden" name="action" value="{{ 'pause' if r.active else 'resume' }}">
+                <button class="btn ghost sm">{{ 'Pause' if r.active else 'Resume' }}</button></form>
+              <form method="post" action="{{ url_for('recurring_invoices') }}" class="inline" data-confirm="Stop this recurring invoice? Invoices already raised are kept.">
+                <input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="schedule_id" value="{{ r.id }}">
+                <input type="hidden" name="action" value="stop"><button class="btn ghost sm danger">Stop</button></form>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6" class="empty-line">No recurring invoices yet. Set one up below for retainers, subscriptions or support contracts.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <h2 class="panel-title">{{ 'Edit recurring invoice' if edit else 'Set up a recurring invoice' }}</h2>
+  <form method="post" action="{{ url_for('recurring_invoices') }}" class="settings">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    {% if edit %}<input type="hidden" name="schedule_id" value="{{ edit.id }}">{% endif %}
+    <div class="form-grid">
+      <label class="field"><span class="field-label">Customer</span>
+        <select name="company_id" required><option value="">Choose…</option>
+          {% for c in companies %}<option value="{{ c.id }}" {{ 'selected' if edit and edit.company_id == c.id }}>{{ c.name }}</option>{% endfor %}</select></label>
+      <label class="field"><span class="field-label">Email it to</span>
+        <select name="contact_id"><option value="">Nobody (raise it only)</option>
+          {% for c in contacts %}<option value="{{ c.id }}" {{ 'selected' if edit and edit.contact_id == c.id }}>{{ c.first_name }} {{ c.last_name }} ({{ c.email }})</option>{% endfor %}</select>
+        <span class="field-hint">Someone at that customer, with an email address.</span></label>
+      <label class="field span-2"><span class="field-label">Description</span>
+        <input name="description" required maxlength="200" value="{{ edit.description if edit else '' }}" placeholder="Monthly support retainer"></label>
+      <label class="field"><span class="field-label">How often</span>
+        <select name="frequency">{% for key, (label, _) in frequencies.items() %}<option value="{{ key }}" {{ 'selected' if edit and edit.frequency == key }}>{{ label }}</option>{% endfor %}</select></label>
+      <label class="field"><span class="field-label">{{ 'Next invoice on' if edit else 'First invoice on' }}</span>
+        <input type="date" name="start_date" required min="{{ today.isoformat() }}" value="{{ edit.next_date if edit else today.isoformat() }}"></label>
+      <label class="field"><span class="field-label">Last invoice by <span class="optional">(optional)</span></span>
+        <input type="date" name="end_date" value="{{ edit.end_date or '' if edit else '' }}"></label>
+      <label class="field"><span class="field-label">Tell</span>
+        <select name="owner">{% for name in team %}<option {{ 'selected' if (edit and edit.owner == name) or (not edit and name == current_user.name) }}>{{ name }}</option>{% endfor %}</select>
+        <span class="field-hint">They get a notification each time one is raised.</span></label>
+    </div>
+    <div class="table-wrap panel-gap">
+      <table class="records compact recurring-lines">
+        <thead><tr><th>Line</th><th class="num">Qty</th><th class="num">Unit price, excl. VAT</th><th>VAT</th></tr></thead>
+        <tbody>
+          {% for n in range(max_lines) %}
+            {% set li = lines[n] if n < lines | length else None %}
+            <tr>
+              <td><input name="line_desc_{{ n }}" maxlength="200" value="{{ li[0] if li else '' }}" aria-label="Line {{ n + 1 }} description" {{ 'required' if n == 0 }} placeholder="{{ 'Support retainer' if n == 0 else '' }}"></td>
+              <td class="num"><input name="line_qty_{{ n }}" inputmode="numeric" value="{{ li[1] if li else 1 }}" aria-label="Line {{ n + 1 }} quantity" size="3"></td>
+              <td class="num"><input name="line_price_{{ n }}" inputmode="decimal" value="{{ '%.2f' | format(li[2] / 100) if li else '' }}" aria-label="Line {{ n + 1 }} unit price" placeholder="£0.00"></td>
+              <td><select name="line_vat_{{ n }}" aria-label="Line {{ n + 1 }} VAT rate">{% for rate in vat_rates %}<option value="{{ rate }}" {{ 'selected' if li and li[3] == rate }}>{{ rate }}%</option>{% endfor %}</select></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="form-hint">Leave unused lines empty. Each invoice is due after your usual payment terms, and reminders work as for any other invoice.</p>
+    <div class="form-actions">
+      {% if edit %}<a class="btn ghost" href="{{ url_for('recurring_invoices') }}">Cancel</a>{% endif %}
+      <button class="btn primary">{{ 'Save changes' if edit else 'Set up' }}</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

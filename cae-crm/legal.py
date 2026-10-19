@@ -16,7 +16,7 @@ DOCS = {
     "cookies": "Cookies and storage",
 }
 # Changes whenever the wording changes, so each workspace's record shows which version it agreed to.
-VERSION = "2026-10-19.3 draft"
+VERSION = "2026-10-19.4 draft"
 UPDATED = "19 October 2026"
 
 # Company details used in the documents: setting name -> what it is.

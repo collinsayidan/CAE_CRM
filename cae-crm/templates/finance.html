@@ -3,7 +3,7 @@
 {% block title %}Invoices{% endblock %}
 {% block heading %}Invoices{% endblock %}
 {% block subtitle %}<p class="subtitle">Invoices, aged debt and VAT for {{ fy_label }}</p>{% endblock %}
-{% block actions %}<button class="btn primary" data-open="dlg-invoice">{{ icon('plus') }} Raise invoice</button>{% endblock %}
+{% block actions %}<a class="btn ghost" href="{{ url_for('recurring_invoices') }}">Recurring</a><button class="btn primary" data-open="dlg-invoice">{{ icon('plus') }} Raise invoice</button>{% endblock %}
 
 {% block content %}
 <section class="stats" aria-label="Finance figures">
@@ -63,6 +63,7 @@
                   <input type="hidden" name="csrf" value="{{ csrf_token }}">
                   <input type="hidden" name="next" value="{{ request.full_path }}">
                   <span class="chip {{ 'bad' if state == 'Overdue' }}">{{ state }}</span>
+                  {% if i.amount_paid or i.credited %}<small>{{ pennies(i.net + i.vat + i.late_interest + i.late_compensation - i.credited - i.amount_paid) }} left</small>{% endif %}
                   <button class="text-link sm">Mark paid</button>
                 </form>
               {% endif %}

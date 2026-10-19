@@ -1,8 +1,10 @@
-"""Invoices: raised by hand or from a deal's line items, with UK VAT, aged debt and VAT-quarter totals."""
+"""Invoices: raised by hand, from a deal's line items or on a schedule (recurring.py), with UK VAT, aged debt and
+VAT-quarter totals. Payments, credit notes and late payment charges are in payments.py."""
 
+import secrets
 from datetime import date, timedelta
 
-from flask import flash, redirect, render_template, request, url_for
+from flask import flash, g, redirect, render_template, request, url_for
 
 import ukfmt
 from events import emit
@@ -11,7 +13,7 @@ from db import get_db, next_invoice_number
 from ukfmt import fy_quarter, money, vat_amount, vat_quarter
 
 
-def raise_invoice(company_id, description, lines, deal_id=None):
+def raise_invoice(company_id, description, lines, deal_id=None, recurring_id=None):
     """Create an invoice from (description, quantity, unit price, discount %, VAT rate) lines. Returns (id, number, gross)."""
     w = workspace()
     db = get_db()
@@ -27,7 +29,8 @@ def raise_invoice(company_id, description, lines, deal_id=None):
     rates = {p[4] for p in priced}
     invoice_id = db.insert("invoices", workspace_id=ws(), number=number, company_id=company_id, deal_id=deal_id,
                            description=description, net=net, vat_rate=rates.pop() if len(rates) == 1 else -1, vat=vat,
-                           issue_date=issue.isoformat(), due_date=(issue + timedelta(days=w["payment_terms"])).isoformat())
+                           issue_date=issue.isoformat(), due_date=(issue + timedelta(days=w["payment_terms"])).isoformat(),
+                           pay_token=secrets.token_urlsafe(18), recurring_id=recurring_id)
     for desc, qty, price, discount, rate, line_net, line_vat in priced:
         db.insert("invoice_lines", workspace_id=ws(), invoice_id=invoice_id, description=desc, quantity=qty,
                   unit_price=price, discount_pct=discount, vat_rate=rate, net=line_net, vat=line_vat)
@@ -50,6 +53,8 @@ def register(app):
                 return "Paid"
             return "Overdue" if i["due_date"] < t.isoformat() else "Due"
 
+        from payments import balance
+
         table = [(i, state(i)) for i in data]
         fy_label, _, _, _ = fy_quarter(t)
         fy_start = date(t.year if t.month >= 4 else t.year - 1, 4, 1)
@@ -62,13 +67,19 @@ def register(app):
             late = (t - date.fromisoformat(i["due_date"])).days
             key = ("Not yet due" if late <= 0 else "1–30 days late" if late <= 30
                    else "31–60 days late" if late <= 60 else "Over 60 days late")
-            aging[key] += i["net"] + i["vat"]
+            aging[key] += max(balance(i), 0)
         totals = {
             "outstanding": sum(aging.values()),
             "overdue": sum(v for k, v in aging.items() if k != "Not yet due"),
             "overdue_n": sum(1 for _, s in table if s == "Overdue"),
-            "paid_fy": sum(i["net"] + i["vat"] for i in data if i["paid_date"] and i["paid_date"] >= fy_start.isoformat()),
-            "vat_quarter": sum(i["vat"] for i in data if vq_start.isoformat() <= i["issue_date"] < vq_end.isoformat()),
+            # Payments recorded in CAE CRM, plus invoices marked paid elsewhere (Xero, or before payments were recorded).
+            "paid_fy": int(one("SELECT COALESCE(SUM(amount), 0) FROM invoice_payments WHERE workspace_id=? AND paid_on >= ?",
+                               ws(), fy_start.isoformat())[0])
+                       + sum(i["net"] + i["vat"] - i["credited"] for i in data
+                             if i["paid_date"] and not i["amount_paid"] and i["paid_date"] >= fy_start.isoformat()),
+            "vat_quarter": sum(i["vat"] for i in data if vq_start.isoformat() <= i["issue_date"] < vq_end.isoformat())
+                           - int(one("SELECT COALESCE(SUM(vat), 0) FROM credit_notes WHERE workspace_id=? AND issue_date >= ? "
+                                     "AND issue_date < ?", ws(), vq_start.isoformat(), vq_end.isoformat())[0]),
         }
         return render_template("finance.html", rows=table, totals=totals, aging=aging, fy_label=fy_label,
                                vq_start=vq_start, vq_end=vq_end - timedelta(days=1))
@@ -120,9 +131,22 @@ def register(app):
         contacts = rows("SELECT id, first_name, last_name, email FROM contacts WHERE workspace_id=? AND company_id=? "
                         "AND email IS NOT NULL AND email <> '' ORDER BY first_name", ws(), i["company_id"])
         reminders = rows("SELECT * FROM invoice_reminders WHERE workspace_id=? AND invoice_id=? ORDER BY id", ws(), invoice_id)
+        import payments
+        if not i["pay_token"]:  # invoices from before payment pages
+            payments.pay_token(i)
+            get_db().commit()
+            i = get_or_404("invoices", invoice_id)
+        business = workspace()
         return render_template("invoice.html", i=i, company=company, lines=lines, by_rate=sorted(by_rate.items(), reverse=True),
-                               business=workspace(), xero=connection("xero"), contacts=contacts, reminders=reminders,
-                               mail_ready=mail.configured())
+                               business=business, xero=connection("xero"), contacts=contacts, reminders=reminders,
+                               mail_ready=mail.configured(), left=payments.balance(i), late=payments.late_charges(i),
+                               payments=rows("SELECT * FROM invoice_payments WHERE workspace_id=? AND invoice_id=? "
+                                             "ORDER BY paid_on, id", ws(), invoice_id),
+                               credits=rows("SELECT * FROM credit_notes WHERE workspace_id=? AND invoice_id=? ORDER BY id",
+                                            ws(), invoice_id),
+                               claim=payments.late_claim(i, business), methods=payments.METHODS,
+                               card=payments.card_ready(business), pay_link=payments.pay_url(i, external=True),
+                               room=i["net"] + i["vat"] - i["credited"], today_iso=today().isoformat())
 
     @app.post("/invoices/<int:invoice_id>/paid")
     def mark_paid(invoice_id):
@@ -131,9 +155,13 @@ def register(app):
             flash(f"Invoice {i['number']} was already marked as paid.", "ok")
             return back("invoices")
         db = get_db()
-        db.execute("UPDATE invoices SET paid_date=? WHERE id=? AND workspace_id=?", (today().isoformat(), invoice_id, ws()))
-        log_event(f"Invoice {i['number']} paid", company_id=i["company_id"], deal_id=i["deal_id"])
-        emit("invoice.paid", invoice_id)
+        from payments import balance, record_payment
+        if balance(i) > 0:  # the rest arrived: record it, so the totals and the timeline add up
+            record_payment(i, balance(i), today().isoformat(), "Other", "Marked as paid", g.user["name"])
+        else:
+            db.execute("UPDATE invoices SET paid_date=? WHERE id=? AND workspace_id=?", (today().isoformat(), invoice_id, ws()))
+            log_event(f"Invoice {i['number']} paid", company_id=i["company_id"], deal_id=i["deal_id"])
+            emit("invoice.paid", invoice_id)
         db.commit()
         flash(f"Invoice {i['number']} marked as paid.", "ok")
         return back("invoices")

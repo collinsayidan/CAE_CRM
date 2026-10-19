@@ -12,6 +12,7 @@ import urllib.request
 from flask import current_app
 
 API = "https://api.stripe.com/v1"
+CONNECT = "https://connect.stripe.com"  # OAuth for connecting a business's own Stripe account
 
 
 class StripeError(Exception):
@@ -36,23 +37,36 @@ def flatten(params, prefix=""):
     return out
 
 
-def request(method, path, params=None):
+def connect_configured():
+    """Whether businesses can connect their own Stripe accounts to take card payments on invoices."""
+    c = current_app.config
+    return bool(c.get("STRIPE_BACKEND") or (c.get("STRIPE_SECRET_KEY") and c.get("STRIPE_CONNECT_CLIENT_ID")))
+
+
+def request(method, path, params=None, account=None, oauth=False):
+    """Call Stripe. account acts on a business's connected Stripe account; oauth calls connect.stripe.com."""
     fake = current_app.config.get("STRIPE_BACKEND")
     if fake:
-        return fake.request(method, path, params or {})
+        extra = {k: v for k, v in (("account", account), ("oauth", oauth)) if v}
+        return fake.request(method, path, params or {}, **extra)
     key = current_app.config.get("STRIPE_SECRET_KEY")
     if not key:
-        raise StripeError("Billing isn't set up. Add STRIPE_SECRET_KEY to the hosting settings.")
+        raise StripeError("Stripe isn't set up. Add STRIPE_SECRET_KEY to the hosting settings.")
     data = urllib.parse.urlencode(flatten(params or {})).encode()
-    url = API + path + (("?" + data.decode()) if method == "GET" and data else "")
-    req = urllib.request.Request(url, data=data if method != "GET" else None, method=method, headers={
-        "Authorization": f"Bearer {key}", "Stripe-Version": "2024-06-20", "User-Agent": "CAE-CRM/1.0"})
+    url = (CONNECT if oauth else API) + path + (("?" + data.decode()) if method == "GET" and data else "")
+    headers = {"Authorization": f"Bearer {key}", "Stripe-Version": "2024-06-20", "User-Agent": "CAE-CRM/1.0"}
+    if account:
+        headers["Stripe-Account"] = account
+    req = urllib.request.Request(url, data=data if method != "GET" else None, method=method, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=20) as resp:
             return json.loads(resp.read())
     except urllib.error.HTTPError as e:
         try:
-            message = json.loads(e.read()).get("error", {}).get("message", "")
+            body = json.loads(e.read())
+            error = body.get("error")
+            message = (error.get("message", "") if isinstance(error, dict)
+                       else body.get("error_description", ""))  # OAuth errors are flat
         except ValueError:
             message = ""
         raise StripeError(f"Stripe refused the request ({e.code}). {message}".strip()) from None

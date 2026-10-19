@@ -1725,3 +1725,22 @@ a.tag:hover, .tag a:hover { text-decoration: underline; }
 .chat-person-form p { margin: 0; }
 .chat-articles ul { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
 .chat-articles p { margin: 0; }
+
+/* Getting paid: payments, credit notes, late charges, the payment page and recurring invoices --------------------- */
+.late-claim { padding: 14px 16px; border-radius: var(--r-md); background: var(--warn-soft); color: var(--ink); }
+.late-claim h3 { margin: 0 0 6px; font-size: 15px; }
+.late-claim p { margin: 0 0 8px; }
+.reminder-wording { border-top: 1px solid var(--line-soft); padding: 10px 0; }
+.reminder-wording summary { cursor: pointer; font-weight: 700; }
+.reminder-wording .form-grid { margin-top: 10px; }
+.recurring-lines input, .recurring-lines select { width: 100%; min-width: 0; }
+.recurring-lines td:first-child { min-width: 200px; }
+.pay-card h1 { margin: 4px 0 14px; }
+.pay-totals { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 15px; }
+.pay-totals td { padding: 7px 0; border-bottom: 1px solid var(--line-soft); }
+.pay-totals tfoot td { border-bottom: 0; padding-top: 12px; font-weight: 800; font-size: 18px; }
+.pay-action { margin: 6px 0 18px; display: grid; gap: 8px; justify-items: start; }
+.pay-action .btn { font-size: 16px; padding: 12px 20px; }
+.pay-bank { padding: 14px 16px; border-radius: var(--r-md); background: var(--surface-2); margin-bottom: 16px; }
+.pay-bank h2 { margin: 0 0 8px; font-size: 15px; }
+@media (max-width: 520px) { .pay-action .btn { width: 100%; justify-content: center; } }

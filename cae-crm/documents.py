@@ -1,5 +1,6 @@
 """What customers receive: the business's logo and payment details, invoice and quote PDFs, invoices by email, and
-polite automatic reminders for overdue invoices (3, 14 and 30 days after the due date, when switched on)."""
+polite automatic reminders (3 days before the due date, then 3, 14 and 30 days after it, when switched on), in wording
+each business can change."""
 
 import base64
 import io
@@ -15,6 +16,24 @@ from ukfmt import money, uk_date
 
 MAX_LOGO_BYTES = 2 * 1024 * 1024
 REMINDER_DAYS = (3, 14, 30)  # days after the due date
+REMINDER_STAGES = (-3, 3, 14, 30)  # -3 is three days before the due date
+STAGE_NAMES = {-3: "3 days before the due date", 3: "3 days late", 14: "14 days late", 30: "30 days late"}
+MERGE_FIELDS = ("first_name", "number", "amount_due", "due_date", "days_late", "business")
+DEFAULT_REMINDERS = {
+    -3: ("Invoice {number} from {business} is due soon",
+         "Hi {first_name},\n\nJust a note that invoice {number} for {amount_due} is due on {due_date}. If you've "
+         "already paid, thank you."),
+    3: ("Reminder: invoice {number} from {business}",
+        "Hi {first_name},\n\nA friendly reminder that invoice {number} for {amount_due} was due on {due_date}. If "
+        "you've already paid, thank you, and please ignore this email."),
+    14: ("Reminder: invoice {number} from {business}",
+         "Hi {first_name},\n\nInvoice {number} for {amount_due} was due on {due_date} and is now {days_late} days "
+         "overdue. Please let us know when we can expect payment, or if there's a problem we can help with."),
+    30: ("Overdue: invoice {number} from {business}",
+         "Hi {first_name},\n\nInvoice {number} for {amount_due} was due on {due_date} and is now {days_late} days "
+         "overdue. Please arrange payment as soon as possible, or let us know if there's a problem.\n\nWe may add "
+         "interest and compensation under the Late Payment of Commercial Debts (Interest) Act 1998."),
+}
 
 
 # --- The business's logo -------------------------------------------------------------
@@ -175,14 +194,24 @@ def vat_totals(net, vat, lines, business):
     return totals
 
 
-def payment_notes(business, number, due):
+def online_link(i, business):
+    """Where a customer can pay this invoice online: its payment page once Stripe is connected, otherwise the
+    business's own payment link, if it has one."""
+    from payments import card_ready
+    if i is not None and i["pay_token"] and card_ready(business):
+        return url_for("pay_invoice", token=i["pay_token"], _external=True)
+    return business["payment_link"] or None
+
+
+def payment_notes(business, number, due, i=None):
     notes = []
     if business["bank_account_number"]:
         notes.append(("How to pay", f"By bank transfer to {business['bank_account_name'] or business['legal_name'] or business['name']}, "
                                     f"sort code {business['bank_sort_code']}, account {business['bank_account_number']}. "
                                     f"Please use {number} as the reference."))
-    if business["payment_link"]:
-        notes.append(("Pay online" if not notes else None, f"Or pay online: {business['payment_link']}"))
+    link = online_link(i, business)
+    if link:
+        notes.append(("Pay online" if not notes else None, f"Or pay online: {link}"))
     notes.append((None, f"Payment is due by {uk_date(due)}. Late payments may attract interest under the Late Payment of "
                         "Commercial Debts (Interest) Act 1998."))
     if not business["vat_registered"]:
@@ -203,11 +232,21 @@ def invoice_pdf(i, business):
     lines = invoice_lines(i)
     facts = [("Invoice number", i["number"]), ("Tax point" if business["vat_registered"] else "Date", uk_date(i["issue_date"])),
              ("Payment due", uk_date(i["due_date"]))]
-    totals = vat_totals(i["net"], i["vat"], lines, business) + [("Amount due in GBP", gbp(i["net"] + i["vat"]), True)]
+    from payments import balance, late_charges
+    totals = vat_totals(i["net"], i["vat"], lines, business)
+    if late_charges(i) or i["credited"] or i["amount_paid"]:
+        totals.append(("Total including VAT", gbp(i["net"] + i["vat"]), False))
+        if late_charges(i):
+            totals.append(("Late payment interest and compensation (no VAT)", gbp(late_charges(i)), False))
+        if i["credited"]:
+            totals.append(("Less credit notes", "-" + gbp(i["credited"]), False))
+        if i["amount_paid"]:
+            totals.append(("Less paid", "-" + gbp(i["amount_paid"]), False))
+    totals.append(("Amount due in GBP", gbp(max(balance(i), 0)), True))
     if i["paid_date"]:
         totals.append(("Paid in full", uk_date(i["paid_date"]), False))
     return render_pdf("Invoice", i["number"], facts, business, company, lines, totals,
-                      payment_notes(business, i["number"], i["due_date"]))
+                      payment_notes(business, i["number"], i["due_date"], i))
 
 
 def quote_pdf(q, business):
@@ -230,46 +269,72 @@ def pdf_response(data, filename, download):
 
 # --- Sending invoices and reminders -----------------------------------------------------
 
-def invoice_email(i, business, recipient_name, kind="invoice", days_late=0):
+def reminder_template(workspace_id, stage):
+    """(subject, body) for a reminder stage: the business's own wording, or ours."""
+    row = one("SELECT subject, body FROM reminder_templates WHERE workspace_id=? AND stage=?", workspace_id, stage)
+    return (row["subject"], row["body"]) if row else DEFAULT_REMINDERS[stage]
+
+
+def merge(text, values):
+    """Fill in {first_name} and the other merge fields. Plain replacement, so stray braces are left alone."""
+    for key in MERGE_FIELDS:
+        text = text.replace("{" + key + "}", str(values[key]))
+    return text
+
+
+def stage_for(days_late):
+    """The reminder wording that fits how late an invoice is."""
+    if days_late <= 0:
+        return -3
+    return 30 if days_late >= 30 else 14 if days_late >= 14 else 3
+
+
+def invoice_email(i, business, recipient_name, kind="invoice", days_late=0, stage=None):
     """(subject, html, text) for an invoice or a reminder about it."""
-    gross = money(i["net"] + i["vat"], pennies=True)
+    from payments import balance
     first = (recipient_name or "").split()[0] if recipient_name else "there"
     if kind == "invoice":
         subject = f"Invoice {i['number']} from {business['name']}"
-        paragraphs = [f"Hi {first},", f"Please find attached invoice {i['number']} for {gross}, due by {uk_date(i['due_date'])}."]
-    elif days_late >= 30:
-        subject = f"Overdue: invoice {i['number']} from {business['name']}"
-        paragraphs = [f"Hi {first},", f"Invoice {i['number']} for {gross} was due on {uk_date(i['due_date'])} and is now "
-                      f"{days_late} days overdue. Please arrange payment as soon as possible, or let us know if there's a problem.",
-                      "We may add interest and compensation under the Late Payment of Commercial Debts (Interest) Act 1998."]
+        paragraphs = [f"Hi {first},", f"Please find attached invoice {i['number']} for "
+                      f"{money(max(balance(i), 0), pennies=True)}, due by {uk_date(i['due_date'])}."]
     else:
-        subject = f"Reminder: invoice {i['number']} from {business['name']}"
-        paragraphs = [f"Hi {first},", f"A friendly reminder that invoice {i['number']} for {gross} was due on "
-                      f"{uk_date(i['due_date'])}. If you've already paid, thank you, and please ignore this email."]
+        values = dict(first_name=first, number=i["number"], amount_due=money(max(balance(i), 0), pennies=True),
+                      due_date=uk_date(i["due_date"]), days_late=max(days_late, 0), business=business["name"])
+        subject_t, body_t = reminder_template(business["id"], stage if stage is not None else stage_for(days_late))
+        subject = merge(subject_t, values).replace("\n", " ")[:200]
+        paragraphs = [p.strip() for p in merge(body_t, values).replace("\r\n", "\n").split("\n\n") if p.strip()]
     if business["bank_account_number"]:
         paragraphs.append(f"Bank transfer: sort code {business['bank_sort_code']}, account {business['bank_account_number']}, "
                           f"reference {i['number']}.")
     paragraphs.append("The invoice is attached as a PDF.")
+    link = online_link(i, business)
     html = render_template("emails/notice.html", business=business, heading=subject, paragraphs=paragraphs,
-                           button_url=business["payment_link"] or None, button_label="Pay online",
+                           button_url=link, button_label="Pay online",
                            footer=f"{business['legal_name'] or business['name']}. Reply to this email with any questions.",
                            logo=logo_url(business, external=True))
-    text = "\n\n".join(paragraphs) + (f"\n\nPay online: {business['payment_link']}" if business["payment_link"] else "") + "\n"
+    text = "\n\n".join(paragraphs) + (f"\n\nPay online: {link}" if link else "") + "\n"
     return subject, html, text
 
 
-def send_invoice(i, business, to_email, to_name, kind="invoice", days_late=0, sender_name=None):
+def send_invoice(i, business, to_email, to_name, kind="invoice", days_late=0, sender_name=None, stage=None):
     """Email an invoice or a reminder, PDF attached. Raises mail.MailError."""
-    subject, html, text = invoice_email(i, business, to_name, kind, days_late)
+    from payments import pay_token
+    if not i["pay_token"]:
+        pay_token(i)
+        i = one("SELECT * FROM invoices WHERE id=?", i["id"])
+    subject, html, text = invoice_email(i, business, to_name, kind, days_late, stage)
     mail.send(mail.message(to_email, subject, html, text, business["name"], business["reply_to"],
                            attachments=[(f"{i['number']}.pdf", invoice_pdf(i, business))]))
 
 
-def reminder_stage(i, on):
-    """Which reminder (3, 14 or 30 days late) an unpaid invoice has reached, or None."""
+def reminder_stage(i, on, before=False):
+    """Which reminder an unpaid invoice has reached (-3 for the one before it's due, if switched on, then 3, 14 or
+    30 days late), or None, with how many days late it is."""
     late = (on - date.fromisoformat(i["due_date"])).days
     reached = [d for d in REMINDER_DAYS if late >= d]
-    return (reached[-1], late) if reached else (None, late)
+    if reached:
+        return reached[-1], late
+    return (-3 if before and -3 <= late < 0 else None), late
 
 
 def send_due_reminders():
@@ -284,18 +349,19 @@ def send_due_reminders():
     for i in candidates:
         flask_g.public_workspace = i["workspace_id"]
         flask_g.pop("workspace", None)
-        stage, late = reminder_stage(i, today())
+        business = workspace()
+        stage, late = reminder_stage(i, today(), before=bool(business["remind_before"]))
         if not stage or one("SELECT 1 FROM invoice_reminders WHERE invoice_id=? AND stage>=?", i["id"], stage):
             continue
-        business = workspace()
         try:
-            send_invoice(i, business, i["sent_to"], None, "reminder", late)
+            send_invoice(i, business, i["sent_to"], None, "reminder", late, stage=stage)
         except mail.MailError:
             current_app.logger.warning("Reminder for invoice %s not sent", i["id"])
             continue
         db.insert("invoice_reminders", workspace_id=i["workspace_id"], invoice_id=i["id"], stage=stage, sent_to=i["sent_to"],
                   sent_at=now().isoformat(timespec="minutes"))
-        log_event(f"Reminder sent for invoice {i['number']}", f"{late} days overdue. Sent to {i['sent_to']}.",
+        log_event(f"Reminder sent for invoice {i['number']}",
+                  (f"{late} days overdue." if late > 0 else f"Due on {uk_date(i['due_date'])}.") + f" Sent to {i['sent_to']}.",
                   company_id=i["company_id"], deal_id=i["deal_id"])
         db.commit()
         sent += 1

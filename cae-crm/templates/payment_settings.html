@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Payments{% endblock %}
+{% block heading %}Payments{% endblock %}
+{% block subtitle %}<p class="subtitle">How customers pay your invoices, what reminders say, and late payment interest. Bank details are under <a class="text-link" href="{{ url_for('settings') }}">Business details</a>.</p>{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <h2 class="panel-title">Card payments</h2>
+  {% if not connect %}
+    <p class="muted">Card payments through Stripe aren't set up on this CAE CRM yet. Whoever runs it needs to add <code>STRIPE_CONNECT_CLIENT_ID</code> to the hosting settings.</p>
+  {% elif w.stripe_account_id %}
+    <p><span class="chip ok">Connected</span> <b>{{ w.stripe_account_name or w.stripe_account_id }}</b>{% if w.stripe_connected_by %}, by {{ w.stripe_connected_by }} on {{ w.stripe_connected_at | uk_date }}{% endif %}.</p>
+    <p class="form-hint">Every invoice's payment page has a Pay by card button. The money goes straight to your Stripe account, Stripe charges you its usual fees, and the payment is recorded on the invoice automatically.</p>
+    <form method="post" action="{{ url_for('stripe_disconnect') }}" class="panel-gap" data-confirm="Disconnect Stripe? Customers won't be able to pay by card until you connect again.">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn ghost sm danger">Disconnect Stripe</button></form>
+  {% else %}
+    <p>Let customers pay invoices by card from their payment page. Sign in to your own Stripe account, or create one, and CAE CRM is connected to it. We never see your Stripe password or keys.</p>
+    <p class="panel-gap"><a class="btn primary" href="{{ url_for('stripe_connect') }}">Connect Stripe</a></p>
+  {% endif %}
+</section>
+
+<form method="post" action="{{ url_for('payment_settings') }}" class="settings">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <section class="panel">
+    <h2 class="panel-title">Reminders</h2>
+    <label class="check"><input type="checkbox" name="reminders_on" {{ 'checked' if w.reminders_on }}>
+      <span>Send reminders automatically for invoices emailed from CAE CRM</span></label>
+    <label class="check"><input type="checkbox" name="remind_before" {{ 'checked' if w.remind_before }}>
+      <span>Also send one 3 days before the due date</span></label>
+    <p class="form-hint">Then 3, 14 and 30 days after the due date, until the invoice is paid. You can use {first_name}, {number}, {amount_due}, {due_date}, {days_late} and {business}. Bank details, the payment link and the PDF are added for you. Empty a box to go back to our wording.</p>
+    {% for stage, name, subject, body in templates %}
+      <details class="reminder-wording" {{ 'open' if loop.first }}>
+        <summary>{{ name | capitalize }}</summary>
+        <div class="form-grid">
+          <label class="field span-2"><span class="field-label">Subject</span><input name="subject_{{ stage }}" maxlength="200" value="{{ subject }}"></label>
+          <label class="field span-2"><span class="field-label">Message</span><textarea name="body_{{ stage }}" rows="6" maxlength="4000">{{ body }}</textarea></label>
+        </div>
+      </details>
+    {% endfor %}
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-title">Late payment interest</h2>
+    <p>Under the Late Payment of Commercial Debts (Interest) Act 1998, a business customer who pays late owes interest at 8% over the Bank of England reference rate, plus fixed compensation of £40, £70 or £100 depending on the size of the debt. Overdue invoices show what you can claim, and you choose whether to add it.</p>
+    <div class="form-grid">
+      <label class="field"><span class="field-label">Bank of England reference rate</span>
+        <input name="late_rate" inputmode="decimal" value="{{ rate }}" required>
+        <span class="field-hint">In %. It's the base rate on 30 June (for July to December) or 31 December (for January to June). Check it on the Bank of England website when it changes.</span></label>
+    </div>
+  </section>
+  <div class="form-actions"><button class="btn primary">Save</button></div>
+</form>
+{% endblock %}

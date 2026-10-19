@@ -12,6 +12,7 @@ from db import get_db
 
 HUB = [
     ("settings", "cog", "Business details", "Your company details, VAT, invoice numbering and sales target.", True),
+    ("payment_settings", "pound", "Payments", "Card payments through your Stripe account, reminder wording and late payment interest.", True),
     ("auth.team", "users", "Team", "Who's on CAE CRM, their profiles, roles and access.", False),
     ("assistant_settings", "sparkle", "AI assistant", "Let your team ask questions about your CRM data and get drafts.", True),
     ("integrations", "bolt", "Integrations", "Connect your email, Xero and HMRC.", False),

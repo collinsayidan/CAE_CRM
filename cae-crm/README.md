@@ -90,6 +90,17 @@ An assistant that answers questions about a workspace's own records, explains ho
 - `CAE_AI_MODEL` (default `claude-opus-5-5`) and `CAE_AI_EFFORT` (default `medium`) choose the model and how hard it thinks. If Claude declines a request, Anthropic's server-side fallback retries it on another Claude model.
 - An answer that needs several lookups can take 10 to 30 seconds. The assistant stops after 8 model calls or about 50 seconds, so check the function time limit on your Vercel plan allows at least 60 seconds.
 
+### Email-to-ticket
+
+Customers' emails to a business's support address become tickets, and their replies thread back into the same ticket.
+
+- **Set up once (whoever runs CAE CRM):** in Resend, open Emails, Receiving, and either use your account's free `<id>.resend.app` address or add a receiving domain (for example `inbound.yourdomain.co.uk`) with the MX record Resend shows. Set `CAE_INBOUND_DOMAIN` to that domain, and tick the **email.received** event on the Resend webhook you already use (`/webhooks/resend`).
+- **Each business:** an admin switches it on under Settings, Support email, picks who owns new email tickets, and forwards their own support mailbox to the private address shown (`support-<token>@<domain>`). The page gives the steps for Microsoft 365 and Gmail.
+- **New emails:** become tickets (source Email, Medium priority) with the message as the description, quoted history trimmed. A sender who isn't a contact is added (lawful basis "Legitimate interests", no marketing consent), linked to a company whose website matches their email domain unless it's a free provider such as Gmail. Workflow rules, webhooks and AI triage run as for any new ticket.
+- **Replies:** emails sent from a ticket carry that ticket's signed reply address and `[#214]` in the subject, so the customer's answer is added to the ticket's timeline, moves it to Waiting on us and tells the owner. A reply to a ticket closed in the last 14 days reopens it; older ones start a new ticket that links back.
+- **Attachments** go to the ticket's Files under the usual rules (4 MB, safe types); others are listed on the timeline.
+- **Safety:** webhooks are signature-checked and each email is handled once. Auto-replies, bounces and our own email are ignored. There's a limit of 20 new tickets an hour per sender and 500 a day per business, and emails that fail SPF/DKIM/DMARC are flagged on the ticket.
+
 ### AI helpers
 
 Where the assistant is on, everyday pages get four helpers. Each sends one record's details to Claude, marked as data rather than instructions:
@@ -322,6 +333,7 @@ support.py    ticket replies, saved replies and the satisfaction survey
 digest.py     the daily summary email
 ukholidays.py bank holidays for each UK nation
 helpers.py    AI helpers: summaries, briefings, draft replies and ticket triage
+inbound.py    email-to-ticket: receiving customers' emails into tickets
 db.py         schema, migrations, SQLite/PostgreSQL connection wrapper
 seed.py       sample data for a new workspace
 ukfmt.py      GBP, dates, VAT, postcodes, phone numbers, working hours, financial year

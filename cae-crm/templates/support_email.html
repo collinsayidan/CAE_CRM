@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Support email{% endblock %}
+{% block heading %}Support email{% endblock %}
+{% block subtitle %}<p class="subtitle">Turn customers' emails into tickets. Replies you send from a ticket come back to the same ticket.</p>{% endblock %}
+
+{% block content %}
+<form method="post" action="{{ url_for('support_email_settings') }}" class="settings">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <section class="panel">
+    <h2 class="panel-title">Turn it on</h2>
+    <label class="check"><input type="checkbox" name="enabled" {{ 'checked' if w.inbound_on }}>
+      <span>Make tickets from emails to {{ w.name }}'s support address</span></label>
+    <label class="field narrow-field"><span class="field-label">New email tickets go to</span>
+      <select name="owner">{% for name in team %}<option {{ 'selected' if name == owner }}>{{ name }}</option>{% endfor %}</select>
+      <span class="field-hint">Your workflow rules and AI triage can still reassign them.</span></label>
+    <div class="form-actions"><button class="btn primary">Save</button></div>
+  </section>
+</form>
+
+{% if w.inbound_on and address %}
+<section class="panel">
+  <h2 class="panel-title">Forward your support mailbox here</h2>
+  <p class="inbound-address"><code>{{ address }}</code></p>
+  <p class="form-hint">Keep this address private: anything sent to it becomes a ticket. Set your own support address (for example support@yourbusiness.co.uk) to forward every email to it.</p>
+  <ul class="plain-list">
+    <li><b>Microsoft 365 or Outlook:</b> in Outlook on the web, open Settings, Mail, Forwarding, tick Enable forwarding, paste the address and choose Keep a copy. An admin may need to allow external forwarding in Microsoft 365 Defender.</li>
+    <li><b>Google Workspace or Gmail:</b> open Settings, Forwarding and POP/IMAP, Add a forwarding address, paste the address and confirm it. The confirmation email arrives here as a ticket; open it to find the link.</li>
+    <li><b>Anywhere else:</b> add a forwarding rule (or alias) in your email provider's settings that sends a copy of every message to the address.</li>
+  </ul>
+  <p class="form-hint">Replies you send from a ticket use that ticket's own reply address, so customers' answers come back to it. Auto-replies and bounces are ignored.</p>
+</section>
+
+<section class="panel flush">
+  <header class="panel-head pad"><h2>Recent emails</h2></header>
+  <div class="table-wrap">
+    <table class="records">
+      <thead><tr><th>Received</th><th>From</th><th>What happened</th></tr></thead>
+      <tbody>
+        {% for e in recent %}
+          <tr><td>{{ e.created_at | uk_datetime }}</td><td>{{ e.sender }}</td>
+            <td>{{ {'opened': 'Opened ticket', 'replied': 'Added to ticket', 'ignored': 'Ignored (automatic or our own email)', 'limited': 'Not opened: too many from this sender'}.get(e.outcome, e.outcome) }}{% if e.ticket_id %} <a class="text-link sm" href="{{ url_for('ticket', ticket_id=e.ticket_id) }}">#{{ e.ticket_id }}</a>{% endif %}</td></tr>
+        {% else %}
+          <tr><td colspan="3" class="empty-line">Nothing yet. Send a test email to the address above.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

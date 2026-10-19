@@ -42,11 +42,11 @@ def test_replying_to_a_ticket_emails_the_customer(app, client, outbox):
     client.post(f"/tickets/{ticket}/reply", data={"csrf": client.csrf, "subject": "Re: your login",
                                                   "body": "Hi Morag,\n\nThat's fixed now.\n\nThanks"})
     (msg,) = outbox
-    assert msg["to"] == ["customer@example.co.uk"] and msg["subject"] == "Re: your login"
+    assert msg["to"] == ["customer@example.co.uk"] and msg["subject"] == f"Re: your login [#{ticket}]"
     assert "fixed now." in msg["html"] and "request #" in msg["html"]
     status, responded = query(app, "SELECT status, first_responded_at FROM tickets WHERE id=?", ticket)[0]
     assert status == "Waiting on contact" and responded
-    kind, body = query(app, "SELECT kind, body FROM engagements WHERE ticket_id=? AND subject='Re: your login'", ticket)[0]
+    kind, body = query(app, "SELECT kind, body FROM engagements WHERE ticket_id=? AND subject LIKE 'Re: your login%'", ticket)[0]
     assert kind == "email" and "fixed" in body
 
 

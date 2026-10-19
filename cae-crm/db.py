@@ -74,6 +74,9 @@ CREATE TABLE IF NOT EXISTS workspaces (
     quiet_days INTEGER NOT NULL DEFAULT 14,
     bank_holiday_region TEXT NOT NULL DEFAULT 'england-and-wales',
     csat_on INTEGER NOT NULL DEFAULT 0,
+    inbound_on INTEGER NOT NULL DEFAULT 0,
+    inbound_owner TEXT,
+    inbound_token TEXT,
     ai_enabled INTEGER NOT NULL DEFAULT 0,
     ai_enabled_at TEXT,
     ai_enabled_by TEXT
@@ -577,6 +580,16 @@ CREATE TABLE IF NOT EXISTS record_tags (
     record_id INTEGER NOT NULL,
     UNIQUE (tag_id, record_type, record_id)
 );
+CREATE TABLE IF NOT EXISTS inbound_emails (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    provider_id TEXT NOT NULL UNIQUE,
+    message_id TEXT,
+    sender TEXT,
+    ticket_id INTEGER REFERENCES tickets(id) ON DELETE SET NULL,
+    outcome TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS saved_replies (
     id {pk},
     workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -700,7 +713,8 @@ ADDED_COLUMNS = {
                    "terms_version TEXT", "terms_accepted_at TEXT", "terms_accepted_by TEXT",
                    "ai_enabled INTEGER NOT NULL DEFAULT 0", "ai_enabled_at TEXT", "ai_enabled_by TEXT",
                    "quiet_days INTEGER NOT NULL DEFAULT 14",
-                   "bank_holiday_region TEXT NOT NULL DEFAULT 'england-and-wales'", "csat_on INTEGER NOT NULL DEFAULT 0"],
+                   "bank_holiday_region TEXT NOT NULL DEFAULT 'england-and-wales'", "csat_on INTEGER NOT NULL DEFAULT 0",
+                   "inbound_on INTEGER NOT NULL DEFAULT 0", "inbound_owner TEXT", "inbound_token TEXT"],
     "deals": ["workspace_id INTEGER", "contact_id INTEGER", "custom TEXT", "outcome_reason TEXT", "outcome_note TEXT",
               "quiet_since TEXT"],
     "tickets": ["custom TEXT"],
@@ -882,6 +896,9 @@ def migrate(db, today):
         "CREATE INDEX IF NOT EXISTS ix_record_tags_record ON record_tags (workspace_id, record_type, record_id)",
         "CREATE INDEX IF NOT EXISTS ix_recycle_ids ON recycle_ids (workspace_id, table_name, old_id)",
         "CREATE INDEX IF NOT EXISTS ix_ai_messages_conversation ON ai_messages (conversation_id, id)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS ux_workspaces_inbound ON workspaces (inbound_token)",
+        "CREATE INDEX IF NOT EXISTS ix_inbound_sender ON inbound_emails (workspace_id, sender, created_at)",
+        "CREATE INDEX IF NOT EXISTS ix_inbound_message ON inbound_emails (workspace_id, message_id)",
         "CREATE INDEX IF NOT EXISTS ix_ai_outputs_record ON ai_outputs (workspace_id, user_id, task, record_type, record_id)",
     ):
         db.execute(sql)

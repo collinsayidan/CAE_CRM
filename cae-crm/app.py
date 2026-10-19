@@ -29,6 +29,7 @@ import duplicates
 import events
 import finance
 import home
+import inbound
 import integrations
 import legal
 import monitoring
@@ -65,7 +66,7 @@ SETTINGS_TABS = [("settings", "Business details", True), ("auth.team", "Team", F
                  ("assistant_settings", "AI assistant", True),
                  ("integrations", "Integrations", False), ("imports", "Import", True), ("billing", "Billing", True),
                  ("custom_fields_page", "Custom fields", True), ("tags_settings", "Tags", True),
-                 ("saved_replies_page", "Saved replies", True),
+                 ("saved_replies_page", "Saved replies", True), ("support_email_settings", "Support email", True),
                  ("workflows", "Workflows", True),
                  ("developers", "API and webhooks", True), ("vat", "VAT returns", True),
                  ("recycle_bin", "Recycle bin", True),
@@ -189,7 +190,8 @@ def create_app(config=None):
             nav_active=NAV_PARENT.get(request.endpoint, request.endpoint), workspace=w,
             settings_tabs=[t for t in SETTINGS_TABS if (not t[2] or g.user["role"] == "admin")
                            and (t[0] != "billing" or billing.state(w)["enabled"])
-                           and (t[0] != "assistant_settings" or assistant.configured())],
+                           and (t[0] != "assistant_settings" or assistant.configured())
+                           and (t[0] != "support_email_settings" or inbound.configured())],
             settings_active=SETTINGS_PARENT.get(request.endpoint, request.endpoint),
             pennies=lambda p: money(p, pennies=True),
             greeting="Good morning" if hour < 12 else "Good afternoon" if hour < 18 else "Good evening",
@@ -246,7 +248,8 @@ def create_app(config=None):
     events.register(app)  # first, so its after_request hook runs last, once everything else is saved
     for module in (home, crm, sales, service, finance, quotes, webforms, campaigns, billing, integrations, xero, mtd,
                    documents, notifications, files, fields, workflows, webhooks, api, legal, dataio, settings, audit,
-                   assistant, tags, duplicates, companies_house, recycle, support, digest, helpers):
+                   assistant, tags, duplicates, companies_house, recycle, support, digest, helpers,
+                   inbound):
         module.register(app)
     return app
 

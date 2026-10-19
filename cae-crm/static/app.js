@@ -950,4 +950,14 @@
     });
     input.addEventListener("blur", () => setTimeout(() => { if (!list.contains(document.activeElement)) list.hidden = true; }, 150));
   });
+  /* Saved replies: picking one fills the reply box, ready to edit ------------------------------------------------- */
+  $$("[data-saved-reply]").forEach(picker => picker.addEventListener("change", () => {
+    const box = $("[data-reply-body]", picker.closest(".reply-panel"));
+    const chosen = picker.selectedOptions[0];
+    if (!box || !chosen?.dataset.body) return;
+    if (box.value.trim() && !confirm("Replace what you've written with this saved reply?")) { picker.value = ""; return; }
+    box.value = chosen.dataset.body;
+    box.focus();
+    picker.value = "";
+  }));
 })();

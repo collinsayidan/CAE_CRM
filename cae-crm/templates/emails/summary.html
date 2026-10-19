@@ -1,0 +1,18 @@
+{% extends "emails/_frame.html" %}
+{# The daily summary: a few short lists, each item linking back to the CRM. #}
+{% block title %}Your day in {{ workspace.name }}{% endblock %}
+{% block body %}
+  <p style="margin:0 0 18px">Good morning {{ user.name.split()[0] }}. Here's what needs you today in {{ workspace.name }}.</p>
+  {% for s in sections %}
+    <p style="margin:0 0 8px;font-weight:bold"><a href="{{ s.link }}" style="color:#0f1f3d;text-decoration:none">{{ s.title }}</a></p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border-collapse:collapse">
+      {% for i in s["items"] %}
+        <tr><td style="padding:7px 0;border-top:1px solid #eef1f5;font-size:15px">{% if i.url %}<a href="{{ i.url }}" style="color:#0f766e;text-decoration:none">{{ i.text }}</a>{% else %}{{ i.text }}{% endif %}</td>
+          <td style="padding:7px 0;border-top:1px solid #eef1f5;font-size:13px;text-align:right;white-space:nowrap;color:{{ '#c2334d' if i.bad else '#6b7891' }}">{{ i.note }}</td></tr>
+      {% endfor %}
+      {% if s.more > 0 %}<tr><td colspan="2" style="padding:7px 0;border-top:1px solid #eef1f5;font-size:13px"><a href="{{ s.link }}" style="color:#0f766e">and {{ s.more }} more</a></td></tr>{% endif %}
+    </table>
+  {% endfor %}
+  <p style="margin:6px 0 22px"><a href="{{ home }}" style="display:inline-block;background:#0f766e;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:8px">Open CAE CRM</a></p>
+{% endblock %}
+{% block footer %}You get this each working morning when something needs you. <a href="{{ off_link }}" style="color:#6b7891">Turn these emails off</a>, or change it under Profile and password.{% endblock %}

@@ -14,9 +14,12 @@ from ukfmt import add_working_hours
 
 
 def sla_due(opened, priority):
+    """When a ticket's first response and resolution are due, in working hours where the business is."""
+    import ukholidays
     first, resolve = TICKET_SLA_HOURS[priority]
-    return (add_working_hours(opened, first).isoformat(timespec="minutes"),
-            add_working_hours(opened, resolve).isoformat(timespec="minutes"))
+    days_off = ukholidays.for_workspace()
+    return (add_working_hours(opened, first, days_off).isoformat(timespec="minutes"),
+            add_working_hours(opened, resolve, days_off).isoformat(timespec="minutes"))
 
 
 def set_ticket_status(ticket_id, status):
@@ -32,6 +35,9 @@ def set_ticket_status(ticket_id, status):
     subject = "Ticket closed" if status == "Closed" else ("Ticket reopened" if t["status"] == "Closed" else f"Status changed to {status}")
     emit("ticket.status_changed", ticket_id, value=status, previous_status=t["status"])
     log_event(subject, f"By {actor_name()}", ticket_id=ticket_id, company_id=t["company_id"], contact_id=t["contact_id"])
+    if status == "Closed":
+        import support
+        support.maybe_survey(t)
     return t
 
 
@@ -101,7 +107,14 @@ def register(app):
         company = one("SELECT * FROM companies WHERE id=? AND workspace_id=?", t["company_id"], ws()) if t["company_id"] else None
         contact = one("SELECT * FROM contacts WHERE id=? AND workspace_id=?", t["contact_id"], ws()) if t["contact_id"] else None
         entries, upcoming = timeline("ticket_id", ticket_id)
+        import mail
+        import support
+        use = request.args.get("reply", "")  # a saved reply chosen without JavaScript
+        chosen = one("SELECT * FROM saved_replies WHERE id=? AND workspace_id=?", int(use), ws()) if use.isdigit() else None
+        replies = [dict(r) | {"filled": support.fill(r["body"], t, contact)} for r in support.saved_replies()]
         return render_template("ticket.html", t=t, company=company, contact=contact, entries=entries, upcoming=upcoming,
+                               replies=replies, reply_text=support.fill(chosen["body"], t, contact) if chosen else "",
+                               can_email=mail.configured(),
                                record=dict(ticket_id=ticket_id, company_id=t["company_id"], contact_id=t["contact_id"]),
                                call_outcomes=CALL_OUTCOMES, statuses=TICKET_STATUSES, sla_hours=TICKET_SLA_HOURS)
 

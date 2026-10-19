@@ -142,6 +142,14 @@ Ticket pages add the status path and the two service-level clocks.
 - **Companies House:** set `COMPANIES_HOUSE_API_KEY` and typing a company's name in the new or edit company form suggests matches from the register; choosing one fills in the number and registered office. **Refresh from Companies House** records a company's status and SIC codes, and dissolved companies or ones in liquidation or administration get a red warning. The daily job re-checks up to 100 companies. Get a free key: register at developer.company-information.service.gov.uk, create an application, and add a **REST** API key for the live environment.
 - **Recycle bin:** deleted contacts, companies, deals and tickets go to Settings, Recycle bin, with everything deleted alongside them (timeline, line items, tasks, quotes, tags and files). Admins can restore them for 30 days, or delete them permanently sooner; the daily job empties older entries. Erasing a contact under UK GDPR is still immediate.
 
+### Support and email
+
+- **Replying from a ticket:** the ticket page has a **Reply by email** box that emails the ticket's contact from your business name, with replies going to your reply-to address. The reply is logged on the timeline, counts as the first response, and moves a new ticket to Waiting on contact.
+- **Saved replies:** admins keep common answers under Settings, Saved replies, with placeholders (`{{first_name}}`, `{{ticket_number}}`, `{{ticket_subject}}`, `{{your_name}}`, `{{business_name}}`). Pick one on a ticket, check it and send.
+- **Satisfaction survey:** switch it on under Settings, Business details. When a ticket closes, its contact gets one email asking how you did (Good, Okay or Poor), and the answer is recorded when they press the button on the survey page (opening a link records nothing, so email scanners can't vote). Ratings go on the ticket timeline, and Reports shows the score and recent comments.
+- **Daily summary:** each working morning, people with something to deal with get an email listing their overdue and today's tasks, tickets near or past a service level, their deals gone quiet, and (for admins) overdue invoices. One click in the email turns it off, or use Profile and password.
+- **Bank holidays:** choose England and Wales, Scotland or Northern Ireland under Settings, Business details. Service levels, the Tasks calendar and working days follow it. Dates come from GOV.UK's feed, refreshed daily, with dates to 2028 built in.
+
 ### Workflows
 
 Admins set up rules in **Settings → Workflows**: *when* something happens (a contact is added, a web form is submitted, a deal moves to a stage, a ticket is opened, a quote is accepted, an invoice is paid), optionally narrowed to one stage, priority or form, *then* do one thing:
@@ -299,6 +307,9 @@ tags.py       tags on contacts and companies
 duplicates.py finding and merging duplicate contacts and companies
 companies_house.py  Companies House lookups and status checks
 recycle.py    the 30-day recycle bin for deleted records
+support.py    ticket replies, saved replies and the satisfaction survey
+digest.py     the daily summary email
+ukholidays.py bank holidays for each UK nation
 db.py         schema, migrations, SQLite/PostgreSQL connection wrapper
 seed.py       sample data for a new workspace
 ukfmt.py      GBP, dates, VAT, postcodes, phone numbers, working hours, financial year

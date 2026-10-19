@@ -72,6 +72,8 @@ CREATE TABLE IF NOT EXISTS workspaces (
     terms_accepted_at TEXT,
     terms_accepted_by TEXT,
     quiet_days INTEGER NOT NULL DEFAULT 14,
+    bank_holiday_region TEXT NOT NULL DEFAULT 'england-and-wales',
+    csat_on INTEGER NOT NULL DEFAULT 0,
     ai_enabled INTEGER NOT NULL DEFAULT 0,
     ai_enabled_at TEXT,
     ai_enabled_by TEXT
@@ -102,7 +104,9 @@ CREATE TABLE IF NOT EXISTS users (
     verify_sent_at TEXT,
     invited_at TEXT,
     invited_by TEXT,
-    invite_accepted_at TEXT
+    invite_accepted_at TEXT,
+    summary_off INTEGER NOT NULL DEFAULT 0,
+    summary_sent_on TEXT
 );
 CREATE TABLE IF NOT EXISTS companies (
     id {pk},
@@ -573,6 +577,30 @@ CREATE TABLE IF NOT EXISTS record_tags (
     record_id INTEGER NOT NULL,
     UNIQUE (tag_id, record_type, record_id)
 );
+CREATE TABLE IF NOT EXISTS saved_replies (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    created_by TEXT,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS ticket_surveys (
+    id {pk},
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+    token TEXT NOT NULL UNIQUE,
+    sent_at TEXT NOT NULL,
+    rating TEXT,
+    comment TEXT,
+    rated_at TEXT
+);
+CREATE TABLE IF NOT EXISTS bank_holidays (
+    id {pk},
+    region TEXT NOT NULL,
+    day TEXT NOT NULL,
+    title TEXT
+);
 CREATE TABLE IF NOT EXISTS recycle_bin (
     id {pk},
     workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -634,7 +662,8 @@ ADDED_COLUMNS = {
     "users": ["workspace_id INTEGER", "job_title TEXT", "department TEXT", "phone TEXT", "location TEXT",
               "linkedin TEXT", "bio TEXT", "photo TEXT", "photo_updated TEXT", "totp_secret TEXT", "totp_enabled_at TEXT",
               "totp_last_step INTEGER", "recovery_codes TEXT", "email_verified_at TEXT", "verify_sent_at TEXT",
-              "invited_at TEXT", "invited_by TEXT", "invite_accepted_at TEXT"],
+              "invited_at TEXT", "invited_by TEXT", "invite_accepted_at TEXT", "summary_off INTEGER NOT NULL DEFAULT 0",
+              "summary_sent_on TEXT"],
     "companies": ["workspace_id INTEGER", "website TEXT", "phone TEXT", "owner TEXT", "custom TEXT", "ch_status TEXT",
                   "ch_sic TEXT", "ch_checked_at TEXT"],
     "contacts": ["workspace_id INTEGER", "lifecycle_stage TEXT", "lead_status TEXT", "owner TEXT", "unsubscribed_at TEXT",
@@ -646,7 +675,8 @@ ADDED_COLUMNS = {
                    "reminders_on INTEGER NOT NULL DEFAULT 0", "onboarding_done INTEGER NOT NULL DEFAULT 0",
                    "terms_version TEXT", "terms_accepted_at TEXT", "terms_accepted_by TEXT",
                    "ai_enabled INTEGER NOT NULL DEFAULT 0", "ai_enabled_at TEXT", "ai_enabled_by TEXT",
-                   "quiet_days INTEGER NOT NULL DEFAULT 14"],
+                   "quiet_days INTEGER NOT NULL DEFAULT 14",
+                   "bank_holiday_region TEXT NOT NULL DEFAULT 'england-and-wales'", "csat_on INTEGER NOT NULL DEFAULT 0"],
     "deals": ["workspace_id INTEGER", "contact_id INTEGER", "custom TEXT", "outcome_reason TEXT", "outcome_note TEXT",
               "quiet_since TEXT"],
     "tickets": ["custom TEXT"],

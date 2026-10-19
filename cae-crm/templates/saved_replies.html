@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Saved replies{% endblock %}
+{% block heading %}Saved replies{% endblock %}
+{% block subtitle %}<p class="subtitle">Answers your team sends often. Pick one on a ticket, check it, and send.</p>{% endblock %}
+
+{% block content %}
+<div class="layout-even">
+  <section class="panel">
+    <h2 class="panel-title">{{ 'Edit ' ~ edit.title if edit else 'Add a saved reply' }}</h2>
+    <form method="post" action="{{ url_for('saved_replies_page') }}" class="reason-form">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      {% if edit %}<input type="hidden" name="reply_id" value="{{ edit.id }}">{% endif %}
+      <label class="field"><span class="field-label">Name</span><input name="title" maxlength="80" required value="{{ edit.title if edit else '' }}" placeholder="Password reset steps"></label>
+      <label class="field"><span class="field-label">Message</span>
+        <textarea name="body" rows="9" required placeholder="Hi {{ '{{first_name}}' }},&#10;&#10;Thanks for getting in touch about {{ '{{ticket_subject}}' }}…">{{ edit.body if edit else '' }}</textarea></label>
+      <div class="form-actions">
+        {% if edit %}<a class="btn ghost" href="{{ url_for('saved_replies_page') }}">Cancel</a>{% endif %}
+        <button class="btn primary">{{ 'Save changes' if edit else 'Add saved reply' }}</button>
+      </div>
+    </form>
+    <p class="form-hint">You can use these placeholders:</p>
+    <ul class="plain-list small">
+      {% for key, meaning in placeholders.items() %}<li><code>{{ '{{' ~ key ~ '}}' }}</code> {{ meaning }}</li>{% endfor %}
+    </ul>
+  </section>
+
+  <section class="panel flush">
+    <ul class="saved-reply-list">
+      {% for r in replies %}
+        <li>
+          <div><b>{{ r.title }}</b><p class="muted small">{{ r.body | truncate(140) }}</p></div>
+          <div class="row-actions">
+            <a class="btn ghost sm" href="{{ url_for('saved_replies_page', edit=r.id) }}">{{ icon('edit') }} Edit</a>
+            <form method="post" action="{{ url_for('saved_replies_page') }}" class="inline" data-confirm="Delete the saved reply {{ r.title }}?">
+              <input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="reply_id" value="{{ r.id }}">
+              <input type="hidden" name="action" value="delete"><button class="btn ghost sm danger">{{ icon('trash') }}</button>
+            </form>
+          </div>
+        </li>
+      {% else %}
+        <li class="empty-line">No saved replies yet. Add your most common answers here.</li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+{% endblock %}

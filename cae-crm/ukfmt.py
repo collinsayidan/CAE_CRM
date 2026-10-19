@@ -151,23 +151,25 @@ def normalise_phone(raw):
 
 # --- Working days -------------------------------------------------------------
 
-# England & Wales bank holidays (gov.uk). Scotland and Northern Ireland add their own.
+# England & Wales bank holidays (gov.uk), the default. Each workspace's own nation comes from holidays.py, and the
+# functions below take its dates as `holidays`.
 BANK_HOLIDAYS = {date.fromisoformat(d) for d in (
     "2025-01-01", "2025-04-18", "2025-04-21", "2025-05-05", "2025-05-26", "2025-08-25", "2025-12-25", "2025-12-26",
     "2026-01-01", "2026-04-03", "2026-04-06", "2026-05-04", "2026-05-25", "2026-08-31", "2026-12-25", "2026-12-28",
     "2027-01-01", "2027-03-26", "2027-03-29", "2027-05-03", "2027-05-31", "2027-08-30", "2027-12-27", "2027-12-28",
+    "2028-01-03", "2028-04-14", "2028-04-17", "2028-05-01", "2028-05-29", "2028-08-28", "2028-12-25", "2028-12-26",
 )}
 
 
-def is_working_day(d):
-    return d.weekday() < 5 and d not in BANK_HOLIDAYS
+def is_working_day(d, holidays=None):
+    return d.weekday() < 5 and d not in (BANK_HOLIDAYS if holidays is None else holidays)
 
 
-def working_days(start, end):
+def working_days(start, end, holidays=None):
     """Working days in [start, end)."""
     days, d = [], start
     while d < end:
-        if is_working_day(d):
+        if is_working_day(d, holidays):
             days.append(d)
         d += timedelta(days=1)
     return days
@@ -176,14 +178,14 @@ def working_days(start, end):
 WORK_START, WORK_END = time(9), time(17)
 
 
-def add_working_hours(start, hours):
+def add_working_hours(start, hours, holidays=None):
     """The moment `hours` UK working hours after `start`: 09:00-17:00, Monday to Friday, excluding bank holidays."""
     remaining = timedelta(hours=hours)
     t = start
     while True:
         day = t.date()
         opens, closes = datetime.combine(day, WORK_START), datetime.combine(day, WORK_END)
-        if not is_working_day(day) or t >= closes:
+        if not is_working_day(day, holidays) or t >= closes:
             t = datetime.combine(day + timedelta(days=1), WORK_START)
             continue
         t = max(t, opens)

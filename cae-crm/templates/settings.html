@@ -42,6 +42,9 @@
     <div class="form-grid">
       {{ field('Invoice number prefix', 'invoice_prefix', form.invoice_prefix, errors=errors, required=true, hint='Invoices are numbered like INV-001001.') }}
       {{ field('Payment terms in days', 'payment_terms', form.payment_terms, errors=errors, required=true, extra='inputmode=numeric') }}
+      <label class="field"><span class="field-label">Bank holidays</span>
+        <select name="bank_holiday_region">{% for key, label in holiday_regions.items() %}<option value="{{ key }}" {{ 'selected' if key == (form.bank_holiday_region or workspace.bank_holiday_region) }}>{{ label }}</option>{% endfor %}</select>
+        <span class="field-hint">Ticket service levels, the Tasks calendar and working days follow this nation's bank holidays.</span></label>
       <div class="span-2">{{ field('Reply-to email', 'reply_to', form.reply_to, type='email', errors=errors, placeholder='hello@yourbusiness.co.uk', hint='Replies to your quotes and email campaigns go here.') }}</div>
     </div>
   </section>
@@ -58,6 +61,13 @@
     <label class="check"><input type="checkbox" name="reminders_on" {{ 'checked' if form.reminders_on }}>
       <span>Send polite reminders for overdue invoices, 3, 14 and 30 days after the due date</span></label>
     <p class="form-hint">Only invoices you've emailed from CAE CRM are chased, to the address you sent them to. Reminders stop when an invoice is marked paid.</p>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-title">Support</h2>
+    <label class="check"><input type="checkbox" name="csat_on" {{ 'checked' if form.csat_on }}>
+      <span>When a ticket closes, ask the customer how we did</span></label>
+    <p class="form-hint">One short email per closed ticket, to the ticket's contact, with Good, Okay and Poor to choose from. The results are in Reports.</p>
   </section>
 
   <section class="panel">

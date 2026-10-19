@@ -319,6 +319,11 @@ def register(app):
         from sales import notify_quiet
         import companies_house
         import recycle
+        import ukholidays
+        ukholidays.refresh()
+        import digest
+        summaries = digest.send_all()
         return jsonify(synced=len(results), results=results, reminders=reminders, webhooks=delivered,
                        assistant_conversations_deleted=assistant.purge(), quiet_deals=notify_quiet(),
-                       companies_checked=companies_house.refresh_due(), recycle_bin_emptied=recycle.purge())
+                       companies_checked=companies_house.refresh_due(), recycle_bin_emptied=recycle.purge(),
+                       summaries_sent=summaries)

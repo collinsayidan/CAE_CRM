@@ -25,6 +25,17 @@
     </form>
   </section>
 
+  <section class="panel" id="summary">
+    <h2 class="panel-title">Daily summary email</h2>
+    <form method="post" action="{{ url_for('account_summary') }}">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <label class="check"><input type="checkbox" name="summary" {{ 'checked' if not me.summary_off }}>
+        <span>Email me each working morning with my tasks, tickets near their deadline and deals gone quiet</span></label>
+      <p class="form-hint">Only sent when something needs you.</p>
+      <div><button class="btn ghost sm">Save</button></div>
+    </form>
+  </section>
+
   <section class="panel" id="sessions">
     <h2 class="panel-title">Where you're signed in</h2>
     <p class="muted small panel-intro">If you don't recognise a device, sign it out and change your password. A sign-in ends after 12 hours unused.</p>

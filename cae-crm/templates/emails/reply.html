@@ -1,0 +1,6 @@
+{% extends "emails/_frame.html" %}
+{# A reply to a customer from a ticket: the message as written, paragraph by paragraph. #}
+{% block body %}
+  {% for para in paragraphs %}<p style="margin:0 0 16px;white-space:pre-line">{{ para }}</p>{% endfor %}
+{% endblock %}
+{% block footer %}{{ footer }}{% endblock %}

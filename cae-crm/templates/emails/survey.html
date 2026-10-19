@@ -1,0 +1,14 @@
+{% extends "emails/_frame.html" %}
+{# One question after a ticket closes. Each button opens the survey page with that answer chosen. #}
+{% block title %}How did we do?{% endblock %}
+{% block body %}
+  <p style="margin:0 0 16px">Hi {{ first_name or 'there' }},</p>
+  <p style="margin:0 0 16px">We've closed your request #{{ ticket.id }}: {{ ticket.subject }}. How did we do?</p>
+  <table role="presentation" cellpadding="0" cellspacing="0" style="margin:6px 0 22px"><tr>
+    {% for key, label in ratings.items() %}
+      <td style="padding-right:8px"><a href="{{ links[key] }}" style="display:inline-block;background:{{ '#0f766e' if key == 'good' else '#ffffff' }};color:{{ '#ffffff' if key == 'good' else '#0f1f3d' }};border:1px solid {{ '#0f766e' if key == 'good' else '#cfd7e3' }};text-decoration:none;font-weight:bold;padding:11px 20px;border-radius:8px">{{ label }}</a></td>
+    {% endfor %}
+  </tr></table>
+  <p style="margin:0 0 16px">It takes one click, and you can add a comment if you like. Thank you.</p>
+{% endblock %}
+{% block footer %}You're getting this once because {{ business.name }} closed a request you made. There's nothing more to do if you'd rather not answer.{% endblock %}

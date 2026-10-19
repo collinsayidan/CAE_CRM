@@ -355,7 +355,7 @@ def register(app):
         weeks = calendar.Calendar(firstweekday=0).monthdatescalendar(month.year, month.month)
         return render_template("schedule.html", days=sorted(days.items()), overdue=overdue, weeks=weeks, mine=mine,
                                month=month, prev_month=add_months(month, -1), next_month=month_end,
-                               day_counts={k: len(v) for k, v in days.items()}, bank_holidays=ukfmt.BANK_HOLIDAYS)
+                               day_counts={k: len(v) for k, v in days.items()}, bank_holidays=__import__("ukholidays").for_workspace())
 
     @app.post("/activities")
     def create_activity():

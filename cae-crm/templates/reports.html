@@ -83,6 +83,34 @@
 </div>
 
 <section class="panel">
+  <header class="panel-head"><div><h2>Customer satisfaction</h2><p class="panel-note">Ratings from closed tickets in the last 90 days</p></div>
+    {% if current_user.role == 'admin' %}<a class="text-link" href="{{ url_for('settings') }}">Survey settings</a>{% endif %}</header>
+  {% if csat.total %}
+    <div class="layout-even">
+      <div>
+        <p class="csat-score">{{ csat.score }}%</p>
+        <p class="muted small">rated Good, from {{ csat.total }} {{ 'answer' if csat.total == 1 else 'answers' }} to {{ csat.sent }} {{ 'survey' if csat.sent == 1 else 'surveys' }}</p>
+        <ul class="rank csat-bars">
+          {% for key, label in (('good', 'Good'), ('okay', 'Okay'), ('poor', 'Poor')) %}
+            <li><span class="rank-name">{{ label }}</span><span class="rank-value">{{ csat.counts[key] }}</span>
+              <span class="rank-bar"><i style="width: {{ '%.1f' | format(csat.counts[key] / csat.total * 100) }}%"></i></span></li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div>
+        <h3 class="small">Recent comments</h3>
+        <ul class="plain-list">
+          {% for c in csat.comments %}<li>“{{ c.comment }}” <a class="text-link sm" href="{{ url_for('ticket', ticket_id=c.ticket_id) }}">#{{ c.ticket_id }}</a></li>
+          {% else %}<li class="muted">No comments yet.</li>{% endfor %}
+        </ul>
+      </div>
+    </div>
+  {% else %}
+    <p class="empty-line">No ratings yet. {% if not workspace.csat_on %}Switch on the survey under Settings, Business details, to ask customers how you did when a ticket closes.{% else %}They'll appear here as customers answer.{% endif %}</p>
+  {% endif %}
+</section>
+
+<section class="panel">
   <header class="panel-head"><div><h2>Products in the open pipeline</h2><p class="panel-note">Net value quoted on open deals</p></div>
     <a class="text-link" href="{{ url_for('products') }}">Products</a></header>
   <ul class="rank">

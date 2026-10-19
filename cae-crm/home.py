@@ -3,7 +3,7 @@
 import json
 from datetime import timedelta
 
-from flask import g, jsonify, redirect, render_template, request, url_for
+from flask import current_app, g, jsonify, redirect, render_template, request, url_for
 
 import charts
 import ukfmt
@@ -41,7 +41,15 @@ def register(app):
     def landing():
         if g.get("user"):
             return redirect(url_for("overview"))
-        return render_template("landing.html")
+        c = current_app.config
+        demo = c.get("DEMO_URL") or ""
+        return render_template(
+            "landing.html", seat_price=c.get("SEAT_PRICE") or 1500, trial_days=c.get("TRIAL_DAYS") or 14,
+            vat=bool(c.get("STRIPE_TAX_RATE_ID")),
+            # Book a demo: a web form in Collinalitics' own workspace, so requests arrive as leads.
+            demo_url=demo if demo.startswith(("https://", "/")) else "",
+            company={k: c.get(f"LEGAL_{k.upper()}") or "" for k in ("company_name", "company_number", "address",
+                                                                     "email", "data_region")})
 
     @app.route("/")
     def overview():

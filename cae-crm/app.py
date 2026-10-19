@@ -149,6 +149,7 @@ def create_app(config=None):
         STRIPE_CONNECT_CLIENT_ID=os.environ.get("STRIPE_CONNECT_CLIENT_ID", ""),
         STRIPE_CONNECT_WEBHOOK_SECRET=os.environ.get("STRIPE_CONNECT_WEBHOOK_SECRET", ""),
         SEAT_PRICE=int(os.environ.get("CAE_SEAT_PRICE") or 1500),
+        DEMO_URL=os.environ.get("CAE_DEMO_URL", ""),
         TRIAL_DAYS=int(os.environ.get("CAE_TRIAL_DAYS") or 14),
         BILLING_EXEMPT=os.environ.get("CAE_BILLING_EXEMPT", ""),
         # Integrations: OAuth apps for Gmail, Outlook, Xero and HMRC. Each appears once its id and secret are set.

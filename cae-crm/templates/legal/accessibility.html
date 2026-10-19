@@ -1,0 +1,32 @@
+{% extends "legal/_layout.html" %}
+{% block content %}
+<p class="legal-lead">We want everyone who uses CAE CRM, and everyone who fills in a business's form or signs its quote, to be able to do so easily. This statement explains how accessible the service is and how to tell us about problems.</p>
+
+<h2>Our aim</h2>
+<p>We aim to meet the Web Content Accessibility Guidelines (WCAG) 2.2 at level AA.</p>
+
+<h2>What we do</h2>
+<p>In practice, this means:</p>
+<ul>
+  <li>you can use pages with a keyboard alone, and focus is always visible;</li>
+  <li>pages use proper headings, labels and landmarks, so screen readers can navigate them;</li>
+  <li>text and controls have strong colour contrast, in both the light and the dark look;</li>
+  <li>pages work at any width, from a phone to a large monitor, and when zoomed in;</li>
+  <li>movement and animation stop if you've asked your device to reduce motion;</li>
+  <li>form errors say what went wrong and how to fix it, next to the field concerned;</li>
+  <li>pages don't depend on colour alone to show meaning.</li>
+</ul>
+
+<h2>What we know isn't right yet</h2>
+<ul>
+  <li>CAE CRM hasn't yet been tested by an independent accessibility auditor. {{ to_confirm('date of the first audit, once booked') }}</li>
+  <li>Charts show their key figures as text alongside them, but a screen reader can't yet explore each point on a chart.</li>
+  <li>PDFs of invoices and quotes aren't yet tagged for screen readers. The same details are available on the page.</li>
+</ul>
+
+<h2>Tell us about a problem</h2>
+<p>If something is hard to use, or you need information in a different format, email {{ legal_detail('LEGAL_EMAIL') }}. Tell us the page and what happened. We'll reply within 5 working days.</p>
+
+<h2>About this statement</h2>
+<p>This statement was written on {{ updated }}. It's based on our own checks of the service, and we'll review it at least once a year.</p>
+{% endblock %}

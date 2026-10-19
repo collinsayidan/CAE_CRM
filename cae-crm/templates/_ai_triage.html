@@ -1,0 +1,19 @@
+{% from "_macros.html" import icon %}
+{# A ticket's triage suggestion, for a person to apply or dismiss. #}
+{% if s and not s.resolved %}
+  <div class="ai-card triage-card" id="triage">
+    <p class="ai-card-head">{{ icon('sparkle') }} <b>Suggested triage</b>
+      {% if s.urgent %}<span class="chip bad">Looks urgent</span>{% endif %}
+      {% if s.upset %}<span class="chip quiet">Customer sounds upset</span>{% endif %}</p>
+    <dl class="props compact">
+      <div class="prop"><dt>Category</dt><dd>{{ s.category }}{% if s.category != t.category %} <small class="muted">(now {{ t.category }})</small>{% endif %}</dd></div>
+      <div class="prop"><dt>Priority</dt><dd>{{ s.priority }}{% if s.priority != t.priority %} <small class="muted">(now {{ t.priority }})</small>{% endif %}</dd></div>
+      <div class="prop"><dt>Owner</dt><dd>{{ s.owner }}{% if s.owner != t.owner %} <small class="muted">(now {{ t.owner }})</small>{% endif %}</dd></div>
+    </dl>
+    {% if s.reason %}<p class="small muted">{{ s.reason }}</p>{% endif %}
+    <div class="ai-card-actions">
+      <form method="post" action="{{ url_for('ai_triage_decide', ticket_id=t.id, action='apply') }}" class="inline"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn primary sm">{{ icon('check') }} Apply</button></form>
+      <form method="post" action="{{ url_for('ai_triage_decide', ticket_id=t.id, action='dismiss') }}" class="inline"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn ghost sm">Dismiss</button></form>
+    </div>
+  </div>
+{% endif %}

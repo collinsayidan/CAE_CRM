@@ -112,8 +112,14 @@ def register(app):
         use = request.args.get("reply", "")  # a saved reply chosen without JavaScript
         chosen = one("SELECT * FROM saved_replies WHERE id=? AND workspace_id=?", int(use), ws()) if use.isdigit() else None
         replies = [dict(r) | {"filled": support.fill(r["body"], t, contact)} for r in support.saved_replies()]
+        draft = request.args.get("draft", "")  # a reply drafted by the AI helper without JavaScript
+        drafted = one("SELECT body FROM ai_outputs WHERE id=? AND workspace_id=? AND user_id=? AND task='draft'",
+                      int(draft), ws(), g.user["id"]) if draft.isdigit() else None
+        triage = one("SELECT * FROM ticket_triage WHERE ticket_id=? AND workspace_id=?", ticket_id, ws())
         return render_template("ticket.html", t=t, company=company, contact=contact, entries=entries, upcoming=upcoming,
-                               replies=replies, reply_text=support.fill(chosen["body"], t, contact) if chosen else "",
+                               triage=triage,
+                               replies=replies, reply_text=(drafted[0] if drafted else
+                                                            support.fill(chosen["body"], t, contact) if chosen else ""),
                                can_email=mail.configured(),
                                record=dict(ticket_id=ticket_id, company_id=t["company_id"], contact_id=t["contact_id"]),
                                call_outcomes=CALL_OUTCOMES, statuses=TICKET_STATUSES, sla_hours=TICKET_SLA_HOURS)

@@ -960,4 +960,49 @@
     box.focus();
     picker.value = "";
   }));
+  /* AI helpers: summaries, briefings, draft replies and triage without reloading -------------------------------- */
+  async function aiHelperPost(form) {
+    const res = await fetch(form.action, { method: "POST", body: new URLSearchParams(new FormData(form)),
+      headers: { "X-Requested-With": "fetch", "X-CSRF-Token": csrf } });
+    const out = await res.json().catch(() => ({ error: `Request failed (${res.status})` }));
+    if (!res.ok || out.error) throw new Error(out.error || `Request failed (${res.status})`);
+    return out;
+  }
+  function aiBusy(form, busy, label) {
+    const button = $("button", form);
+    if (!button) return;
+    if (busy) { button.dataset.label = button.innerHTML; button.disabled = true; button.textContent = label; }
+    else { button.disabled = false; if (button.dataset.label) button.innerHTML = button.dataset.label; }
+  }
+  $$("form[data-ai-helper]").forEach(form => form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const target = $("[data-ai-helper-output]", form.closest(".ai-helpers"));
+    aiBusy(form, true, "Thinking…");
+    try {
+      const out = await aiHelperPost(form);
+      target.innerHTML = out.html || "";
+      target.scrollIntoView({ block: "nearest" });
+    } catch (err) { toast(err.message, "error"); }
+    finally { aiBusy(form, false); }
+  }));
+  $$("form[data-ai-draft]").forEach(form => form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const box = $("[data-reply-body]", form.closest(".reply-panel"));
+    if (box.value.trim() && !confirm("Replace what you've written with a drafted reply?")) return;
+    aiBusy(form, true, "Drafting…");
+    try {
+      const out = await aiHelperPost(form);
+      box.value = out.text;
+      box.focus();
+    } catch (err) { toast(err.message, "error"); }
+    finally { aiBusy(form, false); }
+  }));
+  // A new ticket gets its triage suggestion in the background, once.
+  $$("form[data-ai-triage]").forEach(async form => {
+    aiBusy(form, true, "Suggesting triage…");
+    try {
+      const out = await aiHelperPost(form);
+      if (out.html) form.outerHTML = out.html;
+    } catch (err) { aiBusy(form, false); }
+  });
 })();

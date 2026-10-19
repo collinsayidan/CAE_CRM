@@ -127,6 +127,8 @@ def purge(workspace_id=None):
     db.execute(f"DELETE FROM ai_messages WHERE conversation_id IN ({old})", (cutoff, *args))
     gone = db.execute(f"DELETE FROM ai_conversations WHERE updated_at < ? {scope}", (cutoff, *args)).rowcount
     db.execute("DELETE FROM ai_usage WHERE day < ?", ((today() - timedelta(days=400)).isoformat(),))
+    import helpers
+    helpers.purge(workspace_id)
     db.commit()
     return gone
 

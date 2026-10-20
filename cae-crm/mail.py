@@ -12,7 +12,7 @@ import urllib.error
 import urllib.request
 from email.utils import formataddr, parseaddr
 
-from flask import current_app
+from flask import current_app, g, has_request_context
 
 API = "https://api.resend.com"
 BATCH_SIZE = 100  # Resend's limit for one batch request
@@ -66,8 +66,26 @@ def _post(path, payload):
         raise MailError(f"Couldn't reach Resend: {e}") from None
 
 
+def from_demo(msg):
+    """True for mail a demo workspace would send: it's dropped, so a demo can never email anyone."""
+    if any(str(to).lower().endswith(".invalid") for to in msg.get("to", [])):
+        return True  # demo visitors' own addresses
+    if not has_request_context():
+        return False
+    if g.get("demo"):
+        return True
+    workspace_id = g.get("public_workspace")  # set by the daily job and public pages for the workspace they serve
+    if workspace_id:
+        from db import get_db
+        row = get_db().execute("SELECT demo_until FROM workspaces WHERE id=?", (workspace_id,)).fetchone()
+        return bool(row and row["demo_until"])
+    return False
+
+
 def send(msg):
     """Send one message. Returns the provider's id. Raises MailError."""
+    if from_demo(msg):
+        return ""
     if current_app.config.get("MAIL_BACKEND") == "memory":
         outbox = current_app.extensions.setdefault("outbox", [])
         outbox.append(msg)
@@ -80,6 +98,8 @@ def send(msg):
 def send_batch(msgs):
     """Send up to BATCH_SIZE messages in one request. Returns their ids in order. Raises MailError."""
     assert len(msgs) <= BATCH_SIZE
+    if msgs and from_demo(msgs[0]):
+        return [""] * len(msgs)
     if current_app.config.get("MAIL_BACKEND") == "memory":
         return [send(m) for m in msgs]
     if not configured():

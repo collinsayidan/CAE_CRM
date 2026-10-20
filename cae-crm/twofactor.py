@@ -75,7 +75,8 @@ def use_recovery_code(db, user, code):
 
 
 def required(user):
-    return user["role"] == "admin" and current_app.config.get("ADMIN_2FA_REQUIRED", True)
+    # A demo's made-up admin has nothing to protect, and a visitor couldn't scan a code for it.
+    return user["role"] == "admin" and current_app.config.get("ADMIN_2FA_REQUIRED", True) and not g.get("demo")
 
 
 def register(bp, helpers):

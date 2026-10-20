@@ -16,6 +16,7 @@ Open http://127.0.0.1:5000 and choose **Create a workspace**. Leave the sample d
 
 ## Workspaces and accounts
 
+- **Demo:** **Try the demo** on the homepage and sign-in page gives each visitor a private sample workspace (the same made-up UK data as sign-up's sample data), signed in as its admin with no sign-up. It's deleted after 24 hours by the daily job, or straight away with **Create your own workspace**. Anything that reaches outside the app is switched off in a demo (`demo.BLOCKED`): email, integrations, payments, API keys, webhooks, editable public pages and the AI features. Any email a demo would send is dropped, even by the daily job. One network can start 5 demos an hour, and at most 200 run at once.
 - **Sign-up:** whoever creates a workspace becomes its first **admin**. Set `CAE_SETUP_CODE` and sign-up asks for that code, so only people you invite can open a workspace.
 - **Teams:** admins invite people from **Team**. With email set up, the colleague gets a link (valid 7 days) to choose their own password; without it, the admin sets a temporary password to share. Admins can resend or cancel invites, reset passwords, change roles or remove people.
 - **Confirming email:** whoever signs up gets a link to confirm their email address. Until they do, they can use the CRM but can't send emails (campaigns, invoices, reminders, quotes) or invite colleagues, and a banner offers a new link. Accepting an invite or resetting a password also confirms the address. People who signed up before this existed count as confirmed.

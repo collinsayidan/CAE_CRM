@@ -327,7 +327,10 @@ def register(app):
         summaries = digest.send_all()
         import chat
         chats_deleted = chat.purge()
+        import demo
+        demos_deleted = demo.purge()
         return jsonify(synced=len(results), results=results, reminders=reminders, webhooks=delivered,
                        assistant_conversations_deleted=assistant.purge(), quiet_deals=notify_quiet(),
                        companies_checked=companies_house.refresh_due(), recycle_bin_emptied=recycle.purge(),
-                       summaries_sent=summaries, chats_deleted=chats_deleted, recurring_invoices=recurring_raised)
+                       summaries_sent=summaries, chats_deleted=chats_deleted, recurring_invoices=recurring_raised,
+                       demos_deleted=demos_deleted)

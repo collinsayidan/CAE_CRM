@@ -169,3 +169,5 @@ html:has(body.lp) { background: #040b1c; }
   .lp *, .lp *::before, .lp *::after { animation: none !important; transition: none !important; }
   .js .lp-reveal { opacity: 1; transform: none; }
 }
+
+.lp-demo-form { display: inline; margin: 0; }

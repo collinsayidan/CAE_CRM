@@ -167,6 +167,7 @@ Where the assistant is on, everyday pages get four helpers. Each sends one recor
 - **Summarise** (contacts, companies, deals, tickets): a few bullet points on where things stand, what's agreed, open problems and a next step.
 - **Brief me** (contacts, companies, deals): a one-page brief before a meeting or call.
 - **Draft with AI** (ticket replies): a reply written from the ticket, put in the box to check and edit. Nothing is sent until you press Send.
+- **Draft with AI** (email campaigns): from a one- or two-sentence brief and a tone, three subject lines, preview text, the message and a matching LinkedIn post. Claude sees the business's name, town, active products and the campaign's audience stages, never any contact's details. **Use this draft** copies the chosen subject, preview text and message into the campaign; the LinkedIn post has a Copy button. Anything it would need to invent is written as `[check: …]`. It counts as one AI question.
 - **Triage** (new tickets): a suggested category, priority and owner, with flags if the customer sounds upset or it looks urgent. It loads in the background when a new ticket is opened (or with **Suggest triage**), once per ticket, and a person presses **Apply** or **Dismiss**.
 
 Summaries, briefings and drafts count as daily questions; triage doesn't. Outputs are visible only to the person who asked, shown for an hour on the page and deleted after 30 days, or when a contact they mention is erased.

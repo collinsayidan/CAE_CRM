@@ -72,13 +72,13 @@
 <ul>
   <li><b>Encryption:</b> all connections use HTTPS. Tokens for connected services (Gmail, Outlook, Xero, HMRC) are encrypted in the database.</li>
   <li><b>Signing in:</b> passwords are stored as salted scrypt hashes, and new ones are checked against known breached passwords. Accounts lock for 15 minutes after 5 failed sign-ins, and a network is paused after 20 failures in 15 minutes. Admins must use two-factor sign-in. Sessions end after 12 hours unused, and people can see and end their sessions. Sign-ins from a new browser are emailed to the person.</li>
-  <li><b>Keeping businesses apart:</b> every query is limited to the signed-in workspace, and this is covered by automated tests. Row-level security is on for every database table, so the database provider's public interface can't read them.</li>
+  <li><b>Keeping businesses apart:</b> every query is limited to the signed-in workspace, and this is covered by automated tests. Row-level security is also on for every database table, and the database can't be reached from the internet: only the app connects to it.</li>
   <li><b>API and webhooks:</b> API keys are stored only as hashes, can be limited to reading, and are rate-limited. Webhooks are signed, go only to public HTTPS addresses, and don't follow redirects.</li>
-  <li><b>Files:</b> attachments are kept in a private storage bucket and downloaded through links that expire after a minute, or in the database where no bucket is set up. File types that could run code are refused.</li>
+  <li><b>Files:</b> attachments are kept in the database, and only people signed in to the workspace can download them. File types that could run code are refused.</li>
   <li><b>Web protection:</b> forms carry anti-forgery tokens. Exports and feeds are protected against spreadsheet formula injection.</li>
   <li><b>Accountability:</b> an audit trail records who changed what. Error reports have personal data removed.</li>
   <li><b>Development:</b> every change is tested automatically before it's released.</li>
-  <li><b>Resilience:</b> the database is backed up by our database provider, Supabase. {{ to_confirm('backup frequency and how restores are tested') }}</li>
+  <li><b>Resilience:</b> the database is backed up every night, and each backup is kept for 7 days. Hetzner also backs up the whole server, keeping the last 7 backups. {{ to_confirm('a copy of backups kept with a second provider, and how restores are tested') }}</li>
 </ul>
 
 <h2>Schedule 3: Sub-processors</h2>
@@ -86,8 +86,7 @@
 <table class="legal-table">
   <thead><tr><th>Provider</th><th>What for</th><th>Where</th></tr></thead>
   <tbody>
-    <tr><td>Hetzner Online GmbH</td><td>The server the application runs on</td><td>Nuremberg, Germany</td></tr>
-    <tr><td>Supabase Inc.</td><td>Database and file storage</td><td>{{ legal_detail('LEGAL_DATA_REGION') }}</td></tr>
+    <tr><td>Hetzner Online GmbH</td><td>The server the application, its database and attached files run on</td><td>Nuremberg, Germany</td></tr>
     <tr><td>Resend</td><td>Sending email you send from CAE CRM, such as campaigns, quotes, invoices and reminders, and receiving your customers' emails into tickets if you switch on email-to-ticket</td><td>United States</td></tr>
     <tr><td>Functional Software, Inc. (Sentry)</td><td>Error reports, with personal data removed, if switched on</td><td>{{ to_confirm('United States or EU') }}</td></tr>
     <tr><td>Anthropic, PBC {{ to_confirm('contracting Anthropic entity') }}</td><td>The AI assistant and website chat, only if your admin turns them on: answering your team's questions using the records it looks up, and your website visitors' questions from your published help articles. Anthropic doesn't train its models on this data, and deletes it within 30 days unless it's flagged for breaking Anthropic's usage policy (kept for up to 2 years) or the law requires otherwise. Transfers are covered by the UK Addendum in Anthropic's data processing addendum.</td><td>United States</td></tr>

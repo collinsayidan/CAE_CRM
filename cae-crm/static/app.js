@@ -33,12 +33,27 @@
   $$(".toast").forEach(el => setTimeout(() => dismiss(el), 6000));
 
   /* Theme ----------------------------------------------------------------- */
-  $("#theme-toggle")?.addEventListener("click", () => {
-    const root = document.documentElement;
-    const dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
-    root.dataset.theme = dark ? "light" : "dark";
-    try { localStorage.setItem("cae-theme", root.dataset.theme); } catch (e) { /* storage unavailable */ }
+  // System follows the computer's light or dark setting, and is the default. Light and Dark are remembered.
+  const themeMenu = $(".theme-menu");
+  const markTheme = () => {
+    const current = document.documentElement.dataset.theme || "system";
+    $$("[data-theme-choice]").forEach(b => b.setAttribute("aria-checked", b.dataset.themeChoice === current));
+  };
+  $$("[data-theme-choice]").forEach(b => b.addEventListener("click", () => {
+    const root = document.documentElement, choice = b.dataset.themeChoice;
+    try {
+      if (choice === "system") localStorage.removeItem("cae-theme");
+      else localStorage.setItem("cae-theme", choice);
+    } catch (e) { /* storage unavailable: the choice lasts for this page only */ }
+    if (choice === "system") delete root.dataset.theme;
+    else root.dataset.theme = choice;
+    markTheme();
+    if (themeMenu) themeMenu.open = false;
     document.dispatchEvent(new Event("themechange"));
+  }));
+  markTheme();
+  matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => {
+    if (!document.documentElement.dataset.theme) document.dispatchEvent(new Event("themechange"));
   });
 
   /* Mobile sidebar -------------------------------------------------------- */
@@ -47,7 +62,7 @@
 
   /* Menus: close <details> menus on outside click or Escape ---------------- */
   document.addEventListener("click", e => {
-    $$("details.new-menu[open], details.card-menu[open], details.save-view[open]").forEach(d => { if (!d.contains(e.target)) d.open = false; });
+    $$("details.new-menu[open], details.card-menu[open], details.save-view[open], details.theme-menu[open]").forEach(d => { if (!d.contains(e.target)) d.open = false; });
   });
 
   /* Dialogs --------------------------------------------------------------- */

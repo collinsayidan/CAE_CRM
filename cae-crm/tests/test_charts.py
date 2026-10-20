@@ -24,3 +24,10 @@ def test_home_shows_pipeline_as_a_bar(client):
     page = client.get("/").get_data(as_text=True)
     assert 'class="stack-bar"' in page and "donut" not in page
     assert "% of quarterly quota" in page
+
+
+def test_theme_menu_offers_system_light_and_dark(client):
+    page = client.get("/").get_data(as_text=True)
+    for choice in ("system", "light", "dark"):
+        assert f'data-theme-choice="{choice}"' in page
+    assert "Follows your computer" in page and 'id="theme-toggle"' not in page

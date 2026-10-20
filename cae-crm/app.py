@@ -23,6 +23,7 @@ import recurring
 import companies_house
 import crm
 import dataio
+import demo
 import fields
 import helpers
 import files
@@ -89,7 +90,8 @@ PUBLIC_ENDPOINTS = {"landing", "favicon", "healthz", "auth.login", "auth.signup"
                     "chat_page", "chat_message", "chat_handover", "pay_invoice", "pay_invoice_pdf", "pay_by_card",
                     "stripe_connect_webhook",
                     "public_form", "public_quote", "accept_quote", "decline_quote", "unsubscribe", "resend_webhook",
-                    "stripe_webhook", "cron_sync", "workspace_logo", "public_quote_pdf", "legal", "legal_index"}
+                    "stripe_webhook", "cron_sync", "workspace_logo", "public_quote_pdf", "legal", "legal_index",
+                    "start_demo"}
 TWO_FACTOR_SETUP_ALLOWED = {"auth.two_factor_setup", "auth.logout", "static", "favicon", "auth.verify_email"}
 # Forms embedded on other websites can't carry our session's CSRF token; they have their own spam checks.
 # Mail apps' one-click unsubscribe and Resend's webhooks post from elsewhere too; the webhook is signed.
@@ -253,6 +255,9 @@ def create_app(config=None):
         g.user = auth.load_user()
         if app.config["MONITORING"]:
             monitoring.identify(g.user)
+        blocked = demo.guard()  # sets g.demo; a demo can't send email, connect services or use AI
+        if blocked is not None:
+            return blocked
         if (g.user and twofactor.required(g.user) and not g.user["totp_enabled_at"]
                 and request.endpoint not in TWO_FACTOR_SETUP_ALLOWED):
             return redirect(url_for("auth.two_factor_setup"))  # admins set up two-factor sign-in before anything else
@@ -281,7 +286,7 @@ def create_app(config=None):
     for module in (home, crm, sales, service, finance, quotes, webforms, campaigns, billing, integrations, xero, mtd,
                    documents, notifications, files, fields, workflows, webhooks, api, legal, dataio, settings, audit,
                    assistant, tags, duplicates, companies_house, recycle, support, digest, helpers,
-                   inbound, helpcentre, chat, payments, recurring):
+                   inbound, helpcentre, chat, payments, recurring, demo):
         module.register(app)
     return app
 

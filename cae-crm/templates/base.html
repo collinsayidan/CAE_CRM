@@ -105,6 +105,12 @@
         <a class="plan-banner" href="{{ url_for('billing') }}"><b>{{ billing.days_left }} {{ 'day' if billing.days_left == 1 else 'days' }} left in your free trial.</b> Subscribe to keep everything running &rarr;</a>
       {% endif %}
     {% endif %}
+    {% if g.demo %}
+      <div class="plan-banner demo-banner" role="status">
+        <span><b>You're exploring a demo.</b> Everything here is made up, and it's deleted after 24 hours. Emails, integrations and AI are switched off.</span>
+        <form method="post" action="{{ url_for('leave_demo') }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn primary sm">Create your own workspace</button></form>
+      </div>
+    {% endif %}
     {% if needs_verify %}
       <div class="plan-banner verify-banner" role="status">
         <span><b>Confirm your email address.</b> We sent a link to {{ current_user.email }}. Until then you can't send emails or invite your team.</span>

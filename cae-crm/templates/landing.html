@@ -45,8 +45,8 @@
           <p class="lp-lede">Win more customers, serve them better and get paid faster. Contacts, deals, support tickets, quotes and VAT invoices in one place, with every feature included for every team member.</p>
           <div class="lp-actions">
             <a class="lp-btn lp-btn-primary lp-btn-lg" href="{{ url_for('auth.signup') }}">Start your free trial</a>
-            {% if demo_url %}<a class="lp-btn lp-btn-ghost lp-btn-lg" href="{{ demo_url }}">Book a demo</a>
-            {% else %}<a class="lp-btn lp-btn-ghost lp-btn-lg" href="{{ url_for('auth.login') }}">Sign in</a>{% endif %}
+            <form method="post" action="{{ url_for('start_demo') }}" class="lp-demo-form"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="lp-btn lp-btn-ghost lp-btn-lg">Try the demo</button></form>
+            {% if demo_url %}<a class="lp-btn lp-btn-ghost lp-btn-lg" href="{{ demo_url }}">Book a demo</a>{% endif %}
           </div>
           <ul class="lp-assurances">
             <li>{{ icon('check') }} {{ trial_days }} days free</li>
@@ -115,6 +115,7 @@
         <p>Start with sample data to look around, or import your contacts from a spreadsheet. {{ price }} per user a month{{ ' plus VAT' if vat }} after your {{ trial_days }}-day trial, with every feature included.</p>
         <div class="lp-actions lp-actions-center">
           <a class="lp-btn lp-btn-primary lp-btn-lg" href="{{ url_for('auth.signup') }}">Create your workspace</a>
+          <form method="post" action="{{ url_for('start_demo') }}" class="lp-demo-form"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="lp-btn lp-btn-ghost lp-btn-lg">Try the demo</button></form>
           {% if demo_url %}<a class="lp-btn lp-btn-ghost lp-btn-lg" href="{{ demo_url }}">Book a demo</a>{% endif %}
         </div>
       </div>

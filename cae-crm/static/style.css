@@ -1720,3 +1720,10 @@ a.tag:hover, .tag a:hover { text-decoration: underline; }
 .theme-menu .menu button small { margin: 0; }
 .theme-menu .menu button[aria-checked="true"] { font-weight: 700; box-shadow: inset 2px 0 0 var(--bright); }
 .theme-menu .menu button[aria-checked="true"] .icon { color: var(--primary); }
+
+/* Demo ------------------------------------------------------------------- */
+.demo-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px 18px; flex-wrap: wrap;
+  background: var(--bright-soft); color: var(--ink); box-shadow: inset 3px 0 0 var(--bright); }
+.demo-banner:hover { text-decoration: none; }
+.auth-demo { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); display: grid; gap: 10px; }
+.auth-demo p { color: var(--muted); font-size: 14px; }

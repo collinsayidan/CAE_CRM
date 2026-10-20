@@ -93,7 +93,9 @@ CREATE TABLE IF NOT EXISTS workspaces (
     late_rate_bp INTEGER NOT NULL DEFAULT 375,
     ai_enabled INTEGER NOT NULL DEFAULT 0,
     ai_enabled_at TEXT,
-    ai_enabled_by TEXT
+    ai_enabled_by TEXT,
+    demo_until TEXT,
+    demo_ip TEXT
 );
 CREATE TABLE IF NOT EXISTS users (
     id {pk},
@@ -825,7 +827,8 @@ ADDED_COLUMNS = {
                    "site_token TEXT", "chat_on INTEGER NOT NULL DEFAULT 0", "chat_domains TEXT", "chat_greeting TEXT",
                    "chat_owner TEXT", "chat_daily_cap INTEGER NOT NULL DEFAULT 300", "stripe_account_id TEXT",
                    "stripe_account_name TEXT", "stripe_connected_at TEXT", "stripe_connected_by TEXT",
-                   "remind_before INTEGER NOT NULL DEFAULT 1", "late_rate_bp INTEGER NOT NULL DEFAULT 375"],
+                   "remind_before INTEGER NOT NULL DEFAULT 1", "late_rate_bp INTEGER NOT NULL DEFAULT 375",
+                   "demo_until TEXT", "demo_ip TEXT"],
     "deals": ["workspace_id INTEGER", "contact_id INTEGER", "custom TEXT", "outcome_reason TEXT", "outcome_note TEXT",
               "quiet_since TEXT"],
     "tickets": ["custom TEXT"],

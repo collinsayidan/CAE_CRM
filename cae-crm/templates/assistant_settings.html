@@ -5,6 +5,7 @@
 {% block subtitle %}<p class="subtitle">Let your team ask questions about your CRM, get help using it, and have emails and notes drafted.</p>{% endblock %}
 
 {% block content %}
+{% if not w.approved %}<p class="notice">{{ icon('sparkle') }} <span><b>Waiting for approval.</b> AI features open once Collinalitics has approved your account. Get in touch and we'll check it.</span></p>{% endif %}
 <form method="post" action="{{ url_for('assistant_settings') }}" class="settings">
   <input type="hidden" name="csrf" value="{{ csrf_token }}">
   <section class="panel">

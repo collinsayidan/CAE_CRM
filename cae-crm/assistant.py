@@ -91,7 +91,10 @@ def configured():
 def enabled(w=None):
     """Whether this workspace's people can use the assistant."""
     w = w or workspace()
-    return configured() and bool(w["ai_enabled"])
+    return configured() and bool(w["ai_enabled"]) and bool(w["approved"])
+
+
+NOT_APPROVED = "AI features open once Collinalitics has approved your account. Get in touch and we'll check it."
 
 
 def daily_limit():
@@ -503,7 +506,9 @@ def register(app):
         if request.method == "POST":
             on = request.form.get("enabled") == "on"
             db = get_db()
-            if on and not w["ai_enabled"]:
+            if on and not w["approved"]:
+                flash(NOT_APPROVED, "error")
+            elif on and not w["ai_enabled"]:
                 db.execute("UPDATE workspaces SET ai_enabled=1, ai_enabled_at=?, ai_enabled_by=? WHERE id=?",
                            (now().isoformat(timespec="minutes"), g.user["name"], ws()))
                 flash("AI assistant turned on. Everyone in the workspace can now use it.", "ok")

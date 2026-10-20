@@ -223,7 +223,7 @@ def register(app):
 
     def public_workspace(token):
         w = helpdesk.workspace_by_token(token)
-        if not (configured() and w["chat_on"]):
+        if not (configured() and w["chat_on"] and w["approved"]):
             abort(404)
         return w
 
@@ -325,6 +325,10 @@ def register(app):
                         chat_greeting=(f.get("greeting") or "").strip()[:300] or None,
                         chat_owner=f.get("owner") if f.get("owner") in team else (team[0] if team else None),
                         chat_daily_cap=min(int(daily), CAP_LIMIT) if daily.isdigit() and int(daily) > 0 else CAP_LIMIT)
+            if data["chat_on"] and not w["approved"]:
+                import assistant
+                flash(assistant.NOT_APPROVED, "error")
+                return redirect(url_for("chat_settings"))
             get_db().execute(f"UPDATE workspaces SET {', '.join(f'{k}=?' for k in data)} WHERE id=?", (*data.values(), ws()))
             helpdesk.site_token(w)
             get_db().commit()

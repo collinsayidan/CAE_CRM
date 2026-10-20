@@ -53,3 +53,9 @@ def test_settings_links_to_legal_pages_for_everyone(client, member_client):
         assert "Legal and privacy" in c.get("/workspace").get_data(as_text=True)
     assert "set up before acceptance of the terms was recorded" in client.get("/legal").get_data(as_text=True)
     assert "set up before acceptance" not in member_client.get("/legal").get_data(as_text=True)
+
+
+def test_hosting_provider_is_named_correctly(anon):
+    for doc in ("privacy", "dpa"):
+        page = anon.get(f"/legal/{doc}").get_data(as_text=True)
+        assert "Hetzner Online GmbH" in page and "Vercel" not in page, doc

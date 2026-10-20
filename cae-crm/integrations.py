@@ -299,7 +299,7 @@ def register(app):
 
     @app.get("/cron/sync")
     def cron_sync():
-        """Vercel Cron calls this with "Authorization: Bearer <CRON_SECRET>"."""
+        """The daily job, called with "Authorization: Bearer <CRON_SECRET>" (cron.py on Coolify, Vercel Cron before)."""
         secret = current_app.config.get("CRON_SECRET")
         given = request.headers.get("Authorization", "").removeprefix("Bearer ")
         if not secret or not hmac.compare_digest(given, secret):

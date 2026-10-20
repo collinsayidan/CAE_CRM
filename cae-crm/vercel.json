@@ -1,11 +1,9 @@
 {
-  "regions": [
-    "lhr1"
-  ],
-  "crons": [
+  "redirects": [
     {
-      "path": "/cron/sync",
-      "schedule": "0 6 * * *"
+      "source": "/(.*)",
+      "destination": "https://cae.collinalitics.co.uk/$1",
+      "permanent": true
     }
   ]
 }

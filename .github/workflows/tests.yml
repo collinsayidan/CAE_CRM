@@ -24,7 +24,7 @@ jobs:
           --health-cmd "pg_isready -U cae -d cae_test"
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      # Every test runs twice: on SQLite (as locally) and on PostgreSQL (as on Supabase).
+      # Every test runs twice: on SQLite (as locally) and on PostgreSQL (as in production).
       CAE_TEST_POSTGRES_URL: postgresql://cae:cae@localhost:5432/cae_test
     steps:
       - uses: actions/checkout@v4

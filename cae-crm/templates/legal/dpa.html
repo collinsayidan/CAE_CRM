@@ -78,7 +78,7 @@
   <li><b>Web protection:</b> forms carry anti-forgery tokens. Exports and feeds are protected against spreadsheet formula injection.</li>
   <li><b>Accountability:</b> an audit trail records who changed what. Error reports have personal data removed.</li>
   <li><b>Development:</b> every change is tested automatically before it's released.</li>
-  <li><b>Resilience:</b> the database is backed up by our hosting provider. {{ to_confirm('backup frequency and how restores are tested') }}</li>
+  <li><b>Resilience:</b> the database is backed up by our database provider, Supabase. {{ to_confirm('backup frequency and how restores are tested') }}</li>
 </ul>
 
 <h2>Schedule 3: Sub-processors</h2>
@@ -86,7 +86,7 @@
 <table class="legal-table">
   <thead><tr><th>Provider</th><th>What for</th><th>Where</th></tr></thead>
   <tbody>
-    <tr><td>Vercel Inc.</td><td>Running the application</td><td>{{ to_confirm('region') }}; United States company</td></tr>
+    <tr><td>Hetzner Online GmbH</td><td>The server the application runs on</td><td>Nuremberg, Germany</td></tr>
     <tr><td>Supabase Inc.</td><td>Database and file storage</td><td>{{ legal_detail('LEGAL_DATA_REGION') }}</td></tr>
     <tr><td>Resend</td><td>Sending email you send from CAE CRM, such as campaigns, quotes, invoices and reminders, and receiving your customers' emails into tickets if you switch on email-to-ticket</td><td>United States</td></tr>
     <tr><td>Functional Software, Inc. (Sentry)</td><td>Error reports, with personal data removed, if switched on</td><td>{{ to_confirm('United States or EU') }}</td></tr>

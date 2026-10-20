@@ -27,6 +27,8 @@ Open http://127.0.0.1:5000 and choose **Create a workspace**. Leave the sample d
 
 ## Deploy to Vercel
 
+**CAE CRM now runs on Coolify** at https://cae.collinalitics.co.uk (see the next section). The Vercel project only redirects: `vercel.json` sends every address to the same path on the new domain. That keeps quotes, payment links, web forms and unsubscribe links already sent working. Delete the Vercel project once those links have aged out, about 3–6 months after the switch. The steps below are for running the app itself on Vercel again; you'd also need to restore `vercel.json`'s region and daily job.
+
 1. **Root directory.** In the Vercel project, open **Settings → General** and set **Root Directory** to `cae-crm`.
 2. **Database (Supabase).** In the Supabase project, click **Connect** and copy the **Transaction pooler** string (port 6543), with your database password in place of `[YOUR-PASSWORD]` and no square brackets. Use the pooler, not the direct connection: Vercel can't reach Supabase's direct address. Any PostgreSQL connection string works, and strings from Vercel's Supabase integration (`POSTGRES_URL`) are accepted as they are.
 3. **Environment variables.** In **Settings → Environment Variables**, add these for Production (`.env.example` lists them):
@@ -45,7 +47,7 @@ To run locally against Supabase, copy `.env.example` to `.env`, fill it in and r
 
 The app creates and upgrades its tables when it starts. On PostgreSQL it also turns on row level security for every table, so Supabase's public Data API can't read or change CRM data; the app connects as the tables' owner and isn't affected. A database from the first release is upgraded in place, and its records move into a workspace called "My business". If a required setting is missing, the site shows a "Finish setting up" page naming it, rather than running without it.
 
-**Speed.** Keep the app and the database in the same region. Every page runs a few dozen small queries, and a round trip across the Atlantic adds about 80ms to each. `vercel.json` runs the app in London (`lhr1`), next to a Supabase project in `eu-west-2`. If your Supabase project is somewhere else, change `regions` to the nearest Vercel region. The app also skips its schema check on start-up when nothing has changed, and keeps its database connection open between requests on the same server.
+**Speed.** Keep the app and the database close together. Every page runs a few dozen small queries, and a round trip across the Atlantic adds about 80ms to each. The Coolify server (Nuremberg) and the Supabase project (London, `eu-west-2`) are about 15ms apart. The app also skips its schema check on start-up when nothing has changed, and keeps its database connection open between requests on the same server.
 
 Vercel finds the app through `wsgi.py`, which `pyproject.toml` names in `[tool.vercel] entrypoint = "wsgi:app"`.
 

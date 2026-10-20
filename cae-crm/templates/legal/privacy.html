@@ -36,6 +36,7 @@
 <p>We use these providers to run CAE CRM. They act on our instructions and must protect the data:</p>
 <ul>
   <li><b>Hetzner Online GmbH</b>: the server CAE CRM runs on, which also holds its database and attached files, in Nuremberg, Germany.</li>
+  <li><b>Backblaze</b>: encrypted copies of the nightly database backups, in Amsterdam, the Netherlands.</li>
   <li><b>Resend</b>: sending email, and receiving emails sent to a business's support address.</li>
   <li><b>Stripe</b>: payments and invoices for your subscription. If a business you deal with takes card payments on its invoices through CAE CRM, you pay on Stripe's own page and the business's Stripe account handles your card details; we only learn that the payment was made.</li>
   <li><b>Sentry</b>: error reports, if switched on.</li>
@@ -44,7 +45,7 @@
 <p>We don't sell personal data, and we don't use it for advertising. We only share it with anyone else if the law requires it or to protect people's safety.</p>
 
 <h2>Outside the UK</h2>
-<p>CAE CRM, its database and attached files are on a server in Germany, which the UK's adequacy regulations cover. Some of the other providers are based in, or use services in, the United States or the EU. Where data leaves the UK, it's protected by UK adequacy regulations, the UK Extension to the EU-US Data Privacy Framework, or the UK's International Data Transfer Agreement or Addendum. {{ to_confirm('which applies to each provider') }}</p>
+<p>CAE CRM, its database and attached files are on a server in Germany, and backup copies are kept in the Netherlands. The UK's adequacy regulations cover both. Some of the other providers are based in, or use services in, the United States or the EU. Where data leaves the UK, it's protected by UK adequacy regulations, the UK Extension to the EU-US Data Privacy Framework, or the UK's International Data Transfer Agreement or Addendum. {{ to_confirm('which applies to each provider') }}</p>
 
 <h2>How long we keep it</h2>
 <ul>
@@ -54,7 +55,7 @@
   <li><b>Webhook delivery logs:</b> 30 days.</li>
   <li><b>AI assistant conversations, summaries, briefings and drafts:</b> 30 days from the last message, unless you delete them sooner. Erasing a contact also deletes conversations that mention them. A count of questions asked and the amount of AI processing used, without their content, is kept for 13 months.</li>
   <li><b>Workspace data:</b> deleted within 30 days of the 30-day export window that follows a workspace closing (see the <a href="{{ url_for('legal', doc='terms') }}">terms</a>).</li>
-  <li><b>Backups:</b> the database is backed up every night, and each backup is kept for 7 days. Hetzner also backs up the whole server, keeping the last 7 backups.</li>
+  <li><b>Backups:</b> the database is backed up every night. Backups on the server are kept for 7 days, and the encrypted copies with Backblaze for up to 30 days. Hetzner also backs up the whole server, keeping the last 7 backups.</li>
   <li><b>Error reports:</b> kept for a limited period, then deleted. {{ to_confirm('error report retention period') }}</li>
 </ul>
 

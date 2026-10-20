@@ -78,7 +78,7 @@
   <li><b>Web protection:</b> forms carry anti-forgery tokens. Exports and feeds are protected against spreadsheet formula injection.</li>
   <li><b>Accountability:</b> an audit trail records who changed what. Error reports have personal data removed.</li>
   <li><b>Development:</b> every change is tested automatically before it's released.</li>
-  <li><b>Resilience:</b> the database is backed up every night, and each backup is kept for 7 days. Hetzner also backs up the whole server, keeping the last 7 backups. {{ to_confirm('a copy of backups kept with a second provider, and how restores are tested') }}</li>
+  <li><b>Resilience:</b> the database is backed up every night. Each backup is kept on the server for 7 days, and an encrypted copy is stored with a second provider, Backblaze, in Amsterdam. Hetzner also backs up the whole server, keeping the last 7 backups. {{ to_confirm('how often restores are tested') }}</li>
 </ul>
 
 <h2>Schedule 3: Sub-processors</h2>
@@ -87,6 +87,7 @@
   <thead><tr><th>Provider</th><th>What for</th><th>Where</th></tr></thead>
   <tbody>
     <tr><td>Hetzner Online GmbH</td><td>The server the application, its database and attached files run on</td><td>Nuremberg, Germany</td></tr>
+    <tr><td>Backblaze, Inc.</td><td>Encrypted copies of the nightly database backups</td><td>Amsterdam, Netherlands</td></tr>
     <tr><td>Resend</td><td>Sending email you send from CAE CRM, such as campaigns, quotes, invoices and reminders, and receiving your customers' emails into tickets if you switch on email-to-ticket</td><td>United States</td></tr>
     <tr><td>Functional Software, Inc. (Sentry)</td><td>Error reports, with personal data removed, if switched on</td><td>{{ to_confirm('United States or EU') }}</td></tr>
     <tr><td>Anthropic, PBC {{ to_confirm('contracting Anthropic entity') }}</td><td>The AI assistant and website chat, only if your admin turns them on: answering your team's questions using the records it looks up, and your website visitors' questions from your published help articles. Anthropic doesn't train its models on this data, and deletes it within 30 days unless it's flagged for breaking Anthropic's usage policy (kept for up to 2 years) or the law requires otherwise. Transfers are covered by the UK Addendum in Anthropic's data processing addendum.</td><td>United States</td></tr>

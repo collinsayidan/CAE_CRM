@@ -83,7 +83,16 @@
             <button type="button" role="menuitem" data-open="dlg-invoice">Invoice</button>
           </div>
         </details>
-        <button class="icon-btn" id="theme-toggle" aria-label="Switch light or dark theme">{{ icon('moon') }}</button>
+        <details class="theme-menu">
+          <summary class="icon-btn" aria-label="Theme" title="Theme">
+            <span class="ti-system">{{ icon('laptop') }}</span><span class="ti-light">{{ icon('sun') }}</span><span class="ti-dark">{{ icon('moon') }}</span>
+          </summary>
+          <div class="menu" role="menu" aria-label="Theme">
+            <button type="button" role="menuitemradio" data-theme-choice="system">{{ icon('laptop') }}<span>System<small>Follows your computer's setting</small></span></button>
+            <button type="button" role="menuitemradio" data-theme-choice="light">{{ icon('sun') }}<span>Light</span></button>
+            <button type="button" role="menuitemradio" data-theme-choice="dark">{{ icon('moon') }}<span>Dark</span></button>
+          </div>
+        </details>
       </div>
     </header>
 

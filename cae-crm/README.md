@@ -348,7 +348,11 @@ Scheduled refresh in the Power BI service uses the same sign-in. Cells that a sp
 
 ## Design
 
-- **Colours:** navy and teal on white cards and a light grey background, with light and dark themes. Amber marks things due soon, and red marks only what is overdue or breached.
+- **Colours:** navy and teal, with coral as the one bright colour for marks that should catch the eye: the current page, the target line, the pace marker and unread counts. Amber marks things due soon, and red marks only what is overdue or breached.
+- **Style:** flat. 1px lines instead of shadows, small corners and no gradients.
+- **Themes:** the theme button at the top (a laptop, sun or moon) offers **System** (follows the computer's light or dark setting, the default), **Light** or **Dark**. A choice is remembered in the browser; System forgets it.
+- **Charts:** plain and direct. Square bars in pale navy, with teal only for months that hit target; a coral dashed target line; sparklines as a single line; pipeline by stage as one stacked bar with a labelled list. Small charts are drawn on the server (`charts.py`), and the revenue chart in `static/app.js`.
+- **Sidebar:** solid navy, with compact items, a coral marker on the current page, and the profile in one row at the bottom.
 - **Typeface:** Plus Jakarta Sans throughout, served from `static/fonts/` (SIL Open Font License) so pages load nothing from other websites.
 - **Contrast:** text meets WCAG AA in both themes.
 - **Layout:** works down to phone width. Boards scroll sideways a column at a time, and record pages stack.

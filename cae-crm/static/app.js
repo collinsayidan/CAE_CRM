@@ -33,12 +33,27 @@
   $$(".toast").forEach(el => setTimeout(() => dismiss(el), 6000));
 
   /* Theme ----------------------------------------------------------------- */
-  $("#theme-toggle")?.addEventListener("click", () => {
-    const root = document.documentElement;
-    const dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
-    root.dataset.theme = dark ? "light" : "dark";
-    try { localStorage.setItem("cae-theme", root.dataset.theme); } catch (e) { /* storage unavailable */ }
+  // System follows the computer's light or dark setting, and is the default. Light and Dark are remembered.
+  const themeMenu = $(".theme-menu");
+  const markTheme = () => {
+    const current = document.documentElement.dataset.theme || "system";
+    $$("[data-theme-choice]").forEach(b => b.setAttribute("aria-checked", b.dataset.themeChoice === current));
+  };
+  $$("[data-theme-choice]").forEach(b => b.addEventListener("click", () => {
+    const root = document.documentElement, choice = b.dataset.themeChoice;
+    try {
+      if (choice === "system") localStorage.removeItem("cae-theme");
+      else localStorage.setItem("cae-theme", choice);
+    } catch (e) { /* storage unavailable: the choice lasts for this page only */ }
+    if (choice === "system") delete root.dataset.theme;
+    else root.dataset.theme = choice;
+    markTheme();
+    if (themeMenu) themeMenu.open = false;
     document.dispatchEvent(new Event("themechange"));
+  }));
+  markTheme();
+  matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => {
+    if (!document.documentElement.dataset.theme) document.dispatchEvent(new Event("themechange"));
   });
 
   /* Mobile sidebar -------------------------------------------------------- */
@@ -47,7 +62,7 @@
 
   /* Menus: close <details> menus on outside click or Escape ---------------- */
   document.addEventListener("click", e => {
-    $$("details.new-menu[open], details.card-menu[open], details.save-view[open]").forEach(d => { if (!d.contains(e.target)) d.open = false; });
+    $$("details.new-menu[open], details.card-menu[open], details.save-view[open], details.theme-menu[open]").forEach(d => { if (!d.contains(e.target)) d.open = false; });
   });
 
   /* Dialogs --------------------------------------------------------------- */
@@ -262,7 +277,7 @@
       // Hatching marks the current month, which is still in progress.
       const defs = el("defs", {});
       const hatch = el("pattern", { id: "partial-hatch", width: 6, height: 6, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" });
-      hatch.append(el("rect", { width: 6, height: 6, fill: "var(--chart-fill)" }), el("line", { x1: 0, y1: 0, x2: 0, y2: 6, stroke: "var(--chart-hit)", "stroke-width": 2, opacity: 0.5 }));
+      hatch.append(el("rect", { width: 6, height: 6, fill: "var(--surface-2)" }), el("line", { x1: 0, y1: 0, x2: 0, y2: 6, stroke: "var(--muted)", "stroke-width": 1.5, opacity: 0.45 }));
       defs.append(hatch);
       svg.append(defs);
 
@@ -275,8 +290,8 @@
 
       const bars = data.map((d, i) => {
         const x0 = cx(i) - barW / 2, top = y(d.value), base = y(0);
-        const h = Math.max(0, base - top), r = Math.min(7, barW / 2, h);
-        // Rounded top corners, square base.
+        const h = Math.max(0, base - top), r = Math.min(1.5, barW / 2, h);
+        // Square bars, the top corners only just softened.
         const path = h > 0
           ? `M${x0},${base} V${top + r} Q${x0},${top} ${x0 + r},${top} H${x0 + barW - r} Q${x0 + barW},${top} ${x0 + barW},${top + r} V${base} Z`
           : `M${x0},${base} H${x0 + barW}`;
@@ -288,6 +303,7 @@
         return bar;
       });
 
+      svg.append(el("line", { class: "baseline", x1: pad.l, x2: W - pad.r, y1: y(0), y2: y(0) }));
       svg.append(el("line", { class: "target", x1: pad.l, x2: W - pad.r, y1: y(target), y2: y(target) }));
       const tl = el("text", { class: "target-label", x: W - pad.r, y: y(target) - 7, "text-anchor": "end" });
       tl.textContent = `Target ${gbp.format(target)}`;

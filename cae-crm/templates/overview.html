@@ -177,10 +177,8 @@
   <section class="panel">
     <header class="panel-head"><h2>Pipeline by stage</h2></header>
     <div class="mix">
-      <div class="donut-wrap">
-        {{ mix_donut }}
-        <div class="donut-centre"><b>{{ pipeline_value | money_short }}</b><span>{{ open_count }} deals</span></div>
-      </div>
+      <p class="mix-total"><b>{{ pipeline_value | money }}</b><span>across {{ open_count }} open deals</span></p>
+      {{ mix_bar }}
       <ul class="stage-bars">
         {% for m in mix %}
           <li>
@@ -193,11 +191,9 @@
       </ul>
     </div>
     <div class="quota">
-      <div class="quota-ring">{{ quota_ring }}<span>{{ quota_pct | round | int }}%</span></div>
-      <div>
-        <p class="quota-title">Quarterly quota, {{ fy_label }} Q{{ fy_q }}</p>
-        <p class="panel-note">{{ quota_won | money }} of {{ quota | money }}. Quarter ends {{ q_end | uk_date }}.</p>
-      </div>
+      <div class="quota-head"><p class="quota-title">Quarterly quota, {{ fy_label }} Q{{ fy_q }}</p><b>{{ quota_pct | round | int }}%</b></div>
+      <div class="winbar" role="img" aria-label="{{ quota_pct | round | int }}% of quarterly quota"><i style="width: {{ [quota_pct, 100] | min }}%"></i></div>
+      <p class="panel-note">{{ quota_won | money }} of {{ quota | money }}. Quarter ends {{ q_end | uk_date }}.</p>
     </div>
   </section>
 </div>

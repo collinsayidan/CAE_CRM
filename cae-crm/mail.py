@@ -82,10 +82,48 @@ def from_demo(msg):
     return False
 
 
+def unapproved_limit():
+    return int(current_app.config.get("UNAPPROVED_DAILY_EMAILS") or 30)
+
+
+def sending_workspace():
+    """The workspace an email is sent for: the signed-in person's, or the one the daily job or a public page is serving."""
+    if not has_request_context():
+        return None
+    if g.get("user"):
+        return g.user["workspace_id"]
+    return g.get("public_workspace")
+
+
+def check_allowance(count):
+    """Until a workspace is approved, it can send a limited number of emails a day. Raises MailError when it's used up."""
+    workspace_id = sending_workspace()
+    if not workspace_id:
+        return None
+    from db import get_db
+    db = get_db()
+    row = db.execute("SELECT approved FROM workspaces WHERE id=?", (workspace_id,)).fetchone()
+    if not row or row["approved"]:
+        return None
+    from core import today
+    day = today().isoformat()
+    used = db.execute("SELECT sent FROM mail_usage WHERE workspace_id=? AND day=?", (workspace_id, day)).fetchone()
+    if (used["sent"] if used else 0) + count > unapproved_limit():
+        raise MailError(f"New accounts can send {unapproved_limit()} emails a day until Collinalitics approves them. "
+                        "Email us to have yours approved.")
+    if used:
+        db.execute("UPDATE mail_usage SET sent=sent+? WHERE workspace_id=? AND day=?", (count, workspace_id, day))
+    else:
+        db.insert("mail_usage", workspace_id=workspace_id, day=day, sent=count)
+    db.commit()
+    return None
+
+
 def send(msg):
     """Send one message. Returns the provider's id. Raises MailError."""
     if from_demo(msg):
         return ""
+    check_allowance(1)
     if current_app.config.get("MAIL_BACKEND") == "memory":
         outbox = current_app.extensions.setdefault("outbox", [])
         outbox.append(msg)
@@ -100,6 +138,8 @@ def send_batch(msgs):
     assert len(msgs) <= BATCH_SIZE
     if msgs and from_demo(msgs[0]):
         return [""] * len(msgs)
+    if msgs:
+        check_allowance(len(msgs))
     if current_app.config.get("MAIL_BACKEND") == "memory":
         return [send(m) for m in msgs]
     if not configured():

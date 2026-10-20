@@ -5,6 +5,7 @@
 {% block subtitle %}<p class="subtitle">A chat window for your website that answers from your help articles and passes visitors to your team when it can't help.</p>{% endblock %}
 
 {% block content %}
+{% if not w.approved %}<p class="notice">{{ icon('sparkle') }} <span><b>Waiting for approval.</b> Website chat uses AI, which opens once Collinalitics has approved your account. Get in touch and we'll check it.</span></p>{% endif %}
 <form method="post" action="{{ url_for('chat_settings') }}" class="settings">
   <input type="hidden" name="csrf" value="{{ csrf_token }}">
   <section class="panel">

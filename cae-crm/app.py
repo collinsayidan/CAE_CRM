@@ -147,6 +147,9 @@ def create_app(config=None):
         MISSING_SETTINGS=[name for name, ok in (("CAE_SECRET_KEY", secret), (database_setting, database)) if hosted and not ok],
         # When set, creating a new workspace needs this invite code.
         SIGNUP_CODE=os.environ.get("CAE_SETUP_CODE", ""),
+        # Who to email about open sign-ups, and how many emails an unapproved workspace can send a day.
+        SIGNUP_ALERT=os.environ.get("CAE_SIGNUP_ALERT", ""),
+        UNAPPROVED_DAILY_EMAILS=int(os.environ.get("CAE_UNAPPROVED_DAILY_EMAILS") or 30),
         # Refuse new passwords found in Have I Been Pwned's breach data (set CAE_BREACH_CHECK=0 to turn off).
         BREACH_CHECK=os.environ.get("CAE_BREACH_CHECK", "1") != "0",
         SESSION_COOKIE_SAMESITE="Lax",

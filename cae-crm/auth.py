@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 
 from flask import (Blueprint, Response, abort, current_app, flash, g, redirect, render_template, request, session,
                    url_for)
+from markupsafe import escape
 from werkzeug.security import check_password_hash, generate_password_hash
 
 import security
@@ -61,11 +62,29 @@ def create_user(db, workspace_id, name, email, password, role="member", verified
     return user_id
 
 
-def create_workspace(db, name, today):
+def create_workspace(db, name, today, approved=True):
+    """approved=False for open sign-ups: AI stays off and email is capped until the owner approves (approve.py)."""
     trial = timedelta(days=int(current_app.config.get("TRIAL_DAYS") or 14))
     return db.insert("workspaces", name=name.strip(), legal_name=name.strip(), vat_registered=1,
                      monthly_target=DEFAULT_MONTHLY_TARGET, invoice_prefix="INV", payment_terms=30,
-                     created_at=today.isoformat(), plan_status="trialing", trial_ends=(today + trial).isoformat())
+                     created_at=today.isoformat(), plan_status="trialing", trial_ends=(today + trial).isoformat(),
+                     approved=int(approved))
+
+
+def signup_alert(ws_id, business, name, email):
+    """Tell whoever runs CAE CRM (CAE_SIGNUP_ALERT) about an open sign-up, so they can approve it."""
+    import mail
+    to = current_app.config.get("SIGNUP_ALERT")
+    if not to or not mail.configured():
+        return
+    text = (f"{business} signed up for CAE CRM.\n\nAdmin: {name} <{email}>\nWorkspace id: {ws_id}\n\n"
+            f"Until it's approved, AI is off and it can send {mail.unapproved_limit()} emails a day. To approve it, run "
+            f"this in the app's terminal in Coolify:\n\n    python approve.py approve {ws_id}\n")
+    html = "".join(f"<p>{escape(p)}</p>" for p in text.split("\n\n"))
+    try:
+        mail.send(mail.message(to, f"New sign-up: {business}", html, text, "CAE CRM"))
+    except mail.MailError:
+        current_app.logger.warning("Sign-up alert not sent")
 
 
 def password_version(password_hash):
@@ -363,7 +382,7 @@ def signup():
         if not errors:
             from core import today
             t = today()
-            ws_id = create_workspace(db, form["business"], t)
+            ws_id = create_workspace(db, form["business"], t, approved=bool(expected))  # an invite code vouches for them
             user_id = create_user(db, ws_id, form["name"], email, form["password"], "admin", verified=False)
             from legal import VERSION
             db.execute("UPDATE workspaces SET terms_version=?, terms_accepted_at=?, terms_accepted_by=? WHERE id=?",
@@ -380,8 +399,13 @@ def signup():
                 security.send_verification(db.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone())
                 db.commit()
                 confirm = f" We've emailed {email} a link to confirm your address."
+            waiting = ""
+            if not expected:
+                signup_alert(ws_id, form["business"].strip(), form["name"].strip(), email)
+                waiting = (f" AI features, and sending more than {mail.unapproved_limit()} emails a day, open once "
+                           "we've approved your account.")
             flash(f"Welcome to CAE CRM. {form['business'].strip()} is ready.{confirm} "
-                  "Add your business details under Settings.", "ok")
+                  f"Add your business details under Settings.{waiting}", "ok")
             return redirect(url_for("overview"))
     return render_template("auth/signup.html", errors=errors, form=form, code_required=bool(expected)), \
         (422 if errors else 200)

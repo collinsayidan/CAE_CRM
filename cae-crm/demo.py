@@ -14,6 +14,12 @@ from flask import current_app, flash, g, jsonify, redirect, request, session, ur
 
 from db import get_db
 
+# The wording people agree to is kept on their contact's timeline, as a record of their consent.
+CONSENT_EMAIL = "Email me CAE CRM news and offers."
+CONSENT_ADS = "Show me CAE CRM ads on Facebook, Instagram and LinkedIn. We'd share a scrambled copy of your email with them to do it."
+TAG_DEMO = "Demo"
+TAG_ADS = "Social ads OK"
+
 HOURS = 24
 PER_NETWORK_PER_HOUR = 5
 MAX_ACTIVE = 200
@@ -67,6 +73,50 @@ def guard():
     return redirect(target if target.startswith(request.host_url) else url_for("overview"))
 
 
+def record_lead(email, email_updates, social_ads):
+    """Add the visitor to the leads workspace (CAE_LEADS_WORKSPACE, Collinalitics' own) as a contact, with what they
+    agreed to. Their consent wording goes on the timeline; "Social ads OK" marks who may be added to ad audiences."""
+    leads_ws = current_app.config.get("LEADS_WORKSPACE")
+    if not leads_ws:
+        return None
+    from core import log_event, now, today
+    import tags
+    db = get_db()
+    owner = db.execute("SELECT name FROM users WHERE workspace_id=? AND role='admin' ORDER BY id LIMIT 1",
+                       (leads_ws,)).fetchone()
+    if not owner:
+        return None
+    g.public_workspace = leads_ws
+    try:
+        t = today().isoformat()
+        contact = db.execute("SELECT * FROM contacts WHERE workspace_id=? AND email=?", (leads_ws, email)).fetchone()
+        if contact:
+            contact_id = contact["id"]
+            if email_updates and not contact["marketing_consent"]:
+                db.execute("UPDATE contacts SET marketing_consent=1, consent_date=?, unsubscribed_at=NULL WHERE id=?",
+                           (t, contact_id))
+        else:
+            local = email.split("@")[0].replace("_", ".").replace("-", ".")
+            parts = [p.capitalize() for p in local.split(".") if p.isalpha()] or [local[:60]]
+            # Following up someone who asked to try the product is a legitimate interest; marketing needs their opt-in.
+            contact_id = db.insert("contacts", workspace_id=leads_ws, first_name=parts[0][:60],
+                                   last_name=" ".join(parts[1:])[:60], email=email, phone="",
+                                   lawful_basis="Legitimate interests", marketing_consent=int(email_updates),
+                                   consent_date=t if email_updates else None, lifecycle_stage="Lead", lead_status="New",
+                                   owner=owner["name"], created_at=t)
+        tags.add("contact", contact_id, TAG_DEMO)
+        if social_ads:
+            tags.add("contact", contact_id, TAG_ADS)
+        agreed = [f'"{text}"' for on, text in ((email_updates, CONSENT_EMAIL), (social_ads, CONSENT_ADS)) if on]
+        body = ("Agreed at " + now().isoformat(timespec="minutes") + ": " + "; ".join(agreed)) if agreed             else "Didn't tick either marketing box."
+        log_event("Tried the demo", body, contact_id=contact_id)
+        db.commit()
+        return contact_id
+    finally:
+        g.pop("public_workspace", None)
+        g.pop("workspace", None)
+
+
 def purge(workspace_ids=None):
     """Delete demos that have run out (or the ones given), with everything in them. Returns how many."""
     db = get_db()
@@ -96,11 +146,26 @@ def purge(workspace_ids=None):
 
 
 def register(app):
-    @app.post("/demo")
+    import os
+    leads = os.environ.get("CAE_LEADS_WORKSPACE", "")
+    app.config.setdefault("LEADS_WORKSPACE", int(leads) if leads.isdigit() else None)
+
+    @app.route("/demo", methods=["GET", "POST"])
     def start_demo():
-        """Start a demo: a private sample workspace, signed in as its admin."""
+        """Ask for an email, then start a demo: a private sample workspace, signed in as its admin."""
         if g.get("user"):
             return redirect(url_for("overview"))
+        from flask import render_template
+        import auth
+        form, errors = request.form, {}
+        page = lambda: (render_template("auth/demo.html", form=form, errors=errors, consent_email=CONSENT_EMAIL,
+                                        consent_ads=CONSENT_ADS), 422 if errors else 200)
+        if request.method == "GET":
+            return page()
+        email = form.get("email", "").strip().lower()[:200]
+        if not auth.valid_email(email):
+            errors["email"] = "Enter your email address to open the demo."
+            return page()
         purge()
         db, now = get_db(), now_utc()
         net = network()
@@ -110,7 +175,6 @@ def register(app):
         if started_lately >= PER_NETWORK_PER_HOUR or active >= MAX_ACTIVE:
             flash("Lots of demos have been started recently. Please try again in an hour, or create a workspace.", "error")
             return redirect(url_for("auth.login"))  # the homepage shows no messages; sign-in has both choices
-        import auth
         from core import today
         from seed import seed_workspace
         t = today()
@@ -121,6 +185,7 @@ def register(app):
                                    secrets.token_urlsafe(24), "admin", verified=True)
         seed_workspace(db, ws_id, t, VISITOR, auth.DEFAULT_MONTHLY_TARGET)
         db.commit()
+        record_lead(email, form.get("email_updates") == "on", form.get("social_ads") == "on")
         auth.start_session(user_id)
         flash("You're in a demo with made-up data. Click around and change anything you like.", "ok")
         return redirect(url_for("overview"))

@@ -7,17 +7,57 @@ import mail
 from conftest import query, refresh_csrf
 
 
-def start(app, ip="203.0.113.7"):
+def start(app, ip="203.0.113.7", email="visitor@example.co.uk", **boxes):
     c = app.test_client()
-    c.get("/login", environ_base={"REMOTE_ADDR": ip})
+    c.get("/demo", environ_base={"REMOTE_ADDR": ip})
     refresh_csrf(c)
-    resp = c.post("/demo", data={"csrf": c.csrf}, environ_base={"REMOTE_ADDR": ip})
+    resp = c.post("/demo", data={"csrf": c.csrf, "email": email, **boxes}, environ_base={"REMOTE_ADDR": ip})
     c.get("/")
     return refresh_csrf(c), resp
 
 
 def demo_ids(app):
     return [r[0] for r in query(app, "SELECT id FROM workspaces WHERE demo_until IS NOT NULL ORDER BY id")]
+
+
+def tags_of(app, contact_id):
+    return {r[0] for r in query(app, "SELECT t.name FROM record_tags rt JOIN tags t ON t.id=rt.tag_id "
+                                     "WHERE rt.record_type='contact' AND rt.record_id=?", contact_id)}
+
+
+def test_the_demo_asks_for_an_email_and_nothing_else(app):
+    c = app.test_client()
+    page = c.get("/demo").get_data(as_text=True)
+    assert 'name="email"' in page and 'type="password"' not in page
+    assert page.count('type="checkbox"') == 2 and "checked" not in page  # both boxes start unticked
+    refresh_csrf(c)
+    resp = c.post("/demo", data={"csrf": c.csrf, "email": "not an email"})
+    assert resp.status_code == 422 and demo_ids(app) == []
+
+
+def test_demo_visitors_become_leads_with_what_they_agreed_to(app):
+    app.config["LEADS_WORKSPACE"] = app.ws
+    start(app, email="sam.jones@example.co.uk", email_updates="on", social_ads="on")
+    start(app, ip="198.51.100.9", email="kit@example.co.uk")
+    sam = query(app, "SELECT id, first_name, last_name, lawful_basis, marketing_consent FROM contacts "
+                     "WHERE workspace_id=? AND email='sam.jones@example.co.uk'", app.ws)[0]
+    assert tuple(sam)[1:] == ("Sam", "Jones", "Legitimate interests", 1)
+    assert tags_of(app, sam[0]) == {"Demo", "Social ads OK"}
+    timeline = query(app, "SELECT body FROM engagements WHERE contact_id=?", sam[0])
+    assert any(demo.CONSENT_ADS in t[0] and demo.CONSENT_EMAIL in t[0] for t in timeline)
+    kit = query(app, "SELECT id, marketing_consent FROM contacts WHERE workspace_id=? AND email='kit@example.co.uk'", app.ws)[0]
+    assert kit[1] == 0 and tags_of(app, kit[0]) == {"Demo"}
+    # Coming back later and ticking a box adds the consent to the same contact.
+    start(app, ip="198.51.100.10", email="kit@example.co.uk", social_ads="on")
+    assert query(app, "SELECT COUNT(*) FROM contacts WHERE email='kit@example.co.uk'")[0][0] == 1
+    assert tags_of(app, kit[0]) == {"Demo", "Social ads OK"}
+
+
+def test_without_a_leads_workspace_the_demo_still_works(app):
+    app.config["LEADS_WORKSPACE"] = None
+    c, resp = start(app, email="anon@example.co.uk")
+    assert resp.status_code == 302 and len(demo_ids(app)) == 1
+    assert query(app, "SELECT COUNT(*) FROM contacts WHERE email='anon@example.co.uk'")[0][0] == 0
 
 
 def path(app, endpoint, **kw):
@@ -28,7 +68,7 @@ def path(app, endpoint, **kw):
 def test_homepage_and_sign_in_offer_the_demo(anon):
     for page in ("/welcome", "/login"):
         html = anon.get(page).get_data(as_text=True)
-        assert "Try the demo" in html and 'action="/demo"' in html, page
+        assert "Try the demo" in html and 'href="/demo"' in html, page
 
 
 def test_a_demo_is_a_private_sample_workspace_without_signing_up(app):

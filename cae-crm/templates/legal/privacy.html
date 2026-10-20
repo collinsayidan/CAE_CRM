@@ -27,7 +27,9 @@
     <tr><td>Error reports, which may include an account number and the page involved, with form contents, cookies and sign-in details removed</td>
         <td>To find and fix faults</td><td>Legitimate interests</td></tr>
     <tr><td>Website visits: IP address and browser details in our hosting provider's logs</td><td>To deliver pages and protect the site</td><td>Legitimate interests</td></tr>
-    <tr><td>If you try the demo: a scrambled form of your IP address (it can't be turned back into the address), and whatever you type into the demo</td><td>To stop one network starting too many demos, and to show you the app. Demos are deleted after 24 hours</td><td>Legitimate interests</td></tr>
+    <tr><td>If you try the demo: your email address, a scrambled form of your IP address (it can't be turned back into the address), and whatever you type into the demo</td><td>To see who has tried CAE CRM, to reply if you get in touch, and to stop one network starting too many demos. The demo itself is deleted after 24 hours</td><td>Legitimate interests</td></tr>
+    <tr><td>If you tick "Email me CAE CRM news and offers" when trying the demo</td><td>To send you CAE CRM news and offers by email. Every email has an unsubscribe link</td><td>Consent</td></tr>
+    <tr><td>If you tick "Show me CAE CRM ads" when trying the demo: a scrambled (hashed) copy of your email address</td><td>To show you CAE CRM adverts on Facebook, Instagram and LinkedIn. We upload the scrambled address to Meta and LinkedIn, who match it to accounts on their platforms and then delete it</td><td>Consent</td></tr>
   </tbody>
 </table>
 </div>
@@ -41,6 +43,7 @@
   <li><b>Resend</b>: sending email, and receiving emails sent to a business's support address.</li>
   <li><b>Stripe</b>: payments and invoices for your subscription. If a business you deal with takes card payments on its invoices through CAE CRM, you pay on Stripe's own page and the business's Stripe account handles your card details; we only learn that the payment was made.</li>
   <li><b>Sentry</b>: error reports, if switched on.</li>
+  <li><b>Meta and LinkedIn</b>: only if you tick the advertising box when trying the demo. We share a scrambled copy of your email address so they can show you our adverts. Meta Platforms Ireland and LinkedIn Ireland handle this under their own advertising terms.</li>
   <li><b>Anthropic</b>: the AI assistant and website chat, only if your workspace's admin turns them on. Anthropic receives the questions asked and the records the assistant looks up, in the United States. It doesn't use them to train its models, and deletes them within 30 days, unless it flags them for breaking its usage policy (then it can keep them for up to 2 years) or the law requires otherwise.</li>
 </ul>
 <p>We don't sell personal data, and we don't use it for advertising. We only share it with anyone else if the law requires it or to protect people's safety.</p>
@@ -54,6 +57,7 @@
   <li><b>Sign-in sessions:</b> end after 12 hours unused, or when you sign out. Password reset links expire after an hour, and email confirmation and invite links after 7 days. Failed sign-in attempts are kept for a day. A record of which browsers you've signed in from is kept while you have an account, so we can warn you about a new one.</li>
   <li><b>Billing records:</b> six years, as UK tax law requires.</li>
   <li><b>Webhook delivery logs:</b> 30 days.</li>
+  <li><b>Demo sign-ups:</b> your email and what you agreed to are kept as a contact in our own CRM. {{ to_confirm('how long demo contacts are kept') }} You can withdraw either consent, or ask us to delete your details, at any time by emailing {{ legal_detail('LEGAL_EMAIL') }} or using the unsubscribe link in our emails. We then also remove you from our advertising lists.</li>
   <li><b>AI assistant conversations, summaries, briefings and drafts:</b> 30 days from the last message, unless you delete them sooner. Erasing a contact also deletes conversations that mention them. A count of questions asked and the amount of AI processing used, without their content, is kept for 13 months.</li>
   <li><b>Workspace data:</b> deleted within 30 days of the 30-day export window that follows a workspace closing (see the <a href="{{ url_for('legal', doc='terms') }}">terms</a>).</li>
   <li><b>Backups:</b> the database is backed up every night. Backups on the server are kept for 7 days, and the encrypted copies with Backblaze for up to 30 days. Hetzner also backs up the whole server, keeping the last 7 backups.</li>

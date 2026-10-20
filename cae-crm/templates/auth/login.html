@@ -14,9 +14,8 @@
 </form>
 <p class="auth-note"><a class="text-link" href="{{ url_for('auth.forgot') }}">Forgotten your password?</a></p>
 <p class="auth-note">New to CAE CRM? <a class="text-link" href="{{ url_for('auth.signup') }}">Create a workspace for your business</a></p>
-<form method="post" action="{{ url_for('start_demo') }}" class="auth-demo">
-  <input type="hidden" name="csrf" value="{{ csrf_token }}">
-  <p>Just looking? Explore a sample workspace first. No sign-up needed.</p>
-  <button class="btn wide">Try the demo</button>
-</form>
+<div class="auth-demo">
+  <p>Just looking? Explore a sample workspace first. No password needed.</p>
+  <a class="btn wide" href="{{ url_for('start_demo') }}">Try the demo</a>
+</div>
 {% endblock %}

@@ -1,0 +1,19 @@
+{% extends "auth/_layout.html" %}
+{% from "_macros.html" import field %}
+{% block title %}Try the demo{% endblock %}
+{% block content %}
+<h1>Try CAE CRM</h1>
+<p class="auth-lede">Explore a sample business with made-up UK customers, deals, tickets and invoices. No password, nothing to install. It's yours for 24 hours, then it's deleted.</p>
+<form method="post" action="{{ url_for('start_demo') }}" class="auth-form" novalidate>
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  {{ field('Work email', 'email', form.email, type='email', errors=errors, required=true, extra='autocomplete=email') }}
+  <label class="check"><input type="checkbox" name="email_updates" {{ 'checked' if form.email_updates }}>
+    <span>{{ consent_email }}</span></label>
+  <label class="check"><input type="checkbox" name="social_ads" {{ 'checked' if form.social_ads }}>
+    <span>{{ consent_ads }}</span></label>
+  <button class="btn primary wide">Open the demo</button>
+  <p class="auth-legal">Both boxes are optional, and you can change your mind at any time. The demo works the same either way. We use your email to see who's tried CAE CRM and to answer you if you get in touch. The <a class="text-link" href="{{ url_for('legal', doc='privacy') }}" target="_blank" rel="noopener">privacy notice</a> explains more.</p>
+</form>
+<p class="auth-note">Ready to start for real? <a class="text-link" href="{{ url_for('auth.signup') }}">Create a workspace</a></p>
+{% endblock %}
+{% block foot %}The demo is private to you. Nobody else sees what you do in it.{% endblock %}

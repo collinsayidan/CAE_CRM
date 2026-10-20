@@ -626,8 +626,8 @@ input[aria-invalid="true"] { border-color: var(--bad); }
 .optional { font-weight: 400; color: var(--muted); }
 .field-hint { color: var(--muted); font-size: 12.5px; }
 .field-error { color: var(--bad); font-size: 13px; font-weight: 700; }
-.check { display: flex; gap: 10px; align-items: center; margin-top: 16px; font-size: 14.5px; }
-.check input { width: 18px; height: 18px; accent-color: var(--primary); }
+.check { display: flex; gap: 10px; align-items: flex-start; margin-top: 16px; font-size: 14.5px; }
+.check input { width: 18px; height: 18px; flex: none; margin: 2px 0 0; accent-color: var(--primary); }  /* never squashed by a long label */
 .form-alert { background: var(--bad-soft); color: var(--bad); padding: 10px 14px; border-radius: var(--r-md); font-weight: 700; margin-bottom: 16px; }
 
 dialog.sheet {
@@ -1391,6 +1391,10 @@ a.me > div { min-width: 0; }
   table.stack-sm td.num small { margin-left: 6px; }
   table.stack-sm td:not(.num):not(.cell-main) > small { flex-basis: 100%; margin: -2px 0 0 calc(38% + 12px); }
   table.stack-sm td.cell-main small { display: block; margin-left: 0; }
+  /* A picked or tapped row is highlighted as one card, tick box included (not cell by cell). */
+  table.stack-sm tbody tr:hover td, table.stack-sm tr.is-picked td { background: transparent; }
+  table.stack-sm tbody tr:hover { background: var(--surface-2); }
+  table.stack-sm tr.is-picked { background: color-mix(in srgb, var(--accent-soft) 55%, transparent); box-shadow: inset 2px 0 0 var(--bright); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1745,3 +1749,11 @@ a.tag:hover, .tag a:hover { text-decoration: underline; }
 .ai-body { white-space: pre-wrap; font-family: var(--body); font-size: 14px; line-height: 1.55; margin: 0; padding: 12px 14px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-md); }
 .ai-social { display: grid; gap: 8px; margin: 14px 0; justify-items: start; }
 .ai-social textarea { width: 100%; }
+
+/* Long web addresses break onto the next line instead of widening the page. */
+.text-link.url-link { display: inline; overflow-wrap: anywhere; word-break: break-all; }
+
+@media (max-width: 640px) {
+  /* Menus from the top bar span the screen, so none can open off its edge. */
+  .bell-menu { position: fixed; left: 16px; right: 16px; top: 62px; width: auto; max-height: calc(100vh - 80px); overflow-y: auto; }
+}

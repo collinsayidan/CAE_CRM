@@ -66,7 +66,7 @@ LABELS = {
 # Asking the assistant (or its helpers) changes no records, and a confirmed suggestion is recorded by the page it's
 # passed on to.
 SKIP = {"auth.logout", "oauth_sync", "campaign_deliver", "auth.forgot", "assistant_ask", "assistant_confirm",
-        "ai_helper", "ai_draft", "ai_triage", "start_demo", "leave_demo"}  # a demo is deleted on leaving
+        "ai_helper", "ai_draft", "ai_triage", "start_demo", "leave_demo", "ai_campaign"}  # a demo is deleted on leaving
 # Pages that sign someone in: the person comes from the new session, not from before the request.
 SIGN_IN_ENDPOINTS = {"auth.login", "auth.reset", "auth.signup", "auth.two_factor_check", "auth.accept_invite"}
 # How to name the record a change was about: URL argument -> (type, SQL for a name, or None to record a number only).

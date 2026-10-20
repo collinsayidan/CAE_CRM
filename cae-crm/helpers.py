@@ -208,6 +208,7 @@ def apply_triage(t, s):
 
 
 def register(app):
+    register_campaigns(app)
     app.add_template_global(available, "ai_helpers_on")
     app.add_template_global(latest, "ai_latest")
 
@@ -293,3 +294,121 @@ def register(app):
             flash("Suggestion dismissed.", "ok")
         get_db().commit()
         return redirect(url_for("ticket", ticket_id=ticket_id))
+
+
+# --- Campaign drafts ----------------------------------------------------------------------------------------------------
+# Marketing copy for an email campaign, from a short brief. Claude sees the business's name, town, products and the
+# campaign's audience, never any contact's details, so no personal data leaves the CRM for this.
+
+TONES = ["Friendly", "Professional", "Bold"]
+
+CAMPAIGN_PROMPT = """\
+Write a marketing email campaign for this business, from the brief below. The record holds the business's name and
+town, its products and prices, and who the email goes to (contacts at these lifecycle stages; all of them if empty).
+
+Brief: {brief}
+Tone: {tone}
+
+Rules: British English, plain words, no hype or exclamation marks in subject lines. Only mention products, prices or
+offers that are in the record or the brief; where you'd need a detail you don't have (a date, a link, a discount),
+write [check: what's needed]. Keep to UK marketing rules: no false urgency, and nothing misleading.
+
+Give three different subject lines (under 60 characters each; they may use {{{{first_name}}}}), one line of preview
+text (under 90 characters), and the message. The message is plain text: start with "Hi {{{{first_name}}}},", leave a
+blank line between short paragraphs, use "- " for any list, **bold** sparingly, and links as [text](https://...).
+Under 180 words, one clear call to action, and sign off with the business's name. Also write one LinkedIn post
+announcing the same thing (under 80 words, no hashtags beyond two, no {{{{first_name}}}})."""
+
+
+def campaign_schema():
+    return {"type": "object", "additionalProperties": False,
+            "required": ["subjects", "preheader", "body", "social_post"],
+            "properties": {"subjects": {"type": "array", "items": {"type": "string"}},
+                           "preheader": {"type": "string"}, "body": {"type": "string"},
+                           "social_post": {"type": "string"}}}
+
+
+def campaign_record(c):
+    from campaigns import audience_of
+    w = workspace()
+    products = rows("SELECT name, description, unit_price, billing FROM products WHERE workspace_id=? AND active=1 "
+                    "ORDER BY name LIMIT 20", ws())
+    return {"business": {"name": w["name"], "town": w["city"] or ""},
+            "products": [{"name": p["name"], "description": (p["description"] or "")[:200],
+                          "price": f"£{p['unit_price'] / 100:,.2f}", "billing": p["billing"]} for p in products],
+            "audience_stages": audience_of(c)["stages"]}
+
+
+def parse_campaign(text):
+    try:
+        data = json.loads(text)
+    except ValueError:
+        raise HelperError("The assistant's draft didn't come back in the right shape. Try again.") from None
+    subjects = [str(s).strip()[:150] for s in data.get("subjects") or [] if str(s).strip()][:3]
+    if not subjects or not str(data.get("body") or "").strip():
+        raise HelperError("The assistant didn't write a usable draft. Try a more detailed brief.")
+    return {"subjects": subjects, "preheader": str(data.get("preheader") or "").strip()[:150],
+            "body": str(data["body"]).strip()[:20000], "social_post": str(data.get("social_post") or "").strip()[:3000]}
+
+
+def campaign_draft(campaign_id):
+    """This person's latest AI draft for a campaign, parsed, if it's recent enough to show."""
+    if not g.get("user"):
+        return None
+    since = (now() - SHOW_FOR).isoformat(timespec="minutes")
+    found = one("SELECT * FROM ai_outputs WHERE workspace_id=? AND user_id=? AND task='campaign' AND record_type='campaign' "
+                "AND record_id=? AND created_at >= ? ORDER BY id DESC LIMIT 1", ws(), g.user["id"], campaign_id, since)
+    if not found:
+        return None
+    try:
+        return parse_campaign(found["body"]) | {"id": found["id"]}
+    except HelperError:
+        return None
+
+
+def register_campaigns(app):
+    app.add_template_global(campaign_draft, "ai_campaign_draft")
+    app.add_template_global(lambda: TONES, "ai_tones")
+
+    @app.post("/email/<int:campaign_id>/ai")
+    def ai_campaign(campaign_id):
+        stop = assistant.require_enabled()
+        if stop:
+            return stop
+        c = get_or_404("email_campaigns", campaign_id)
+        if c["status"] != "Draft":
+            abort(409)
+        target = url_for("campaign", campaign_id=campaign_id) + "#ai-draft"
+        brief = request.form.get("brief", "").strip()[:1000]
+        tone = request.form.get("tone") if request.form.get("tone") in TONES else TONES[0]
+        if len(brief) < 10:
+            flash("Tell the assistant what the email is about, in a sentence or two.", "error")
+            return redirect(target)
+        try:
+            text = call("campaign", campaign_record(c), CAMPAIGN_PROMPT.format(brief=brief, tone=tone),
+                        schema=campaign_schema())
+            parse_campaign(text)
+        except HelperError as e:
+            flash(str(e), "error")
+            return redirect(target)
+        save_output("campaign", "campaign", campaign_id, text)
+        get_db().commit()
+        return redirect(target)
+
+    @app.post("/email/<int:campaign_id>/ai/use")
+    def ai_campaign_use(campaign_id):
+        """Copy the chosen subject line, the preview text and the message from the AI draft into the campaign."""
+        c = get_or_404("email_campaigns", campaign_id)
+        if c["status"] != "Draft":
+            abort(409)
+        draft = campaign_draft(campaign_id)
+        if not draft:
+            flash("That draft has expired. Ask for a new one.", "error")
+            return redirect(url_for("campaign", campaign_id=campaign_id) + "#ai-draft")
+        pick = request.form.get("subject", "0")
+        subject = draft["subjects"][int(pick)] if pick.isdigit() and int(pick) < len(draft["subjects"]) else draft["subjects"][0]
+        get_db().execute("UPDATE email_campaigns SET subject=?, preheader=?, body=? WHERE id=? AND workspace_id=?",
+                         (subject, draft["preheader"], draft["body"], campaign_id, ws()))
+        get_db().commit()
+        flash("The AI draft is in your campaign. Check it, fill in anything marked [check: …], then save.", "ok")
+        return redirect(url_for("campaign", campaign_id=campaign_id))

@@ -19,9 +19,9 @@ def test_legal_pages_are_public_and_flag_what_needs_confirming(anon, doc):
 def test_details_from_settings_and_the_reviewed_switch(app, anon):
     app.config.update(LEGAL_COMPANY_NUMBER="12345678", LEGAL_ADDRESS="1 High Street, Edinburgh EH1 1AA",
                       LEGAL_ICO_NUMBER="ZA123456", LEGAL_EMAIL="privacy@example.co.uk", LEGAL_LAW="Scotland",
-                      LEGAL_DATA_REGION="London (eu-west-2)", LEGAL_REVIEWED=True)
+                      LEGAL_REVIEWED=True)
     page = anon.get("/legal/privacy").get_data(as_text=True)
-    assert "ZA123456" in page and "London (eu-west-2)" in page and "privacy@example.co.uk" in page
+    assert "ZA123456" in page and "privacy@example.co.uk" in page
     assert "being reviewed by a solicitor" not in page and "to confirm: ICO" not in page
     assert "The law of Scotland applies" in anon.get("/legal/terms").get_data(as_text=True)
     app.config["LEGAL_ADDRESS"] = "<script>alert(1)</script>"
@@ -58,4 +58,4 @@ def test_settings_links_to_legal_pages_for_everyone(client, member_client):
 def test_hosting_provider_is_named_correctly(anon):
     for doc in ("privacy", "dpa"):
         page = anon.get(f"/legal/{doc}").get_data(as_text=True)
-        assert "Hetzner Online GmbH" in page and "Vercel" not in page, doc
+        assert "Hetzner Online GmbH" in page and "Vercel" not in page and "Supabase" not in page, doc

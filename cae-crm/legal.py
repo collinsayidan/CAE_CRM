@@ -17,7 +17,7 @@ DOCS = {
     "accessibility": "Accessibility statement",
 }
 # Changes whenever the wording changes, so each workspace's record shows which version it agreed to.
-VERSION = "2026-10-20 draft"
+VERSION = "2026-10-20.2 draft"
 UPDATED = "20 October 2026"
 
 # Company details used in the documents: setting name -> what it is.
@@ -28,7 +28,6 @@ DETAILS = {
     "LEGAL_ICO_NUMBER": "ICO registration number",
     "LEGAL_EMAIL": "privacy and legal contact email",
     "LEGAL_LAW": "governing law (for example England and Wales, or Scotland)",
-    "LEGAL_DATA_REGION": "where the database is hosted (the Supabase project's region)",
 }
 
 

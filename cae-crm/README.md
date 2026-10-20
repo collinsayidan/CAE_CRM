@@ -45,9 +45,9 @@ Open http://127.0.0.1:5000 and choose **Create a workspace**. Leave the sample d
 
 To run locally against Supabase, copy `.env.example` to `.env`, fill it in and run `python app.py` (after `pip install -r requirements-dev.txt`). `.env` is never committed.
 
-The app creates and upgrades its tables when it starts. On PostgreSQL it also turns on row level security for every table, so Supabase's public Data API can't read or change CRM data; the app connects as the tables' owner and isn't affected. A database from the first release is upgraded in place, and its records move into a workspace called "My business". If a required setting is missing, the site shows a "Finish setting up" page naming it, rather than running without it.
+The app creates and upgrades its tables when it starts. On PostgreSQL it also turns on row level security for every table as an extra safeguard (on Supabase, it stops the public Data API reading CRM data); the app connects as the tables' owner and isn't affected. A database from the first release is upgraded in place, and its records move into a workspace called "My business". If a required setting is missing, the site shows a "Finish setting up" page naming it, rather than running without it.
 
-**Speed.** Keep the app and the database close together. Every page runs a few dozen small queries, and a round trip across the Atlantic adds about 80ms to each. The Coolify server (Nuremberg) and the Supabase project (London, `eu-west-2`) are about 15ms apart. The app also skips its schema check on start-up when nothing has changed, and keeps its database connection open between requests on the same server.
+**Speed.** Keep the app and the database close together. Every page runs a few dozen small queries, and a round trip across the Atlantic adds about 80ms to each. On Coolify the app and its database run on the same server, so queries never leave the machine. The app also skips its schema check on start-up when nothing has changed, and keeps its database connection open between requests on the same server.
 
 Vercel finds the app through `wsgi.py`, which `pyproject.toml` names in `[tool.vercel] entrypoint = "wsgi:app"`.
 
@@ -64,7 +64,8 @@ The `Dockerfile` runs the app with gunicorn on port 8000, as an ordinary user, w
    - **Port:** 8000.
 2. **Domain.** Set it, for example `https://cae.collinalitics.co.uk`, and point an `A` record for that name at the server. Coolify gets the HTTPS certificate.
 3. **Environment variables.** Use the same ones as on Vercel (`.env.example` lists them):
-   - `DATABASE_URL` and `CAE_SECRET_KEY`. Use the **same** secret key as Vercel, so people stay signed in when you switch.
+   - `DATABASE_URL`: the internal URL of a PostgreSQL database in the same Coolify project (**+ Add Resource → PostgreSQL**, no public port). Turn on its scheduled backups.
+   - `CAE_SECRET_KEY`. Use the **same** secret key as Vercel, so people stay signed in when you switch.
    - Email, Stripe, integrations, `CRON_SECRET`, and the `LEGAL_…` settings.
    - `CAE_BASE_URL`: the public address, for example `https://cae.collinalitics.co.uk`. The daily job uses it to build links in emails.
    - Optionally `CAE_WORKERS`: gunicorn processes, default 2.
@@ -87,6 +88,7 @@ python move_database.py
 - `--check` compares row counts and changes nothing.
 - Without it, the script copies everything. It then checks that every table matches, and that no file is left outside the database.
 - The source is only ever read. Switch `DATABASE_URL` to the new address only once the counts match. Then remove `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`, because files are now served from the database.
+- CAE CRM moved off Supabase this way in October 2026. Its data and files now live in `cae-crm-db` on the Coolify server, backed up nightly.
 
 ## Email
 

@@ -75,6 +75,19 @@ The `Dockerfile` runs the app with gunicorn on port 8000, as an ordinary user, w
    - Update the web addresses registered with integrations (Google, Microsoft, Xero, HMRC, Stripe and Resend webhooks) to the new domain.
    - Then remove the Vercel project, or its cron and domain.
 
+### Moving to another database
+
+`move_database.py` copies every table, plus any files kept in Supabase Storage, from `DATABASE_URL` into the new, empty database named by `TARGET_DATABASE_URL`. Run it in the app's container (in Coolify, the application's **Terminal**):
+
+```bash
+python move_database.py --check
+python move_database.py
+```
+
+- `--check` compares row counts and changes nothing.
+- Without it, the script copies everything. It then checks that every table matches, and that no file is left outside the database.
+- The source is only ever read. Switch `DATABASE_URL` to the new address only once the counts match. Then remove `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`, because files are now served from the database.
+
 ## Email
 
 CAE CRM sends through [Resend](https://resend.com). Every business sends from the one address in `CAE_MAIL_FROM`, shown with the business's own name, and replies go to the reply-to email in **Settings**.

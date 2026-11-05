@@ -104,6 +104,9 @@ def register(app):
             data["payment_link"] = f.get("payment_link", "").strip()[:300]
             if data["payment_link"] and not data["payment_link"].startswith("https://"):
                 errors["payment_link"] = "Enter a full web address starting with https://"
+            from idlelock import LOCK_CHOICES
+            lock = f.get("lock_minutes", "")
+            data["lock_minutes"] = int(lock) if lock.isdigit() and int(lock) in LOCK_CHOICES else w["lock_minutes"]
             data["reminders_on"] = 1 if f.get("reminders_on") == "on" else 0
             data["csat_on"] = 1 if f.get("csat_on") == "on" else 0
             logo = request.files.get("logo")
@@ -120,13 +123,13 @@ def register(app):
                 db.execute("UPDATE workspaces SET name=?, legal_name=?, address=?, city=?, postcode=?, company_no=?,"
                            " vat_registered=?, vat_no=?, monthly_target=?, invoice_prefix=?, payment_terms=?, reply_to=?,"
                            " bank_account_name=?, bank_sort_code=?, bank_account_number=?, payment_link=?, reminders_on=?,"
-                           " quiet_days=?, bank_holiday_region=?, csat_on=? WHERE id=?",
+                           " quiet_days=?, bank_holiday_region=?, csat_on=?, lock_minutes=? WHERE id=?",
                            (data["name"], data["legal_name"], data["address"], data["city"], data["postcode"],
                             data["company_no"], data["vat_registered"], data["vat_no"], data["monthly_target"],
                             data["invoice_prefix"], data["payment_terms"], data["reply_to"] or None,
                             data["bank_account_name"] or None, data["bank_sort_code"] or None,
                             data["bank_account_number"] or None, data["payment_link"] or None, data["reminders_on"],
-                            data["quiet_days"], data["bank_holiday_region"], data["csat_on"], ws()))
+                            data["quiet_days"], data["bank_holiday_region"], data["csat_on"], data["lock_minutes"], ws()))
                 if data.get("logo"):
                     from core import now
                     db.execute("UPDATE workspaces SET logo=?, logo_updated=? WHERE id=?",

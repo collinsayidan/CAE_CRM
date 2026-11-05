@@ -34,6 +34,7 @@ import events
 import finance
 import helpcentre
 import home
+import idlelock
 import inbound
 import integrations
 import legal
@@ -92,7 +93,8 @@ PUBLIC_ENDPOINTS = {"landing", "favicon", "healthz", "auth.login", "auth.signup"
                     "public_form", "public_quote", "accept_quote", "decline_quote", "unsubscribe", "resend_webhook",
                     "stripe_webhook", "cron_sync", "workspace_logo", "public_quote_pdf", "legal", "legal_index",
                     "start_demo"}
-TWO_FACTOR_SETUP_ALLOWED = {"auth.two_factor_setup", "auth.logout", "static", "favicon", "auth.verify_email"}
+TWO_FACTOR_SETUP_ALLOWED = {"auth.two_factor_setup", "auth.logout", "static", "favicon", "auth.verify_email", "unlock",
+                            "session_active", "session_lock"}
 # Forms embedded on other websites can't carry our session's CSRF token; they have their own spam checks.
 # Mail apps' one-click unsubscribe and Resend's webhooks post from elsewhere too; the webhook is signed.
 # The website chat runs in a frame on businesses' own sites, without cookies; each chat has its own secret token.
@@ -207,6 +209,7 @@ def create_app(config=None):
     app.add_template_global(auth.team_photo, "team_photo")
     import ukholidays
     app.add_template_global(ukholidays.REGIONS, "holiday_regions")
+    app.add_template_global(idlelock.LOCK_CHOICES, "lock_choices")
     app.add_template_global(lambda p: money(p, pennies=True), "gbp")  # for public pages, which have no sign-in context
     app.add_template_filter(days_until, "days_until")
     app.add_template_filter(relative_time, "relative_time")
@@ -261,6 +264,9 @@ def create_app(config=None):
         blocked = demo.guard()  # sets g.demo; a demo can't send email, connect services or use AI
         if blocked is not None:
             return blocked
+        locked = idlelock.check(PUBLIC_ENDPOINTS)  # after a spell with nothing done, the password again (not the authenticator code)
+        if locked is not None:
+            return locked
         if (g.user and twofactor.required(g.user) and not g.user["totp_enabled_at"]
                 and request.endpoint not in TWO_FACTOR_SETUP_ALLOWED):
             return redirect(url_for("auth.two_factor_setup"))  # admins set up two-factor sign-in before anything else
@@ -289,7 +295,7 @@ def create_app(config=None):
     for module in (home, crm, sales, service, finance, quotes, webforms, campaigns, billing, integrations, xero, mtd,
                    documents, notifications, files, fields, workflows, webhooks, api, legal, dataio, settings, audit,
                    assistant, tags, duplicates, companies_house, recycle, support, digest, helpers,
-                   inbound, helpcentre, chat, payments, recurring, demo):
+                   inbound, helpcentre, chat, payments, recurring, demo, idlelock):
         module.register(app)
     return app
 

@@ -99,10 +99,11 @@ def session_ok(user):
         open_session(user)  # a sign-in from before sessions were recorded carries on, and now shows in the list
         db.commit()
         return True
-    row = db.execute("SELECT id, last_seen_at FROM user_sessions WHERE token_hash=? AND user_id=?",
+    row = db.execute("SELECT id, last_seen_at, locked, unlocked_at FROM user_sessions WHERE token_hash=? AND user_id=?",
                      (token_hash(sid), user["id"])).fetchone()
     if row is None:
         return False
+    g.user_session = row  # for the screen lock
     seen = datetime.fromisoformat(row["last_seen_at"])
     if now_utc() - seen > SESSION_IDLE:
         db.execute("DELETE FROM user_sessions WHERE id=?", (row["id"],))

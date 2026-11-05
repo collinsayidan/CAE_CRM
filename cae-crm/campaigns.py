@@ -57,7 +57,7 @@ def inline(line):
     out = str(escape(line))
     out = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", out)
     out = re.sub(r"\[([^\]]+)\]\((https?://[^\s)]+)\)",
-                 r'<a href="\2" style="color:#0f766e;font-weight:600">\1</a>', out)
+                 r'<a href="\2" style="color:#1e5bd6;font-weight:600">\1</a>', out)
     return out
 
 

@@ -17,7 +17,7 @@
   </form>
   <div class="table-wrap">
     <table class="records">
-      <thead><tr><th>File</th><th>Attached to</th><th>Added by</th><th>Added</th><th class="num">Size</th><th></th></tr></thead>
+      <thead><tr><th>File</th><th>Attached to</th><th>Added by</th><th>Added</th><th class="num">Size</th><th><span class="sr-only">Actions</span></th></tr></thead>
       <tbody>
         {% for f in files %}
           {% set page, key = record_pages[f.record_type] %}

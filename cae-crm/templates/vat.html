@@ -16,7 +16,7 @@
   <section class="panel flush">
     <div class="table-wrap">
       <table class="records">
-        <thead><tr><th>Period</th><th>Due</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Period</th><th>Due</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead>
         <tbody>
           {% for o in obligations %}
             {% set done = submitted.get(o.periodKey) %}

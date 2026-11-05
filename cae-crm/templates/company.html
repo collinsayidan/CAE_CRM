@@ -8,7 +8,7 @@
 {% block page %}
 <nav class="crumbs" aria-label="Breadcrumb"><a href="{{ url_for('companies') }}">Companies</a> <span aria-hidden="true">/</span> <span>{{ c.name }}</span></nav>
 <div class="record">
-  <aside class="record-left">
+  <aside class="record-left" aria-label="Record details">
     <section class="panel record-card">
       {{ logo(c.name, 'xl') }}
       <h1>{{ c.name }}</h1>

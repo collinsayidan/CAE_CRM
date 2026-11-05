@@ -15,6 +15,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 import security
 import ukfmt
+from core import is_local_path
 from db import DEFAULT_MONTHLY_TARGET, get_db
 
 bp = Blueprint("auth", __name__)
@@ -215,7 +216,7 @@ def team_photo(name):
 
 
 def safe_next(target):
-    return target if target and target.startswith("/") and not target.startswith("//") else url_for("overview")
+    return target if is_local_path(target) else url_for("overview")
 
 
 @bp.route("/login", methods=["GET", "POST"])

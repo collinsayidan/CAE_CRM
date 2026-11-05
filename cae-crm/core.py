@@ -142,13 +142,25 @@ def wants_json():
     return request.headers.get("X-Requested-With") == "fetch"
 
 
+def is_local_path(target):
+    """True for a path on this site, like /deals/4?tab=notes. Anything a browser could read as another site is
+    refused: //evil.com, a slash then a backslash, backslashes and control characters (browsers drop tabs and newlines)."""
+    if not isinstance(target, str) or not target.startswith("/") or target.startswith(("//", "/\\")):
+        return False
+    return not any(c == "\\" or ord(c) < 32 or ord(c) == 127 for c in target)
+
+
+def local_or_none(target):
+    return target if is_local_path(target) else None
+
+
 def safe_path(target, default):
-    return target if target and target.startswith("/") and not target.startswith("//") else url_for(default)
+    return target if is_local_path(target) else url_for(default)
 
 
 def back(default, **kwargs):
     target = request.form.get("next") or ""
-    if target.startswith("/") and not target.startswith("//"):
+    if is_local_path(target):
         return redirect(target)
     return redirect(url_for(default, **kwargs))
 

@@ -96,6 +96,12 @@ def test_after_the_trial_the_workspace_is_read_only(app, client, stripe):
 
 
 def test_subscribing_keeps_the_trial_and_charges_per_user_plus_vat(app, client, stripe):
+    # Stripe's trial end is checked against the real clock, not the tests' pinned date, so keep the trial in the future.
+    with app.app_context():
+        from datetime import date
+        from db import get_db
+        get_db().execute("UPDATE workspaces SET trial_ends=? WHERE id=?", ((date.today() + timedelta(days=10)).isoformat(), app.ws))
+        get_db().commit()
     resp = client.post("/billing/checkout", data={"csrf": client.csrf})
     assert resp.status_code == 303 and resp.headers["Location"].startswith("https://checkout.stripe.test/")
     params = stripe.calls[0][2]

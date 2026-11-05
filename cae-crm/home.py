@@ -48,6 +48,7 @@ def register(app):
             vat=bool(c.get("STRIPE_TAX_RATE_ID")),
             # Book a demo: a web form in Collinalitics' own workspace, so requests arrive as leads.
             demo_url=demo if demo.startswith(("https://", "/")) else "",
+            month=today().strftime("%B"),  # the sample tracker shows the current month
             company={k: c.get(f"LEGAL_{k.upper()}") or "" for k in ("company_name", "company_number", "address",
                                                                      "email", "data_region")})
 

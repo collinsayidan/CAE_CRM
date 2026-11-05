@@ -4,7 +4,9 @@ import re
 
 def test_homepage_is_short_and_makes_true_claims_only(anon):
     page = anon.get("/welcome").get_data(as_text=True)
-    assert page.count("<h1") == 1 and "The CRM that already knows how UK business works." in page
+    assert page.count("<h1") == 1
+    headline = re.sub(r"<[^>]+>", "", re.search(r"<h1>(.*?)</h1>", page, re.S).group(1))
+    assert headline == "The CRM that already knows how UK business works."
     for heading in ("Contacts, companies and deals", "Support tickets with real service levels", "Invoices HMRC would recognise",
                     "UK GDPR built in", "What you'd pay extra for elsewhere, included", "Set up your business in two minutes."):
         assert f">{heading}</h2>" in page, heading
@@ -12,7 +14,7 @@ def test_homepage_is_short_and_makes_true_claims_only(anon):
     # Nothing invented: no reviews, ratings or uptime figures, and sample figures are labelled.
     for invented in ("★", "⭐", "99.95", "testimonial", "Trusted by"):
         assert invented not in page
-    assert "Sample data" in page
+    assert "Sample data" in page and "Won in October" in page  # the sample tracker shows the current month (tests: 16 Oct)
     # Nothing loaded from other websites.
     assert not re.search(r'<(script|link)[^>]+(src|href)="https?://(?!localhost)', page)
 

@@ -18,6 +18,7 @@
 {% endblock %}
 
 {% block content %}
+{% set ns = namespace(total=0) %}{% for stage, prob in stages %}{% set ns.total = ns.total + (columns[stage] | sum(attribute='value')) %}{% endfor %}
 <div class="board" data-board>
   {% for stage, prob in stages %}
     {% set deals = columns[stage] %}
@@ -26,6 +27,7 @@
         <div class="col-title"><i></i><h2>{{ stage }}</h2><span class="col-prob">{{ prob }}%</span></div>
         <p class="col-total"><span data-col-total>{{ deals | sum(attribute='value') | money }}</span>
            <span class="col-count" data-col-count>{{ deals | length }}</span></p>
+        <div class="col-share" title="Share of the open pipeline's value"><i data-col-share style="width: {{ '%.1f' | format((deals | sum(attribute='value')) / (ns.total or 1) * 100) }}%"></i></div>
       </header>
       <div class="col-body" data-dropzone>
         {% for d in deals %}

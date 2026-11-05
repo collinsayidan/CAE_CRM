@@ -1,14 +1,14 @@
 {% extends "base.html" %}
-{% from "_macros.html" import avatar %}
+{% from "_macros.html" import avatar, icon %}
 {% block title %}Reports{% endblock %}
 {% block heading %}Reports{% endblock %}
 {% block subtitle %}<p class="subtitle">Where revenue comes from, how leads progress, and how well customers are served</p>{% endblock %}
 
 {% macro breakdown(rows, people=false) %}
-  <ul class="rank">
+  <ul class="rank ranked">
     {% for r in rows %}
       <li>
-        <span class="rank-name">{% if people %}{{ avatar(r.k, 'sm', team=true) }}{% endif %}{{ r.k or 'Not set' }}</span>
+        <span class="rank-name"><span class="rank-pos">{{ loop.index }}</span>{% if people %}{{ avatar(r.k, 'sm', team=true) }}{% endif %}{{ r.k or 'Not set' }}</span>
         <span class="rank-value">{{ r.won_value | money }}</span>
         <span class="rank-bar"><i style="width: {{ '%.1f' | format(r.share) }}%"></i></span>
         <span class="rank-meta">Wins {{ r.rate }}% of closed deals. {{ r.pipeline | money }} still open.</span>
@@ -20,11 +20,11 @@
 {% endmacro %}
 
 {% block content %}
-<section class="stats" aria-label="Headline figures">
-  <div class="stat"><p class="stat-label">Average won deal</p><p class="stat-value">{{ avg_deal | money }}</p></div>
-  <div class="stat"><p class="stat-label">Average sales cycle</p><p class="stat-value">{{ cycle }} days</p><p class="stat-note">From deal created to won</p></div>
-  <div class="stat"><p class="stat-label">New contacts</p><p class="stat-value">{{ new_contacts }}</p><p class="stat-note">In the last 90 days</p></div>
-  <div class="stat"><p class="stat-label">First responses on time</p>
+<section class="stats report-stats" aria-label="Headline figures">
+  <div class="stat"><div class="stat-head"><span class="stat-icon tile tone-blue">{{ icon('pound') }}</span><p class="stat-label">Average won deal</p></div><p class="stat-value">{{ avg_deal | money }}</p><p class="stat-note">Across every won deal</p></div>
+  <div class="stat"><div class="stat-head"><span class="stat-icon tile tone-yellow">{{ icon('clock') }}</span><p class="stat-label">Average sales cycle</p></div><p class="stat-value">{{ cycle }} days</p><p class="stat-note">From deal created to won</p></div>
+  <div class="stat"><div class="stat-head"><span class="stat-icon tile tone-green">{{ icon('users') }}</span><p class="stat-label">New contacts</p></div><p class="stat-value">{{ new_contacts }}</p><p class="stat-note">In the last 90 days</p></div>
+  <div class="stat"><div class="stat-head"><span class="stat-icon tile tone-coral">{{ icon('lifebuoy') }}</span><p class="stat-label">First responses on time</p></div>
     <p class="stat-value {{ 'is-bad' if service.first_rate is not none and service.first_rate < 80 }}">{{ service.first_rate ~ '%' if service.first_rate is not none else 'None yet' }}</p>
     <p class="stat-note">{{ service.open }} open of {{ service.total }} tickets</p></div>
 </section>
@@ -32,11 +32,12 @@
 <div class="layout-even">
   <section class="panel">
     <header class="panel-head"><div><h2>Lifecycle funnel</h2><p class="panel-note">How many contacts are at each stage now</p></div></header>
+    {% set funnel_total = (funnel | map(attribute=1) | sum) or 1 %}
     <ol class="funnel">
       {% for stage, n in funnel %}
         <li><span class="funnel-name">{{ stage }}</span>
           <span class="funnel-bar"><i class="lifecycle-{{ stage | slug }}" style="width: {{ '%.1f' | format(n / funnel_peak * 100) }}%"></i></span>
-          <b>{{ n }}</b></li>
+          <b>{{ n }}<small>{{ (n / funnel_total * 100) | round | int }}%</small></b></li>
       {% endfor %}
     </ol>
   </section>
@@ -68,9 +69,9 @@
 <div class="layout-even">
   {% for stage, title in (('Won', 'Why we win'), ('Lost', 'Why we lose')) %}
     <section class="panel"><header class="panel-head"><div><h2>{{ title }}</h2><p class="panel-note">Deals {{ stage | lower }} in the last 12 months</p></div></header>
-      <ul class="rank">
+      <ul class="rank ranked {{ 'rank-lost' if stage == 'Lost' }}">
         {% for r in outcomes[stage] %}
-          <li><span class="rank-name">{{ r.reason }}</span><span class="rank-value">{{ r.n }} {{ 'deal' if r.n == 1 else 'deals' }}</span>
+          <li><span class="rank-name"><span class="rank-pos">{{ loop.index }}</span>{{ r.reason }}</span><span class="rank-value">{{ r.n }} {{ 'deal' if r.n == 1 else 'deals' }}</span>
             <span class="rank-bar"><i style="width: {{ '%.1f' | format(r.share) }}%"></i></span>
             <span class="rank-meta">{{ r.value | money }}</span></li>
         {% else %}
@@ -92,7 +93,7 @@
         <p class="muted small">rated Good, from {{ csat.total }} {{ 'answer' if csat.total == 1 else 'answers' }} to {{ csat.sent }} {{ 'survey' if csat.sent == 1 else 'surveys' }}</p>
         <ul class="rank csat-bars">
           {% for key, label in (('good', 'Good'), ('okay', 'Okay'), ('poor', 'Poor')) %}
-            <li><span class="rank-name">{{ label }}</span><span class="rank-value">{{ csat.counts[key] }}</span>
+            <li class="csat-{{ key }}"><span class="rank-name">{{ label }}</span><span class="rank-value">{{ csat.counts[key] }}</span>
               <span class="rank-bar"><i style="width: {{ '%.1f' | format(csat.counts[key] / csat.total * 100) }}%"></i></span></li>
           {% endfor %}
         </ul>

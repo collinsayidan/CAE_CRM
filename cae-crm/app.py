@@ -15,6 +15,7 @@ import api
 import assistant
 import audit
 import auth
+import seo
 import billing
 import campaigns
 import chat
@@ -95,7 +96,7 @@ PUBLIC_ENDPOINTS = {"landing", "favicon", "healthz", "auth.login", "auth.signup"
                     "stripe_connect_webhook",
                     "public_form", "public_quote", "accept_quote", "decline_quote", "unsubscribe", "resend_webhook",
                     "stripe_webhook", "cron_sync", "workspace_logo", "public_quote_pdf", "legal", "legal_index",
-                    "start_demo"}
+                    "start_demo", "robots_txt", "sitemap"}
 TWO_FACTOR_SETUP_ALLOWED = {"auth.two_factor_setup", "auth.logout", "static", "favicon", "auth.verify_email", "unlock",
                             "session_active", "session_lock"}
 # Forms embedded on other websites can't carry our session's CSRF token; they have their own spam checks.
@@ -298,7 +299,7 @@ def create_app(config=None):
     for module in (home, crm, sales, service, finance, quotes, webforms, campaigns, billing, integrations, xero, mtd,
                    documents, notifications, files, fields, workflows, webhooks, api, legal, dataio, settings, audit,
                    assistant, tags, duplicates, companies_house, recycle, support, digest, helpers,
-                   inbound, helpcentre, chat, payments, recurring, demo, idlelock):
+                   inbound, helpcentre, chat, payments, recurring, demo, idlelock, seo):
         module.register(app)
     return app
 

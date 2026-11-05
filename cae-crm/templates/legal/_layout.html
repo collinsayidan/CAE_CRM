@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ title }} – CAE CRM</title>
+  <meta name="description" content="{{ title if doc else 'Legal documents' }} for CAE CRM, the CRM for UK businesses: how we handle your data, the terms of the service, and how we keep it accessible.">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   {% include "_brand_head.html" %}
   <script>try { const t = localStorage.getItem("cae-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>

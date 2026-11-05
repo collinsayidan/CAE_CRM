@@ -8,7 +8,7 @@ import re
 from flask import abort, g, redirect, render_template, request, url_for
 from markupsafe import Markup, escape
 
-from core import now, one, rows, ws
+from core import local_or_none, now, one, rows, safe_path, ws
 from db import get_db
 
 KEEP = 200  # notifications kept per person; older ones are tidied away
@@ -50,7 +50,7 @@ def notify(user_ids, title, body=None, url=None, workspace_id=None):
     db = get_db()
     for uid in dict.fromkeys(u for u in user_ids if u and u != actor):
         db.insert("notifications", workspace_id=workspace_id or ws(), user_id=uid, title=title[:200],
-                  body=(body or "")[:300] or None, url=url if url and url.startswith("/") else None,
+                  body=(body or "")[:300] or None, url=local_or_none(url),
                   created_at=now().isoformat(timespec="minutes"))
 
 
@@ -119,7 +119,7 @@ def register(app):
         for r in old:
             db.execute("DELETE FROM notifications WHERE id=?", (r["id"],))
         db.commit()
-        return redirect(request.form.get("next") if (request.form.get("next") or "").startswith("/") else url_for("notifications"))
+        return redirect(safe_path(request.form.get("next"), "notifications"))
 
     @app.post("/getting-started/dismiss")
     def dismiss_checklist():

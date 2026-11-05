@@ -105,6 +105,8 @@ TWO_FACTOR_SETUP_ALLOWED = {"auth.two_factor_setup", "auth.logout", "static", "f
 # a Stripe Checkout for what's owed.
 CSRF_EXEMPT = {"public_form", "unsubscribe", "resend_webhook", "stripe_webhook", "summary_off", "chat_message",
                "chat_handover", "pay_by_card", "stripe_connect_webhook"}
+# Pages other websites may show in a frame. Everything else may only be framed by this site (see security_headers).
+FRAMEABLE_ENDPOINTS = {"public_form"}
 
 
 def assistant_nav():
@@ -287,6 +289,21 @@ def create_app(config=None):
     def healthz():
         """For the host's health check: the app is up and answering."""
         return "ok", 200, {"Cache-Control": "no-store", "Content-Type": "text/plain"}
+
+    @app.after_request
+    def security_headers(resp):
+        """Headers every response gets. Pages may only be framed by this site, except web forms (embedded on the
+        business's own website) and the chat page, which sets its own frame-ancestors list."""
+        h = resp.headers
+        h.setdefault("X-Content-Type-Options", "nosniff")
+        h.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        h.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
+        if request.endpoint not in FRAMEABLE_ENDPOINTS and "Content-Security-Policy" not in h:
+            h["X-Frame-Options"] = "SAMEORIGIN"
+            h["Content-Security-Policy"] = "frame-ancestors 'self'"
+        if app.config.get("SESSION_COOKIE_SECURE"):  # hosted, so always HTTPS
+            h.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        return resp
 
     @app.get("/favicon.ico")
     def favicon():

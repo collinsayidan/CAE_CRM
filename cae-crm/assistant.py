@@ -21,7 +21,7 @@ from werkzeug.exceptions import HTTPException, MethodNotAllowed, NotFound
 
 import assistant_tools
 import auth
-from core import now, one, rows, today, wants_json, workspace, ws
+from core import is_local_path, local_or_none, now, one, rows, today, wants_json, workspace, ws
 from db import ACTIVITY_KINDS, STAGE_PROBABILITY, get_db
 
 KEEP_DAYS = 30
@@ -195,7 +195,7 @@ def system_prompt():
 
 def page_context(path):
     """'The person is looking at deal 12' from the page the side panel was opened on, if it's a record of theirs."""
-    if not path or not path.startswith("/") or path.startswith("//"):
+    if not is_local_path(path):
         return None
     try:
         endpoint, args = current_app.url_map.bind("localhost").match(path.split("?")[0], method="GET")
@@ -438,7 +438,7 @@ def register(app):
             save(conversation["id"], "notice", [], shown=str(e))
             db.commit()
         if wants_json():
-            next_url = request.form.get("page") if (request.form.get("page") or "").startswith("/") else None
+            next_url = local_or_none(request.form.get("page"))
             return jsonify(conversation_id=conversation["id"], url=url_for("assistant", conversation_id=conversation["id"]),
                            html=render_template("_assistant_items.html", items=items(conversation["id"], last),
                                                 conversation=conversation, next_url=next_url))

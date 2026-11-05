@@ -316,7 +316,8 @@ def register(bp):
         target = request.form.get("next") or request.referrer or ""
         from urllib.parse import urlsplit
         path = urlsplit(target).path
-        return redirect(path if path.startswith("/") and not path.startswith("//") else url_for("overview"))
+        from core import safe_path
+        return redirect(safe_path(path, "overview"))
 
     @bp.app_context_processor
     def verification_banner():

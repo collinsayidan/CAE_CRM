@@ -14,7 +14,7 @@ import urllib.request
 
 from flask import Response, abort, current_app, flash, g, redirect, render_template, request, url_for
 
-from core import now, one, rows, ws
+from core import now, one, rows, safe_path, ws
 from db import get_db
 
 MAX_BYTES = 4 * 1024 * 1024
@@ -96,6 +96,13 @@ RECORD_PAGES = {"contact": ("contact", "contact_id"), "company": ("company", "co
 DOCUMENTS_SHOWN = 300
 
 
+def disposition(filename):
+    """A download header for any filename. Headers must be plain ASCII on the way out (gunicorn refuses others), so
+    the name goes in twice: an ASCII copy for old browsers and the exact name, percent-encoded, for the rest."""
+    plain = "".join(c for c in filename if 32 <= ord(c) < 127 and c not in '"\\').strip() or "download"
+    return f"attachment; filename=\"{plain}\"; filename*=UTF-8''{urllib.parse.quote(filename, safe='')}"
+
+
 def kind_of(filename):
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     return next((k for k, (_, endings) in KINDS.items() if ext in endings), "other")
@@ -143,7 +150,7 @@ def register(app):
         if not table or not record_id.isdigit() or not one(f"SELECT 1 FROM {table} WHERE id=? AND workspace_id=?",
                                                           int(record_id), ws()):
             abort(404)
-        back_to = redirect(request.form.get("next") if (request.form.get("next") or "").startswith("/") else url_for("overview"))
+        back_to = redirect(safe_path(request.form.get("next"), "overview"))
         upload = request.files.get("file")
         if not upload or not upload.filename:
             flash("Choose a file to attach.", "error")
@@ -186,7 +193,7 @@ def register(app):
             return redirect(f"{bucket_config()[0]}/storage/v1{signed.get('signedURL') or signed.get('signedUrl')}")
         resp = Response(base64.b64decode(a["content"] or ""), mimetype=a["content_type"])
         # Always a download, never shown in the page, and never sniffed as something else.
-        resp.headers["Content-Disposition"] = f'attachment; filename="{a["filename"].replace(chr(34), "")}"'
+        resp.headers["Content-Disposition"] = disposition(a["filename"])
         resp.headers["X-Content-Type-Options"] = "nosniff"
         return resp
 
@@ -202,4 +209,4 @@ def register(app):
         db.execute("DELETE FROM attachments WHERE id=?", (file_id,))
         db.commit()
         flash(f"Removed {a['filename']}.", "ok")
-        return redirect(request.form.get("next") if (request.form.get("next") or "").startswith("/") else url_for("overview"))
+        return redirect(safe_path(request.form.get("next"), "overview"))

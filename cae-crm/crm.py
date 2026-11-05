@@ -10,7 +10,7 @@ import auth
 import tags
 import ukfmt
 from events import emit
-from core import (OPEN_SQL, advance_lifecycle, back, chosen_owner, get_or_404, log_event, now, one, owned,
+from core import (OPEN_SQL, advance_lifecycle, back, local_or_none, chosen_owner, get_or_404, log_event, now, one, owned,
                   owner_names, rows, scalar, today, ws)
 from db import (ACTIVITY_KINDS, CALL_OUTCOMES, LAWFUL_BASES, LEAD_STATUSES, LIFECYCLE_STAGES, OPEN_STAGES, SOURCES,
                 TICKET_STATUSES, get_db)
@@ -513,7 +513,7 @@ def register(app):
         log_event(subject, body, kind=kind, outcome=outcome, occurred_at=when.isoformat(timespec="minutes"), **links)
         from notifications import mentioned, notify
         notify(mentioned(f"{subject or ''} {body}"), f"{g.user['name']} mentioned you in a {kind}",
-               (subject or body)[:200], f.get("next") if (f.get("next") or "").startswith("/") else None)
+               (subject or body)[:200], local_or_none(f.get("next")))
         if links["ticket_id"] and kind in ("email", "call"):
             # The first email or call on a ticket is its first response.
             get_db().execute("UPDATE tickets SET first_responded_at=? WHERE id=? AND workspace_id=? AND first_responded_at IS NULL",
@@ -622,7 +622,7 @@ def delete_company_records(company_id):
 def notify_owner(owner_name, title, body=None, url=None):
     """Tell a team member about something given to them, if the owner is a person on the team."""
     from notifications import notify, user_named
-    notify([user_named(owner_name)], title, body, url if (url or "").startswith("/") else None)
+    notify([user_named(owner_name)], title, body, local_or_none(url))
 
 
 def line_totals(lines):

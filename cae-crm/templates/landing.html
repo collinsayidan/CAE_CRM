@@ -15,7 +15,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='landing.css') }}">
   {% include "_brand_head.html" %}
-  <script>document.documentElement.classList.add("js"); try { document.documentElement.dataset.theme = localStorage.getItem("cae-theme") || "dark"; } catch (e) { document.documentElement.dataset.theme = "dark"; }</script>
+  {# Follows the visitor's device unless they've chosen light or dark, the same setting as in the app. #}
+  <script>document.documentElement.classList.add("js"); try { const t = localStorage.getItem("cae-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
   <script type="application/ld+json">
   {"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "CAE CRM", "applicationCategory": "BusinessApplication",
    "operatingSystem": "Web browser", "description": "Contacts, deals, support tickets, quotes and VAT invoicing in one CRM for UK businesses.",
@@ -28,10 +29,15 @@
   <header class="lp-header" data-lp-header>
     <div class="lp-wrap lp-header-row">
       <a class="lp-logo" href="{{ url_for('landing') }}"><img src="{{ url_for('static', filename='brand/icon.svg') }}" alt="" width="30" height="30">CAE CRM</a>
+      <nav class="lp-nav" aria-label="Page">
+        <a href="#features">Features</a>
+        <a href="#pricing">Pricing</a>
+        <a href="{{ url_for('start_demo') }}">Demo</a>
+      </nav>
       <div class="lp-header-actions">
         <button type="button" class="lp-icon-btn" data-lp-theme aria-label="Switch between light and dark">{{ icon('moon') }}</button>
         <a class="lp-signin" href="{{ url_for('auth.login') }}">Sign in</a>
-        <a class="lp-btn lp-btn-primary" href="{{ url_for('auth.signup') }}">Create a workspace</a>
+        <a class="lp-btn lp-btn-cta" href="{{ url_for('auth.signup') }}"><span class="lp-long">Start free trial</span><span class="lp-short">Sign up</span></a>
       </div>
     </div>
   </header>
@@ -40,12 +46,12 @@
     <section class="lp-hero">
       <div class="lp-wrap lp-hero-grid">
         <div class="lp-hero-copy">
-          <p class="lp-eyebrow">Sales · Support · Invoicing · UK compliance</p>
-          <h1>The CRM that already knows how UK business works.</h1>
+          <p class="lp-eyebrow"><span class="lp-dot"></span>Sales · Support · Invoicing · UK compliance</p>
+          <h1>The CRM that already <span class="lp-mark">knows how UK business works.</span></h1>
           <p class="lp-lede">Win more customers, serve them better and get paid faster. Contacts, deals, support tickets, quotes and VAT invoices in one place, with every feature included for every team member.</p>
           <div class="lp-actions">
-            <a class="lp-btn lp-btn-primary lp-btn-lg" href="{{ url_for('auth.signup') }}">Start your free trial</a>
-            <a class="lp-btn lp-btn-ghost lp-btn-lg" href="{{ url_for('start_demo') }}">Try the demo</a>
+            <a class="lp-btn lp-btn-cta lp-btn-lg" href="{{ url_for('auth.signup') }}">Start your free trial</a>
+            <a class="lp-btn lp-btn-ghost lp-btn-lg" href="{{ url_for('start_demo') }}">{{ icon('external') }} Try the demo</a>
             {% if demo_url %}<a class="lp-btn lp-btn-ghost lp-btn-lg" href="{{ demo_url }}">Book a demo</a>{% endif %}
           </div>
           <ul class="lp-assurances">
@@ -55,33 +61,43 @@
           </ul>
         </div>
 
-        <figure class="lp-track lp-reveal" aria-label="Sample sales target tracker">
-          <div class="lp-track-top"><span>Won in October</span><em>Sample data</em></div>
-          <p class="lp-figure"><b data-count="91740" data-prefix="£">£91,740</b> <span>of £156,700</span></p>
-          <div class="lp-rail" style="--won: 58.5%; --pace: 55%">
-            <span class="lp-rail-fill"></span><i class="lp-rail-pace"></i>
-            <div class="lp-rail-ticks" aria-hidden="true">{% for _ in range(10) %}<s></s>{% endfor %}</div>
+        {# A preview of the app, drawn in the page: made-up figures, labelled as such. #}
+        <figure class="lp-shot lp-reveal" aria-label="Preview of the CAE CRM home page, with sample data">
+          <div class="lp-shot-bar" aria-hidden="true"><i></i><i></i><i></i><span>cae.collinalitics.co.uk</span></div>
+          <div class="lp-shot-body">
+            <div class="lp-track">
+              <div class="lp-track-top"><span>Won in {{ month }}</span><em>Sample data</em></div>
+              <p class="lp-figure"><b data-count="91740" data-prefix="£">£91,740</b> <span>of £156,700</span></p>
+              <div class="lp-rail" style="--won: 58.5%; --pace: 55%">
+                <span class="lp-rail-fill"></span><i class="lp-rail-pace"></i>
+              </div>
+              <p class="lp-note">{{ icon('trend') }} £6,267 ahead of pace, with 10 working days left</p>
+            </div>
+            <div class="lp-mini">
+              <div><span>Pipeline</span><b data-count="382000" data-prefix="£">£382,000</b></div>
+              <div><span>Tickets within SLA</span><b data-count="98.4" data-suffix="%" data-decimals="1">98.4%</b></div>
+              <div><span>Owed to you</span><b class="lp-warn" data-count="12440" data-prefix="£">£12,440</b></div>
+            </div>
+            <div class="lp-bars" aria-hidden="true">
+              {% for h in [52, 61, 44, 70, 58, 66, 86, 74] %}<i style="--h: {{ h }}%" class="{{ 'hit' if h >= 70 }}"></i>{% endfor %}
+            </div>
           </div>
-          <p class="lp-note">{{ icon('trend') }} £6,267 ahead of pace, with 10 working days left</p>
-          <div class="lp-mini">
-            <div><span>Pipeline</span><b data-count="382000" data-prefix="£">£382,000</b></div>
-            <div><span>Tickets within SLA</span><b data-count="98.4" data-suffix="%" data-decimals="1">98.4%</b></div>
-            <div><span>Owed to you</span><b class="lp-warn" data-count="12440" data-prefix="£">£12,440</b></div>
-          </div>
+          <span class="lp-tag lp-tag-a" aria-hidden="true">{{ icon('check') }} Quote accepted</span>
+          <span class="lp-tag lp-tag-b" aria-hidden="true">{{ icon('pound') }} Invoice paid</span>
         </figure>
       </div>
     </section>
 
-    <section class="lp-body" aria-label="What's included">
+    <section class="lp-body" id="features" aria-label="What's included">
       <div class="lp-wrap lp-narrow">
         <div class="lp-pillars">
-          {% for ic, title, text in [
-            ('users', 'Contacts, companies and deals', 'One timeline of notes, calls, emails and meetings for every record. A drag-and-drop pipeline, and quotes your customers sign online.'),
-            ('lifebuoy', 'Support tickets with real service levels', "Deadlines count UK working hours and skip bank holidays. Customers' emails become tickets, and replies thread back."),
-            ('pound', 'Invoices HMRC would recognise', 'VAT invoices from your deals, card payments, automatic reminders and aged debt. Send Making Tax Digital VAT returns to HMRC.'),
-            ('shield', 'UK GDPR built in', "Record a lawful basis and marketing consent for every person. Export or erase someone's data in one click, with a full audit trail.")] %}
+          {% for ic, tone, title, text in [
+            ('users', 'blue', 'Contacts, companies and deals', 'One timeline of notes, calls, emails and meetings for every record. A drag-and-drop pipeline, and quotes your customers sign online.'),
+            ('lifebuoy', 'coral', 'Support tickets with real service levels', "Deadlines count UK working hours and skip bank holidays. Customers' emails become tickets, and replies thread back."),
+            ('pound', 'yellow', 'Invoices HMRC would recognise', 'VAT invoices from your deals, card payments, automatic reminders and aged debt. Send Making Tax Digital VAT returns to HMRC.'),
+            ('shield', 'green', 'UK GDPR built in', "Record a lawful basis and marketing consent for every person. Export or erase someone's data in one click, with a full audit trail.")] %}
             <article class="lp-pillar lp-reveal">
-              <span class="lp-pillar-icon">{{ icon(ic) }}</span>
+              <span class="lp-pillar-icon lp-tone-{{ tone }}">{{ icon(ic) }}</span>
               <h2>{{ title }}</h2>
               <p>{{ text }}</p>
             </article>
@@ -109,14 +125,27 @@
       </div>
     </section>
 
-    <section class="lp-cta">
-      <div class="lp-wrap lp-reveal">
-        <h2>Set up your business in two minutes.</h2>
-        <p>Start with sample data to look around, or import your contacts from a spreadsheet. {{ price }} per user a month{{ ' plus VAT' if vat }} after your {{ trial_days }}-day trial, with every feature included.</p>
-        <div class="lp-actions lp-actions-center">
-          <a class="lp-btn lp-btn-primary lp-btn-lg" href="{{ url_for('auth.signup') }}">Create your workspace</a>
-          <a class="lp-btn lp-btn-ghost lp-btn-lg" href="{{ url_for('start_demo') }}">Try the demo</a>
-          {% if demo_url %}<a class="lp-btn lp-btn-ghost lp-btn-lg" href="{{ demo_url }}">Book a demo</a>{% endif %}
+    <section class="lp-cta" id="pricing" aria-labelledby="cta-title">
+      <div class="lp-wrap lp-cta-grid lp-reveal">
+        <div class="lp-cta-copy">
+          <h2 id="cta-title">Set up your business in two minutes.</h2>
+          <p>Start with sample data to look around, or import your contacts from a spreadsheet. {{ price }} per user a month{{ ' plus VAT' if vat }} after your {{ trial_days }}-day trial, with every feature included.</p>
+          <div class="lp-actions">
+            <a class="lp-btn lp-btn-light lp-btn-lg" href="{{ url_for('start_demo') }}">Try the demo</a>
+            {% if demo_url %}<a class="lp-btn lp-btn-light lp-btn-lg" href="{{ demo_url }}">Book a demo</a>{% endif %}
+          </div>
+        </div>
+        <div class="lp-price">
+          <p class="lp-price-name">One plan, everything in it</p>
+          <p class="lp-price-figure"><b>{{ price }}</b> <span>per user a month{{ ' plus VAT' if vat }}</span></p>
+          <ul>
+            {% for item in ['Contacts, deals, quotes and products', 'Help desk with UK service levels', 'VAT invoices and Making Tax Digital',
+                            'Email campaigns, web forms and workflows', 'AI assistant, API and Power BI feed'] %}
+              <li>{{ icon('check') }} {{ item }}</li>
+            {% endfor %}
+          </ul>
+          <a class="lp-btn lp-btn-cta lp-btn-lg lp-btn-block" href="{{ url_for('auth.signup') }}">Create your workspace</a>
+          <p class="lp-price-note">{{ trial_days }} days free. No card needed.</p>
         </div>
       </div>
     </section>
@@ -124,7 +153,7 @@
 
   <footer class="lp-footer">
     <div class="lp-wrap lp-footer-row">
-      <p>CAE CRM is built for UK businesses. Amounts in pounds sterling.</p>
+      <p class="lp-footer-brand"><img src="{{ url_for('static', filename='brand/icon.svg') }}" alt="" width="22" height="22"> CAE CRM is built for UK businesses. Amounts in pounds sterling.</p>
       <nav aria-label="Legal">
         <a href="{{ url_for('legal', doc='terms') }}">Terms</a>
         <a href="{{ url_for('legal', doc='privacy') }}">Privacy</a>

@@ -1,0 +1,12 @@
+{% extends "auth/_layout.html" %}
+{% block title %}{{ heading }}{% endblock %}
+{% block content %}
+<p class="error-code">{{ code }}</p>
+<h1>{{ heading }}</h1>
+<p class="auth-lede">{{ message }}</p>
+<div class="error-actions">
+  <a class="btn primary" href="{{ url_for('overview') if current_user else url_for('landing') }}">{{ 'Go to your workspace' if current_user else 'Go to the homepage' }}</a>
+  <button type="button" class="btn" onclick="history.back()">Go back</button>
+</div>
+{% endblock %}
+{% block foot %}If this keeps happening, tell your workspace admin or contact Collinalitics.{% endblock %}

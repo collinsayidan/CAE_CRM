@@ -353,11 +353,17 @@
     const dock = $("[data-dock]");
     let dragged = null;
 
-    const refreshTotals = () => $$(".column", board).forEach(col => {
-      const cards = $$(".card", col);
-      $("[data-col-total]", col).textContent = gbp.format(cards.reduce((s, c) => s + Number(c.dataset.value), 0) / 100);
-      $("[data-col-count]", col).textContent = cards.length;
-    });
+    const refreshTotals = () => {
+      const sum = cards => cards.reduce((s, c) => s + Number(c.dataset.value), 0);
+      const all = sum($$(".column .card", board)) || 1;
+      $$(".column", board).forEach(col => {
+        const cards = $$(".card", col), value = sum(cards);
+        $("[data-col-total]", col).textContent = gbp.format(value / 100);
+        $("[data-col-count]", col).textContent = cards.length;
+        const share = $("[data-col-share]", col);
+        if (share) share.style.width = `${(value / all * 100).toFixed(1)}%`;
+      });
+    };
 
     board.addEventListener("dragstart", e => {
       dragged = e.target.closest(".card");

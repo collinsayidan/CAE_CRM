@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon %}
+{% from "_macros.html" import icon, empty_state %}
 {% block title %}Forms{% endblock %}
 {% block heading %}Forms{% endblock %}
 {% block subtitle %}<p class="subtitle">Put a form on your website. Each submission becomes a contact with a follow-up task.</p>{% endblock %}
@@ -28,9 +28,8 @@
             <td>{{ (f.last_at | uk_datetime) if f.last_at else 'None yet' }}</td>
           </tr>
         {% else %}
-          <tr><td colspan="5" class="empty-line">No forms yet.
-            {% if current_user.role == 'admin' %}Choose <b>New form</b> to make a contact form for your website. It takes a minute.
-            {% else %}Ask an admin to create one.{% endif %}</td></tr>
+          <tr><td colspan="5" class="empty-line">{% call empty_state('mail', 'No forms yet', 'Make a contact form for your website: enquiries arrive here as leads. It takes a minute.' if current_user.role == 'admin' else 'Ask an admin to create one.', 'green') %}
+            {% if current_user.role == 'admin' %}<span class="muted small">Choose <b>New form</b> above to start.</span>{% endif %}{% endcall %}</td></tr>
         {% endfor %}
       </tbody>
     </table>

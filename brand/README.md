@@ -6,7 +6,7 @@ The logo is **Stages**: two nested "C"s closing on a point, a sales pipeline nar
 
 | File | Use it for |
 | --- | --- |
-| `cae-crm-icon.svg` | The app icon: the mark on its navy tile. Social profiles, app stores, slides. |
+| `cae-crm-icon.svg` | The app icon: the mark on its coral tile. Social profiles, app stores, slides. |
 | `cae-crm-mark.svg` | The mark alone, for white or light backgrounds. |
 | `cae-crm-mark-on-dark.svg` | The mark alone, for dark backgrounds and photos. |
 | `cae-crm-logo.svg` | Full logo with the name, for light backgrounds. |
@@ -21,14 +21,16 @@ The full logos are drawn in Plus Jakarta Sans (ExtraBold for "CAE", Medium for "
 
 ## Colours
 
+The logo is coral, the app around it royal blue. Coral marks the brand and the one main button on each page; blue does everything else.
+
 | Name | Hex | Where |
 | --- | --- | --- |
-| Navy | `#0f1f3d` | Tile, headings, "CAE" |
-| Deep teal | `#0f766e` | "CRM", buttons and links |
-| Teal | `#14b8a6` | Highlights |
-| Ring, outer | `#11998b` | Mark on navy |
-| Ring, inner | `#2dd4bf` | Mark on navy |
-| Centre | `#99f6e4` | Mark on navy |
+| Coral | `#ff5f3d` | The icon's tile, the mark on light backgrounds |
+| Deep coral | `#d13f23` | "CRM" in the logo, main buttons (white text passes contrast) |
+| Pale coral | `#ffd3c7` | Inner ring on the tile |
+| Sunshine yellow | `#ffc93c` | The centre dot: the won deal |
+| Royal blue | `#1e5bd6` | Links, the current page, charts, the month tracker |
+| Ink | `#1b1d29` | "CAE" in the logo, headings |
 
 ## Keep it clear
 

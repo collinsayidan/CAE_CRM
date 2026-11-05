@@ -93,7 +93,7 @@
       <header class="panel-head"><h2>Send</h2></header>
       <form method="post" action="{{ url_for('campaign_test', campaign_id=c.id) }}">
         <input type="hidden" name="csrf" value="{{ csrf_token }}">
-        <button class="btn ghost wide" {{ 'disabled' if not configured }}>{{ icon('mail') }} Send a test to {{ current_user.email }}</button>
+        <button class="btn ghost wide" {{ 'disabled' if not configured }}>{{ icon('mail') }} <span class="btn-text">Send a test to <span class="btn-sub">{{ current_user.email }}</span></span></button>
       </form>
       {% if admin %}
         <form method="post" action="{{ url_for('campaign_start', campaign_id=c.id) }}" data-confirm="Send this email to {{ count }} {{ 'person' if count == 1 else 'people' }} now? It can't be undone." class="panel-gap">

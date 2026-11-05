@@ -82,11 +82,13 @@ def gbp(pence):
 def render_pdf(kind, number, facts, business, company, lines, totals, notes, signature=None):
     """A one-business document: logo and details, who it's for, the lines, totals and closing notes."""
     from fpdf import FPDF
-    navy, teal, grey, line_grey = (15, 31, 61), (15, 118, 110), (91, 107, 128), (226, 232, 240)
+    navy, teal, grey, line_grey = (27, 29, 41), (30, 91, 214), (100, 106, 123), (227, 229, 234)  # ink, royal blue
     pdf = FPDF(format="A4", unit="mm")
     pdf.set_auto_page_break(auto=True, margin=18)
     pdf.set_margins(18, 18, 18)
     pdf.add_page()
+    pdf.set_fill_color(*teal)
+    pdf.rect(0, 0, 210, 3.5, style="F")  # a thin accent bar across the top of the page
     pdf.set_title(latin(f"{kind} {number}"))
     pdf.set_author(latin(business["legal_name"] or business["name"]))
 

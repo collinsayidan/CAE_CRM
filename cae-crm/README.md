@@ -323,7 +323,7 @@ Scheduled refresh in the Power BI service uses the same sign-in. Cells that a sp
 
 ### Homepage
 
-`/welcome` is the public homepage, dark by default with a light/dark switch. It only claims what the app does today: there are no testimonials or uptime figures, and the dashboard figures are labelled as sample data.
+`/welcome` is the public homepage, in the app's royal blue palette. It follows the visitor's device for light or dark, with a switch to change it. It has a hero with a drawn preview of the app, four feature cards, the comparison table, and a royal-blue pricing band with a single plan card. It only claims what the app does today: there are no testimonials or uptime figures, and the dashboard figures are labelled as sample data.
 
 - **Price, trial and VAT** come from the billing settings (`CAE_SEAT_PRICE`, `CAE_TRIAL_DAYS`). "plus VAT" appears only once `STRIPE_TAX_RATE_ID` is set.
 - **Book a demo** appears once `CAE_DEMO_URL` is set. Point it at a web form in your own workspace.

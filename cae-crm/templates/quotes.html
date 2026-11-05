@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon %}
+{% from "_macros.html" import icon, empty_state %}
 {% block title %}Quotes{% endblock %}
 {% block heading %}Quotes{% endblock %}
 {% block subtitle %}<p class="subtitle">Draft a quote from any deal, share the link, and your customer can accept it online.</p>{% endblock %}
@@ -37,7 +37,8 @@
             <td><span class="chip {{ CHIP[state] }}">{{ state }}</span>{% if state == 'Sent' and q.viewed_at %} <small>Opened</small>{% endif %}</td>
           </tr>
         {% else %}
-          <tr><td colspan="6" class="empty-line">{% if status %}No {{ status | lower }} quotes.{% else %}No quotes yet. Open a deal and choose <b>Create quote</b>.{% endif %}</td></tr>
+          <tr><td colspan="6" class="empty-line">{% if status %}No {{ status | lower }} quotes.{% else %}{% call empty_state('note', 'No quotes yet', 'Quotes come from deals: your customer signs online, and you turn it into an invoice in one click.') %}
+            <a class="btn primary" href="{{ url_for('pipeline') }}">Open your deals</a>{% endcall %}{% endif %}</td></tr>
         {% endfor %}
       </tbody>
     </table>

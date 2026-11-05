@@ -83,3 +83,12 @@
 {% macro stage_chip(stage) -%}
 <span class="chip stage" style="--c: {{ stage_colours.get(stage, 'var(--muted)') }}">{{ stage }}</span>
 {%- endmacro %}
+
+{% macro empty_state(icon_name, title, text, tone='blue') -%}
+<div class="empty-state">
+  <span class="empty-icon tone-{{ tone }}">{{ icon(icon_name) }}</span>
+  <p class="empty-title">{{ title }}</p>
+  <p class="empty-text">{{ text }}</p>
+  <div class="empty-actions">{{ caller() }}</div>
+</div>
+{%- endmacro %}

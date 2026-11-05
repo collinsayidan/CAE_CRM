@@ -1,3 +1,4 @@
+{% from "_macros.html" import icon %}
 <!doctype html>
 <html lang="en-GB">
 <head>
@@ -9,16 +10,37 @@
   <script>try { const t = localStorage.getItem("cae-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
 </head>
 <body class="auth-page">
-  <main class="auth-shell">
-    <a class="auth-brand" href="{{ url_for('auth.login') }}"><img class="mark" src="{{ url_for('static', filename='brand/icon.svg') }}" alt="" width="32" height="32">CAE CRM</a>
-    <section class="auth-card">
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% for category, message in messages %}<p class="form-alert {{ 'is-ok' if category == 'ok' }}" role="status">{{ message }}</p>{% endfor %}
-      {% endwith %}
-      {% block content %}{% endblock %}
-    </section>
-    <p class="auth-foot">{% block foot %}A UK sales CRM. Amounts in pounds sterling.{% endblock %}</p>
-    <nav class="auth-legal-links" aria-label="Legal"><a href="{{ url_for('legal', doc='terms') }}">Terms</a><a href="{{ url_for('legal', doc='privacy') }}">Privacy</a><a href="{{ url_for('legal', doc='cookies') }}">Cookies</a></nav>
-  </main>
+  <div class="auth-split">
+    <main class="auth-shell">
+      <a class="auth-brand" href="{{ url_for('landing') }}"><img class="mark" src="{{ url_for('static', filename='brand/icon.svg') }}" alt="" width="32" height="32">CAE CRM</a>
+      <section class="auth-card">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% for category, message in messages %}<p class="form-alert {{ 'is-ok' if category == 'ok' }}" role="status">{{ message }}</p>{% endfor %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+      </section>
+      <p class="auth-foot">{% block foot %}A UK sales CRM. Amounts in pounds sterling.{% endblock %}</p>
+      <nav class="auth-legal-links" aria-label="Legal"><a href="{{ url_for('legal', doc='terms') }}">Terms</a><a href="{{ url_for('legal', doc='privacy') }}">Privacy</a><a href="{{ url_for('legal', doc='cookies') }}">Cookies</a></nav>
+    </main>
+
+    {# The same short pitch beside every sign-in page on wide screens; hidden on phones. #}
+    <aside class="auth-aside" aria-hidden="true">
+      <div class="auth-aside-inner">
+        <p class="auth-aside-kicker">CAE CRM</p>
+        <p class="auth-aside-title">Sales, support and invoicing, built for how UK businesses work.</p>
+        <ul class="auth-aside-points">
+          <li>{{ icon('check') }} Deals, quotes and VAT invoices in one place</li>
+          <li>{{ icon('check') }} Service levels that skip UK bank holidays</li>
+          <li>{{ icon('check') }} Every feature included for every team member</li>
+        </ul>
+        <div class="auth-aside-card">
+          <div class="auth-aside-top"><span>Won this month</span><em>Sample data</em></div>
+          <p class="auth-aside-figure"><b>£91,740</b> <span>of £156,700</span></p>
+          <div class="auth-aside-rail"><span></span></div>
+          <span class="auth-aside-tag">{{ icon('check') }} Quote accepted</span>
+        </div>
+      </div>
+    </aside>
+  </div>
 </body>
 </html>

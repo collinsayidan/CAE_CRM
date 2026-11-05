@@ -293,3 +293,24 @@ html:has(body.lp) { background: var(--canvas); }
   .lp *, .lp *::before, .lp *::after { animation: none !important; transition: none !important; }
   .js .lp-reveal { opacity: 1; transform: none; }
 }
+
+/* "Watch the film" and its pop-up player. */
+.lp-film-link { display: inline-flex; align-items: center; gap: 12px; margin-top: 22px; padding: 6px 16px 6px 6px; border-radius: var(--r-pill);
+  border: 1px solid var(--line); background: var(--surface); color: var(--lp-text); font-weight: 700; font-size: 15px; text-decoration: none;
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.lp-film-link:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--primary) 45%, var(--line)); box-shadow: var(--lp-shadow); }
+.lp-film-link:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary) 55%, transparent); outline-offset: 3px; }
+.lp-film-play { display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--primary); color: #fff;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--primary) 35%, transparent); }
+.lp-film-play .icon { width: 18px; height: 18px; fill: currentColor; stroke: none; margin-left: 2px; }
+.lp-film-len { color: var(--lp-muted); font-weight: 600; font-size: 13.5px; }
+.lp-film { width: min(1120px, calc(100vw - 32px)); max-width: none; padding: 0; border: 0; border-radius: 18px; background: #04060c;
+  overflow: hidden; box-shadow: 0 40px 120px rgba(0, 0, 0, .55); }
+.lp-film::backdrop { background: rgba(4, 6, 12, .82); backdrop-filter: blur(6px); }
+.lp-film video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; background: #04060c; }
+.lp-film-close { position: absolute; top: 12px; right: 12px; z-index: 1; display: grid; place-items: center; width: 40px; height: 40px;
+  border-radius: 50%; border: 1px solid rgba(255, 255, 255, .25); background: rgba(10, 14, 28, .7); color: #fff; cursor: pointer; }
+.lp-film-close:hover { background: rgba(30, 40, 70, .9); }
+.lp-film-close .icon { width: 18px; height: 18px; }
+:root[data-theme="dark"] .lp-film-play { color: #0a1024; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lp-film-play { color: #0a1024; } }

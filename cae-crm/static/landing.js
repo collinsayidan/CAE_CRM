@@ -52,6 +52,23 @@
     update();
   }
 
+  // The launch film plays in a pop-up player; closing it (button, Escape or a click outside) pauses it.
+  const filmLink = document.querySelector("[data-lp-film]");
+  const film = document.querySelector("[data-lp-film-dialog]");
+  if (filmLink && film?.showModal) {
+    const video = film.querySelector("video");
+    filmLink.addEventListener("click", event => {
+      event.preventDefault();
+      film.showModal();
+      video.play().catch(() => { /* the visitor can press play */ });
+    });
+    const shut = () => { video.pause(); if (film.open) film.close(); };
+    film.querySelector("[data-lp-film-close]").addEventListener("click", shut);
+    film.addEventListener("click", event => { if (event.target === film) shut(); });
+    film.addEventListener("cancel", () => video.pause());   // Escape
+    film.addEventListener("close", () => video.pause());
+  }
+
   const show = el => {
     el.classList.add("is-in");
     el.querySelectorAll("[data-count]").forEach(countUp);

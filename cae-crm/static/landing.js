@@ -35,6 +35,23 @@
     requestAnimationFrame(step);
   };
 
+  // Pricing: the monthly cost for a team of the size chosen, worked out from the price in the page.
+  const card = document.querySelector("[data-lp-price]");
+  const calc = card?.querySelector(".lp-calc");
+  if (calc) {
+    const seat = Number(card.dataset.seat), slider = calc.querySelector("input"), out = calc.querySelector("output"),
+      total = calc.querySelector("[data-lp-total]");
+    const pounds = pence => "£" + (pence / 100).toLocaleString("en-GB", { minimumFractionDigits: pence % 100 ? 2 : 0, maximumFractionDigits: 2 });
+    const update = () => {
+      const n = Number(slider.value);
+      out.textContent = n === 1 ? "1 person" : `${n} people`;
+      total.textContent = pounds(seat * n);
+    };
+    slider.addEventListener("input", update);
+    calc.hidden = false;
+    update();
+  }
+
   const show = el => {
     el.classList.add("is-in");
     el.querySelectorAll("[data-count]").forEach(countUp);

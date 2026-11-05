@@ -98,4 +98,4 @@ def test_settings_hub_and_tabs(app, client, member_client):
     member_page = member_client.get("/workspace").get_data(as_text=True)
     assert "Team" in member_page and "Business details" not in member_page and "Import" not in member_page
     nav = client.get("/").get_data(as_text=True)
-    assert nav.count('class="nav-heading"') == 3
+    assert nav.count('class="nav-heading"') == 5  # CRM, Support, Sales and finance, Marketing, Business

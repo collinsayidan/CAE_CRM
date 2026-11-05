@@ -1864,3 +1864,53 @@ a.tag:hover, .tag a:hover { text-decoration: underline; }
 .card:hover { transform: translateY(-1px); box-shadow: inset 3px 0 0 var(--c), 0 6px 16px rgba(20, 28, 56, .08); }
 .card-title { font-size: 14px; }
 .card-date { padding: 1px 8px; border-radius: var(--r-pill); background: var(--surface-2); font-size: 12px; }
+
+/* Record pages --------------------------------------------------------------- */
+.record-card { position: relative; overflow: hidden; padding-top: 30px !important; }
+.record-card::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 62px;
+  background: linear-gradient(120deg, var(--accent-soft), color-mix(in srgb, var(--lavender) 80%, var(--surface))); }
+.record-card > * { position: relative; }
+.record-card .avatar, .record-card .logo { box-shadow: 0 0 0 4px var(--surface); }
+.quick-actions .icon { background: var(--accent-soft); border-color: transparent; color: var(--primary); }
+.quick-actions > *:hover .icon { background: var(--primary); border-color: var(--primary); color: #fff; }
+.composer-tabs { scrollbar-width: none; }
+.composer-tabs::-webkit-scrollbar { display: none; }
+.stage-path button { min-width: 0; white-space: normal; line-height: 1.15; text-align: center; min-height: 42px; padding: 8px 12px 8px 18px; font-size: 13px; }
+
+/* Tickets -------------------------------------------------------------------- */
+.ticket-card { border-left: 0; box-shadow: 0 1px 2px rgba(20, 28, 56, .05); }
+.ticket-card:hover { box-shadow: 0 6px 16px rgba(20, 28, 56, .08); }
+.ticket-card.sla-edge-breached { box-shadow: inset 3px 0 0 var(--bad), 0 1px 2px rgba(20, 28, 56, .05); }
+.ticket-card.sla-edge-soon { box-shadow: inset 3px 0 0 var(--warn), 0 1px 2px rgba(20, 28, 56, .05); }
+.prio { padding: 1px 9px 1px 7px; border-radius: var(--r-pill); background: var(--surface-2); font-size: 12px; }
+.prio-urgent { background: var(--bad-soft); }
+.prio-high { background: var(--warn-soft); color: var(--warn-ink); }
+.prio-medium { background: var(--accent-soft); color: var(--primary); }
+.prio-medium::before { background: var(--primary); }
+.prio-low::before { background: var(--muted); }
+.ticket-card .sla { padding: 1px 8px; border-radius: var(--r-pill); background: var(--surface-2); font-size: 12px; }
+.ticket-card .sla .icon { width: 13px; height: 13px; }
+.ticket-card .sla-overdue, .ticket-card .sla-breached { background: var(--bad-soft); }
+.ticket-card .sla-soon { background: var(--warn-soft); }
+.ticket-card .sla-met { background: var(--ok-soft); }
+
+/* Invoices and quotes, in the app and on the customer's pages ------------------ */
+.invoice, .pay-card, .public-quote { box-shadow: inset 0 4px 0 var(--primary), var(--shadow); }
+.invoice-lines tfoot .total td { color: var(--ink); border-top-color: var(--primary); }
+.invoice-lines thead th { color: var(--muted); text-transform: uppercase; font-size: 11.5px; letter-spacing: .05em; }
+.public-page { background: var(--canvas); }
+.public-head { box-shadow: 0 1px 0 var(--line); border-bottom: 0; }
+.public-actions .btn { border-radius: var(--r-pill); }
+
+/* Empty states and error pages -------------------------------------------------- */
+td.empty-line:has(.empty-state) { padding: 0 !important; }
+.empty-state { display: grid; justify-items: center; text-align: center; gap: 6px; padding: 44px 20px 48px; }
+.empty-icon { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 18px; margin-bottom: 8px; }
+.empty-icon .icon { width: 26px; height: 26px; }
+.empty-title { font-family: var(--display); font-size: 18px; font-weight: 700; color: var(--ink); letter-spacing: -.01em; }
+.empty-text { color: var(--muted); font-size: 14px; max-width: 420px; line-height: 1.55; }
+.empty-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 12px; }
+.empty-actions:empty { display: none; }
+.col-empty { border: 1.5px dashed var(--line); border-radius: 12px; margin: 2px; padding: 22px 10px; }
+.error-code { font-family: var(--display); font-size: 56px; font-weight: 800; line-height: 1; letter-spacing: -.04em; color: var(--primary); margin-bottom: 8px; }
+.error-actions { display: flex; gap: 10px; flex-wrap: wrap; }

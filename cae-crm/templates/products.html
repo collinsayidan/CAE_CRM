@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, field, select %}
+{% from "_macros.html" import icon, field, select, empty_state %}
 {% block title %}Products{% endblock %}
 {% block heading %}Products{% endblock %}
 {% block subtitle %}<p class="subtitle">Your price list. Add products to a deal to build its value and invoice it line by line.</p>{% endblock %}
@@ -36,7 +36,8 @@
           </tr>
         {% else %}
           <tr><td colspan="7" class="empty-line">
-            {% if show == 'archived' %}Nothing archived.{% else %}No products yet. <button type="button" class="text-link" data-open="dlg-product">Add your first product or service</button>.{% endif %}
+            {% if show == 'archived' %}Nothing archived.{% else %}{% call empty_state('box', 'No products yet', 'Add what you sell, with its price and VAT rate, to put it on deals, quotes and invoices.', 'yellow') %}
+              <button type="button" class="btn primary" data-open="dlg-product">{{ icon('plus') }} Add your first product or service</button>{% endcall %}{% endif %}
           </td></tr>
         {% endfor %}
       </tbody>

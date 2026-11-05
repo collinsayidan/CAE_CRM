@@ -600,6 +600,10 @@ def register(app):
     def api_not_found(e):
         if request.path.startswith("/api/v1/"):
             return error(e.code, "Not found." if e.code == 404 else "That method isn't allowed here.")
+        from flask import render_template
+        if e.code == 404:
+            return render_template("error.html", code=404, heading="We can't find that page",
+                                   message="It may have been moved or deleted, or the link may be mistyped."), 404
         return e
 
     def developers_page(new_key=None):

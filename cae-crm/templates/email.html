@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon %}
+{% from "_macros.html" import icon, empty_state %}
 {% block title %}Email{% endblock %}
 {% block heading %}Email campaigns{% endblock %}
 {% block subtitle %}<p class="subtitle">{{ reachable }} {{ 'contact has' if reachable == 1 else 'contacts have' }} agreed to marketing emails.</p>{% endblock %}
@@ -33,7 +33,8 @@
             {% else %}<td></td><td></td><td></td><td></td>{% endif %}
           </tr>
         {% else %}
-          <tr><td colspan="6" class="empty-line">No campaigns yet. Choose <b>New campaign</b> to write your first one.</td></tr>
+          <tr><td colspan="6" class="empty-line">{% call empty_state('mail', 'No campaigns yet', 'Send a newsletter or an offer to contacts who agreed to hear from you.', 'coral') %}
+            <span class="muted small">Choose <b>New campaign</b> above to write your first one.</span>{% endcall %}</td></tr>
         {% endfor %}
       </tbody>
     </table>

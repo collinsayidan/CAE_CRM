@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon %}
+{% from "_macros.html" import icon, empty_state %}
 {% block title %}Invoices{% endblock %}
 {% block heading %}Invoices{% endblock %}
 {% block subtitle %}<p class="subtitle">Invoices, aged debt and VAT for {{ fy_label }}</p>{% endblock %}
@@ -70,7 +70,8 @@
             </td>
           </tr>
         {% else %}
-          <tr><td colspan="8" class="empty-line">No invoices yet. <button class="text-link" data-open="dlg-invoice">Raise the first one</button></td></tr>
+          <tr><td colspan="8" class="empty-line">{% call empty_state('pound', 'No invoices yet', 'Raise VAT invoices from your deals, or on their own, and see who owes you what.', 'yellow') %}
+            <button class="btn primary" data-open="dlg-invoice">{{ icon('plus') }} Raise the first one</button>{% endcall %}</td></tr>
         {% endfor %}
       </tbody>
     </table>

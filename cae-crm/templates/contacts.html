@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, avatar %}
+{% from "_macros.html" import icon, avatar, empty_state %}
 {% from "_lists.html" import view_tabs, bulk_bar, pagination, filter_select with context %}
 {% block title %}Contacts{% endblock %}
 {% block heading %}Contacts{% endblock %}
@@ -59,7 +59,9 @@
           {% else %}
             <tr><td colspan="7" class="empty-line">
               {% if current_query %}No contacts match these filters. <a class="text-link" href="{{ url_for('contacts') }}">Clear filters</a>
-              {% else %}No contacts yet. <button type="button" class="text-link" data-open="dlg-contact">Add one</button> or <a class="text-link" href="{{ url_for('imports') }}">import a spreadsheet</a>.{% endif %}
+              {% else %}{% call empty_state('users', 'No contacts yet', 'Add the people you sell to and support, or bring them in from a spreadsheet.') %}
+                <button type="button" class="btn primary" data-open="dlg-contact">{{ icon('plus') }} Add a contact</button>
+                <a class="btn" href="{{ url_for('imports') }}">{{ icon('upload') }} Import a spreadsheet</a>{% endcall %}{% endif %}
             </td></tr>
           {% endfor %}
         </tbody>

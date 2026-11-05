@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, logo %}
+{% from "_macros.html" import icon, logo, empty_state %}
 {% from "_lists.html" import view_tabs, bulk_bar, pagination, filter_select with context %}
 {% block title %}Companies{% endblock %}
 {% block heading %}Companies{% endblock %}
@@ -60,7 +60,9 @@
           {% else %}
             <tr><td colspan="8" class="empty-line">
               {% if current_query %}No companies match these filters. <a class="text-link" href="{{ url_for('companies') }}">Clear filters</a>
-              {% else %}No companies yet. <button type="button" class="text-link" data-open="dlg-customer">Add one</button> or <a class="text-link" href="{{ url_for('imports') }}">import a spreadsheet</a>.{% endif %}
+              {% else %}{% call empty_state('building', 'No companies yet', 'Add the businesses you work with. Companies House numbers are checked for you.') %}
+                <button type="button" class="btn primary" data-open="dlg-customer">{{ icon('plus') }} Add a company</button>
+                <a class="btn" href="{{ url_for('imports') }}">{{ icon('upload') }} Import a spreadsheet</a>{% endcall %}{% endif %}
             </td></tr>
           {% endfor %}
         </tbody>

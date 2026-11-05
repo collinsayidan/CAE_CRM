@@ -1914,3 +1914,57 @@ td.empty-line:has(.empty-state) { padding: 0 !important; }
 .col-empty { border: 1.5px dashed var(--line); border-radius: 12px; margin: 2px; padding: 22px 10px; }
 .error-code { font-family: var(--display); font-size: 56px; font-weight: 800; line-height: 1; letter-spacing: -.04em; color: var(--primary); margin-bottom: 8px; }
 .error-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* Overview ------------------------------------------------------------------- */
+/* Five figure cards: one row on wide screens, then three over two, never a gap. */
+@media (max-width: 1180px) {
+  .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) > * { grid-column: span 2; }
+  .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) > :nth-child(n+4) { grid-column: span 3; }
+}
+@media (max-width: 640px) {
+  .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) { grid-template-columns: 1fr 1fr; }
+  .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) > *,
+  .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) > :nth-child(n+4) { grid-column: span 1; }
+  .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) > :nth-child(5) { grid-column: 1 / -1; }
+}
+@media (max-width: 480px) {
+  .stats:has(> :nth-child(5)):not(:has(> :nth-child(6))) { grid-template-columns: 1fr; }
+}
+
+/* Settings ------------------------------------------------------------------- */
+.settings-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 6px; padding: 4px 0 14px;
+  mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent); }
+.settings-tabs::-webkit-scrollbar { display: none; }
+.settings-tabs a { white-space: nowrap; border-radius: var(--r-pill); padding: 7px 14px; border: 1px solid transparent; }
+.settings-tabs a:hover { border-color: var(--line); background: var(--surface); }
+.settings-tabs a[aria-current] { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+.hub-card { align-items: center; }
+.hub-card .stat-icon.tile { width: 40px; height: 40px; border-radius: 12px; }
+.hub-card .stat-icon.tile .icon { width: 18px; height: 18px; }
+.hub-card > span:nth-child(2) { flex: 1; min-width: 0; }
+.hub-arrow { color: var(--muted); opacity: .5; transition: transform .15s, opacity .15s; }
+.hub-arrow .icon { width: 16px; height: 16px; }
+.hub-card:hover .hub-arrow { opacity: 1; color: var(--primary); transform: translateX(2px); }
+.hub-card:hover { box-shadow: 0 8px 22px rgba(20, 28, 56, .08); }
+.panel-title { padding-bottom: 12px; margin-bottom: 16px; border-bottom: 1px solid var(--line-soft); }
+/* Long settings forms keep their save button in reach. */
+form.settings > .form-end, form.settings .form-end:last-child { position: sticky; bottom: 0; z-index: 5; margin: 0 -4px; padding: 12px 4px;
+  background: linear-gradient(transparent, var(--canvas) 30%); }
+
+/* Tasks ---------------------------------------------------------------------- */
+.day-head { align-items: center; font-size: 17px; }
+.day-head small { padding: 1px 9px; border-radius: var(--r-pill); background: var(--surface-2); color: var(--muted); font-size: 12px; font-weight: 600; }
+.today-badge { padding: 2px 10px; border-radius: var(--r-pill); background: var(--primary); color: var(--on-primary); font-family: var(--body); font-size: 12px; font-weight: 700; }
+.tasks li.late { box-shadow: inset 3px 0 0 var(--bad); }
+.tasks li.done { background: color-mix(in srgb, var(--surface-2) 50%, transparent); }
+
+/* Email and web forms -------------------------------------------------------- */
+.btn.wide .btn-text { min-width: 0; text-align: left; line-height: 1.25; }
+.btn.wide .btn-sub { display: block; font-weight: 500; font-size: 12px; opacity: .75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* First and last name sit side by side, wherever a form starts with them. */
+.form-grid .field:first-child:has([name="first_name"]) { grid-column: auto; }
+.public-form-card { box-shadow: inset 0 4px 0 var(--primary), var(--shadow); }
+.public-form-card h1 { margin-bottom: 4px; }
+.public-intro { margin-bottom: 18px; }
+.public-form-card .public-actions .btn { min-width: 160px; }

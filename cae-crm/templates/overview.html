@@ -72,7 +72,7 @@
 
 <section class="stats" aria-label="Key figures">
   <div class="stat">
-    <div class="stat-head"><span class="stat-icon">{{ icon('pound') }}</span><p class="stat-label">Won this month</p></div>
+    <div class="stat-head"><span class="stat-icon tile tone-green">{{ icon('pound') }}</span><p class="stat-label">Won this month</p></div>
     <p class="stat-value">{{ won_this | money }}</p>
     <p class="stat-note">
       {% if change is not none %}<span class="delta {{ 'up' if change >= 0 else 'down' }}">{{ '%+d' | format(change) }}%</span> on last month to date{% else %}Nothing was won by this point last month{% endif %}
@@ -80,24 +80,24 @@
     {{ spark_won }}
   </div>
   <div class="stat">
-    <div class="stat-head"><span class="stat-icon">{{ icon('pipeline') }}</span><p class="stat-label">Open pipeline</p></div>
+    <div class="stat-head"><span class="stat-icon tile tone-blue">{{ icon('pipeline') }}</span><p class="stat-label">Open pipeline</p></div>
     <p class="stat-value">{{ pipeline_value | money }}</p>
     <p class="stat-note">{{ open_count }} open deals</p>
     {{ spark_created }}
   </div>
   <div class="stat">
-    <div class="stat-head"><span class="stat-icon">{{ icon('trend') }}</span><p class="stat-label">Weighted forecast</p></div>
+    <div class="stat-head"><span class="stat-icon tile tone-yellow">{{ icon('trend') }}</span><p class="stat-label">Weighted forecast</p></div>
     <p class="stat-value">{{ forecast | money }}</p>
     <p class="stat-note">Each deal's value multiplied by its stage probability</p>
     {{ spark_forecast }}
   </div>
   <a class="stat stat-link" href="{{ url_for('tickets') }}">
-    <div class="stat-head"><span class="stat-icon">{{ icon('lifebuoy') }}</span><p class="stat-label">Open tickets</p></div>
+    <div class="stat-head"><span class="stat-icon tile tone-coral">{{ icon('lifebuoy') }}</span><p class="stat-label">Open tickets</p></div>
     <p class="stat-value">{{ tickets_open }}</p>
     <p class="stat-note">{% if tickets_breached %}<span class="delta down">{{ tickets_breached }} past due</span> on service levels{% else %}All within service levels{% endif %}</p>
   </a>
   <div class="stat">
-    <div class="stat-head"><span class="stat-icon">{{ icon('check') }}</span><p class="stat-label">Win rate</p></div>
+    <div class="stat-head"><span class="stat-icon tile tone-blue">{{ icon('check') }}</span><p class="stat-label">Win rate</p></div>
     <p class="stat-value">{{ win_rate }}%</p>
     <p class="stat-note">{{ won_n }} won of {{ closed_n }} closed in the last 12 months</p>
     <div class="winbar" aria-hidden="true"><i style="width: {{ win_rate }}%"></i></div>

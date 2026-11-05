@@ -49,7 +49,7 @@
       {% set late = day < today.isoformat() %}
       <section class="agenda-day" id="day-{{ day }}">
         <h2 class="day-head {{ 'is-today' if day == today.isoformat() }}">
-          {{ day | uk_date_short }}{% if day == today.isoformat() %}, today{% endif %}
+          {{ day | uk_date_short }}{% if day == today.isoformat() %} <span class="today-badge">Today</span>{% endif %}
           <small>{{ day | uk_date }}</small>
         </h2>
         <ul class="tasks">

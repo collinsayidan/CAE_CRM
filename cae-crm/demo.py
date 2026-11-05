@@ -16,7 +16,7 @@ from db import get_db
 
 # The wording people agree to is kept on their contact's timeline, as a record of their consent.
 CONSENT_EMAIL = "Email me CAE CRM news and offers."
-CONSENT_ADS = "Show me CAE CRM ads on Facebook, Instagram and LinkedIn. We'd share a scrambled copy of your email with them to do it."
+CONSENT_ADS = "Show me CAE CRM adverts on Facebook, Instagram and LinkedIn. We match you using a coded version of your email, never the address itself."
 TAG_DEMO = "Demo"
 TAG_ADS = "Social ads OK"
 

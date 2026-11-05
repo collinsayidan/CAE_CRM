@@ -1,0 +1,227 @@
+{
+  "dashboard": {
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "track": {
+      "x": 264,
+      "y": 186,
+      "width": 1620,
+      "height": 205
+    },
+    "stats": {
+      "x": 264,
+      "y": 411,
+      "width": 1620,
+      "height": 192
+    }
+  },
+  "webform": {
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "card": {
+      "x": 666,
+      "y": 98,
+      "width": 588,
+      "height": 667
+    },
+    "message": {
+      "x": 689,
+      "y": 464,
+      "width": 542,
+      "height": 129
+    }
+  },
+  "contactId": "27",
+  "contact": {
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "activity": {
+      "x": 651,
+      "y": 686,
+      "width": 269,
+      "height": 22
+    },
+    "lead": {
+      "x": 335,
+      "y": 243,
+      "width": 158,
+      "height": 25
+    }
+  },
+  "pipeline-before": {
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "card": {
+      "x": 275,
+      "y": 296,
+      "width": 289,
+      "height": 115
+    },
+    "target": {
+      "x": 602,
+      "y": 296,
+      "width": 289,
+      "height": 148
+    },
+    "from": {
+      "x": 275,
+      "y": 296,
+      "width": 289,
+      "height": 515
+    }
+  },
+  "pipeline-after": {
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "card": {
+      "x": 602,
+      "y": 296,
+      "width": 289,
+      "height": 115
+    },
+    "target": {
+      "x": 602,
+      "y": 296,
+      "width": 289,
+      "height": 270
+    }
+  },
+  "dealName": "Analytics add-on",
+  "quote-sign": {
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "sign": {
+      "x": 559,
+      "y": 690,
+      "width": 802,
+      "height": 42
+    },
+    "total": {
+      "x": 577,
+      "y": 330,
+      "width": 589,
+      "height": 48
+    },
+    "accept": {
+      "x": 559,
+      "y": 876,
+      "width": 180,
+      "height": 41
+    }
+  },
+  "quote-accepted": {
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "badge": {
+      "x": 555,
+      "y": 114,
+      "width": 127,
+      "height": 19
+    }
+  },
+  "invoiceUrl": "http://localhost:5070/invoices/34",
+  "invoice": {
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "total": {
+      "x": 305,
+      "y": 726,
+      "width": 758,
+      "height": 48
+    },
+    "status": {
+      "x": 264,
+      "y": 140,
+      "width": 283,
+      "height": 22
+    },
+    "doc": {
+      "x": 264,
+      "y": 186,
+      "width": 840,
+      "height": 690
+    }
+  },
+  "ticket": {
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "sla": {
+      "x": 584,
+      "y": 216,
+      "width": 990,
+      "height": 130
+    },
+    "subject": {
+      "x": 285,
+      "y": 239,
+      "width": 258,
+      "height": 76
+    }
+  },
+  "m-pipeline": {
+    "viewport": {
+      "width": 430,
+      "height": 932
+    },
+    "card": {
+      "x": 27,
+      "y": 443,
+      "width": 210,
+      "height": 115
+    }
+  },
+  "m-ticket": {
+    "viewport": {
+      "width": 430,
+      "height": 932
+    },
+    "sla": {
+      "x": 16,
+      "y": 260,
+      "width": 398,
+      "height": 245
+    }
+  },
+  "m-invoice": {
+    "viewport": {
+      "width": 430,
+      "height": 932
+    },
+    "total": {
+      "x": 39,
+      "y": 870,
+      "width": 352,
+      "height": 39
+    }
+  },
+  "m-quote-accepted": {
+    "viewport": {
+      "width": 430,
+      "height": 932
+    },
+    "badge": {
+      "x": 35,
+      "y": 114,
+      "width": 123,
+      "height": 18
+    }
+  }
+}

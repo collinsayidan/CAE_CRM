@@ -179,7 +179,8 @@ def relative_time(value):
     elif minutes < 60 * 24:
         text = f"{minutes // 60}h"
     else:
-        text = f"{minutes // (60 * 24)} days"
+        days = minutes // (60 * 24)
+        text = f"{days} day" if days == 1 else f"{days} days"
     return f"in {text}" if future else f"{text} ago"
 
 

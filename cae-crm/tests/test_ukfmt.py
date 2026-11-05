@@ -45,3 +45,12 @@ def test_dates_and_financial_year():
     assert ukfmt.fy_quarter(date(2027, 2, 1))[:2] == ("FY2026/27", 4)
     assert ukfmt.fy_quarter(date(2026, 4, 1))[:2] == ("FY2026/27", 1)
     assert ukfmt.vat_quarter(date(2026, 10, 17)) == (date(2026, 10, 1), date(2027, 1, 1))
+
+
+def test_relative_time_says_one_day_not_one_days(app):
+    from datetime import timedelta
+    from core import now, relative_time, sla_state
+    with app.app_context():
+        assert relative_time((now() + timedelta(days=1, hours=2)).isoformat()) == "in 1 day"
+        assert relative_time((now() - timedelta(days=3)).isoformat()) == "3 days ago"
+        assert sla_state((now() + timedelta(hours=30)).isoformat()) == ("due", "Due in 1 day")

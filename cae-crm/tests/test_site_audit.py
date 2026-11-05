@@ -56,7 +56,7 @@ def test_web_forms_can_still_be_embedded_on_other_sites(app, client):
 
 def test_downloads_work_for_any_filename():
     from files import disposition
-    for name in ("合同.pdf", "café 🎉.pdf", 'a"b\c.pdf'):
+    for name in ("合同.pdf", "café 🎉.pdf", 'a"b' + chr(92) + 'c.pdf'):
         header = disposition(name)
         header.encode("ascii")  # gunicorn sends headers as Latin-1; plain ASCII is always safe
         assert header.startswith('attachment; filename="') and "filename*=UTF-8''" in header

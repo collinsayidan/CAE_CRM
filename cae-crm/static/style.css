@@ -731,6 +731,10 @@ dialog.palette {
 #palette-results .none { color: var(--muted); cursor: default; }
 
 /* Toasts ---------------------------------------------------------------- */
+.doc-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.kb-article { max-width: 72ch; padding: 24px 28px; font-size: 15.5px; line-height: 1.65; }
+.kb-article p { margin: 0 0 1em; }
+.kb-article ul { margin: 0 0 1em; padding-left: 1.3em; }
 .toasts { position: fixed; right: 24px; bottom: 24px; z-index: 60; display: grid; gap: 8px; max-width: min(420px, calc(100vw - 32px)); }
 .toast {
   background: var(--ink); color: var(--canvas); padding: 12px 16px; border-radius: var(--r-lg); font-weight: 700; font-size: 14px;

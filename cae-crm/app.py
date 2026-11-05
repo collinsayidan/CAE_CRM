@@ -61,10 +61,12 @@ from ukfmt import money
 NAV = [
     (None, [("overview", "Home", "home"), ("tasks", "Tasks", "calendar"), ("reports", "Reports", "trend")]),
     ("CRM", [("contacts", "Contacts", "users"), ("companies", "Companies", "building"),
-             ("pipeline", "Deals", "pipeline"), ("tickets", "Tickets", "lifebuoy")]),
+             ("pipeline", "Deals", "pipeline")]),
+    ("Support", [("tickets", "Tickets", "lifebuoy"), ("knowledge_base", "Knowledge base", "book")]),
     ("Sales and finance", [("quotes", "Quotes", "note"), ("invoices", "Invoices", "pound"),
                            ("products", "Products", "box"), ("projects", "Projects", "flag")]),
     ("Marketing", [("campaigns", "Email", "mail"), ("forms", "Forms", "list")]),
+    ("Business", [("documents_page", "Documents", "folder")]),
 ]
 # Everything about running the workspace sits behind one Settings link: (endpoint, label, admins only).
 SETTINGS_TABS = [("settings", "Business details", True), ("payment_settings", "Payments", True), ("auth.team", "Team", False),
@@ -72,7 +74,7 @@ SETTINGS_TABS = [("settings", "Business details", True), ("payment_settings", "P
                  ("integrations", "Integrations", False), ("imports", "Import", True), ("billing", "Billing", True),
                  ("custom_fields_page", "Custom fields", True), ("tags_settings", "Tags", True),
                  ("saved_replies_page", "Saved replies", True), ("support_email_settings", "Support email", True),
-                 ("help_articles", "Help articles", True), ("chat_settings", "Website chat", True),
+                 ("chat_settings", "Website chat", True),
                  ("workflows", "Workflows", True),
                  ("developers", "API and webhooks", True), ("vat", "VAT returns", True),
                  ("recycle_bin", "Recycle bin", True),
@@ -80,7 +82,8 @@ SETTINGS_TABS = [("settings", "Business details", True), ("payment_settings", "P
 # Which nav item lights up for pages that aren't in the nav themselves.
 NAV_PARENT = {"contact": "contacts", "company": "companies", "deal": "pipeline", "ticket": "tickets",
               "invoice": "invoices", "quote": "quotes", "web_form": "forms",
-              "campaign": "campaigns", "recurring_invoices": "invoices"}
+              "campaign": "campaigns", "recurring_invoices": "invoices", "help_articles": "knowledge_base",
+              "knowledge_article": "knowledge_base"}
 # Which settings tab lights up for pages inside one.
 SETTINGS_PARENT = {"auth.member": "auth.team", "auth.edit_member": "auth.team", "import_map": "imports",
                    "vat_return": "vat"}

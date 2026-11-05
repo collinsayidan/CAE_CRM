@@ -48,10 +48,42 @@ def render(body):
     return Markup(html.replace("<a href=", '<a target="_blank" rel="noopener noreferrer" href='))
 
 
+def snippet(body, length=140):
+    """An article's opening words as plain text, without the ** and [link](...) marks."""
+    text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", body or "")
+    text = re.sub(r"(?m)^- ", "", text.replace("**", ""))
+    text = " ".join(text.split())
+    return text if len(text) <= length else text[:length].rsplit(" ", 1)[0] + "…"
+
+
 def register(app):
     app.add_template_filter(render, "article")
+    app.add_template_filter(snippet, "snippet")
 
-    @app.route("/settings/help-articles", methods=["GET", "POST"])
+    @app.get("/knowledge-base")
+    def knowledge_base():
+        """The team's own view of the help articles: everyone can read them, admins write them."""
+        admin = g.user["role"] == "admin"
+        q = request.args.get("q", "").strip()[:100]
+        sql = "SELECT * FROM help_articles WHERE workspace_id=?" + ("" if admin else " AND published=1")
+        args = [ws()]
+        if q:
+            sql += " AND (LOWER(title) LIKE ? OR LOWER(body) LIKE ?)"
+            args += [f"%{q.lower()}%"] * 2
+        from core import workspace
+        return render_template("knowledge_base.html", articles=rows(sql + " ORDER BY published DESC, LOWER(title)", *args),
+                               q=q, token=workspace()["site_token"])
+
+    @app.get("/knowledge-base/<int:article_id>")
+    def knowledge_article(article_id):
+        a = one("SELECT * FROM help_articles WHERE id=? AND workspace_id=?", article_id, ws())
+        if a is None or (not a["published"] and g.user["role"] != "admin"):
+            abort(404)
+        from core import workspace
+        return render_template("knowledge_article.html", a=a, token=workspace()["site_token"])
+
+    @app.route("/knowledge-base/manage", methods=["GET", "POST"])
+    @app.route("/settings/help-articles", methods=["GET", "POST"])  # where it was before; old links still work
     def help_articles():
         auth.admin_required()
         db = get_db()

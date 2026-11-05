@@ -13,7 +13,7 @@
     try { const t = localStorage.getItem("cae-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
   </script>
 </head>
-<body {% if team_names %}data-team='{{ team_names | tojson | forceescape }}'{% endif %}>
+<body {% if lock_after %}data-lock-after="{{ lock_after }}" data-lock-warn="{{ lock_warn }}" data-lock-name="{{ current_user.name }}" data-lock-email="{{ current_user.email }}"{% endif %} {% if team_names %}data-team='{{ team_names | tojson | forceescape }}'{% endif %}>
   <aside class="sidebar" id="sidebar">
     <a class="brand" href="{{ url_for('overview') }}">
       <img class="mark" src="{{ url_for('static', filename='brand/icon.svg') }}" alt="" width="32" height="32">

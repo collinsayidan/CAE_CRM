@@ -1,0 +1,19 @@
+{% extends "auth/_layout.html" %}
+{% from "_macros.html" import field %}
+{% block title %}Screen locked{% endblock %}
+{% block content %}
+<h1>Screen locked</h1>
+<p class="auth-lede">Signed in as {{ current_user.name }} ({{ current_user.email }}). Enter your password to carry on.</p>
+{% if error %}<p class="form-alert" role="alert">{{ error }}</p>{% endif %}
+<form method="post" action="{{ url_for('unlock') }}" class="auth-form">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <input type="hidden" name="next" value="{{ next }}">
+  <input type="email" name="email" value="{{ current_user.email }}" autocomplete="username" hidden>
+  {{ field('Password', 'password', type='password', required=true, extra='autocomplete=current-password autofocus') }}
+  <button class="btn primary wide">Unlock</button>
+</form>
+<form method="post" action="{{ url_for('auth.logout') }}" class="auth-note">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  Not you? <button class="text-link link-button">Sign out</button>
+</form>
+{% endblock %}

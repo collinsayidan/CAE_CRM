@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS workspaces (
     quiet_days INTEGER NOT NULL DEFAULT 14,
     bank_holiday_region TEXT NOT NULL DEFAULT 'england-and-wales',
     csat_on INTEGER NOT NULL DEFAULT 0,
+    lock_minutes INTEGER NOT NULL DEFAULT 30,
     inbound_on INTEGER NOT NULL DEFAULT 0,
     inbound_owner TEXT,
     inbound_token TEXT,
@@ -471,7 +472,9 @@ CREATE TABLE IF NOT EXISTS user_sessions (
     ip TEXT,
     user_agent TEXT,
     created_at TEXT NOT NULL,
-    last_seen_at TEXT NOT NULL
+    last_seen_at TEXT NOT NULL,
+    locked INTEGER NOT NULL DEFAULT 0,
+    unlocked_at BIGINT
 );
 CREATE TABLE IF NOT EXISTS known_devices (
     id {pk},
@@ -831,6 +834,7 @@ ADDED_COLUMNS = {
                    "ai_enabled INTEGER NOT NULL DEFAULT 0", "ai_enabled_at TEXT", "ai_enabled_by TEXT",
                    "quiet_days INTEGER NOT NULL DEFAULT 14",
                    "bank_holiday_region TEXT NOT NULL DEFAULT 'england-and-wales'", "csat_on INTEGER NOT NULL DEFAULT 0",
+                   "lock_minutes INTEGER NOT NULL DEFAULT 30",
                    "inbound_on INTEGER NOT NULL DEFAULT 0", "inbound_owner TEXT", "inbound_token TEXT",
                    "site_token TEXT", "chat_on INTEGER NOT NULL DEFAULT 0", "chat_domains TEXT", "chat_greeting TEXT",
                    "chat_owner TEXT", "chat_daily_cap INTEGER NOT NULL DEFAULT 300", "stripe_account_id TEXT",
@@ -842,6 +846,8 @@ ADDED_COLUMNS = {
     "deals": ["workspace_id INTEGER", "contact_id INTEGER", "custom TEXT", "outcome_reason TEXT", "outcome_note TEXT",
               "quiet_since TEXT"],
     "tickets": ["custom TEXT"],
+    # The screen lock (idlelock.py) is kept on the server, so an older copy of the cookie can't undo it.
+    "user_sessions": ["locked INTEGER NOT NULL DEFAULT 0", "unlocked_at BIGINT"],
     "activities": ["workspace_id INTEGER", "contact_id INTEGER", "ticket_id INTEGER"],
     "invoices": ["workspace_id INTEGER", "deal_id INTEGER", "xero_invoice_id TEXT", "sent_at TEXT", "sent_to TEXT",
                  "pay_token TEXT", "amount_paid BIGINT NOT NULL DEFAULT 0", "credited BIGINT NOT NULL DEFAULT 0",

@@ -1027,4 +1027,143 @@
       if (out.html) form.outerHTML = out.html;
     } catch (err) { aiBusy(form, false); }
   });
+
+  /* Screen lock ------------------------------------------------------------ */
+  // After the workspace's lock time with nothing done in any tab, the page is covered and asks for the password
+  // (not the authenticator code). The page underneath is kept, so nothing typed is lost. The server enforces the same
+  // limit, so this is the friendly half: a warning two minutes before, and unlocking without reloading.
+  (() => {
+    const after = Number(document.body.dataset.lockAfter) * 1000;
+    if (!after) return;
+    const warnFor = Number(document.body.dataset.lockWarn || 120) * 1000;
+    const ACTIVE = "cae-active", UNLOCKED = "cae-unlocked";
+    const store = (key, value) => { try { localStorage.setItem(key, String(value)); } catch (e) { /* this tab only */ } };
+    const stored = key => { try { return Number(localStorage.getItem(key)) || 0; } catch (e) { return 0; } };
+    let mine = Date.now(), lastPing = Date.now(), locked = false, dialog = null, warning = null;
+    store(ACTIVE, mine);  // loading this page was activity, and the server has noted it
+    const lastActive = () => Math.max(mine, stored(ACTIVE));
+
+    const ping = async () => {
+      lastPing = Date.now();
+      try {
+        await fetch("/session/active", { method: "POST", body: new URLSearchParams({ csrf }),
+          headers: { "X-Requested-With": "fetch", "X-CSRF-Token": csrf } });
+      } catch (e) { /* offline: the next activity tries again */ }
+    };
+    const hideWarning = () => { if (warning) warning.remove(); warning = null; };
+    const active = force => {
+      if (locked) return;
+      const now = Date.now();
+      if (!force && now - mine < 5000) return;
+      mine = now;
+      store(ACTIVE, now);
+      hideWarning();
+      if (force || now - lastPing > 60000) ping();
+    };
+    ["pointerdown", "pointermove", "keydown", "wheel", "touchstart", "scroll"].forEach(type =>
+      addEventListener(type, () => active(false), { passive: true, capture: true }));
+
+    const showWarning = left => {
+      if (!warning) {
+        warning = document.createElement("div");
+        warning.className = "lock-warning";
+        warning.setAttribute("role", "alert");
+        warning.innerHTML = '<p></p><button type="button" class="btn primary sm">Stay signed in</button>';
+        warning.querySelector("button").addEventListener("click", () => active(true));
+        document.body.append(warning);
+      }
+      const s = Math.max(0, Math.ceil(left / 1000));
+      warning.querySelector("p").textContent =
+        `Nothing's happened for a while, so the screen locks in ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}.`;
+    };
+
+    const build = () => {
+      const { lockName: name, lockEmail: email } = document.body.dataset;
+      dialog = document.createElement("dialog");
+      dialog.className = "lock-screen";
+      dialog.setAttribute("aria-labelledby", "lock-title");
+      dialog.innerHTML = `<form method="post" action="/unlock">
+          <img class="mark" src="/static/brand/icon.svg" alt="" width="40" height="40">
+          <h2 id="lock-title">Screen locked</h2>
+          <p class="lock-who"></p>
+          <p class="form-alert" role="alert" hidden></p>
+          <input type="email" name="email" autocomplete="username" hidden>
+          <label class="field"><span class="field-label">Password</span>
+            <input type="password" name="password" autocomplete="current-password" required></label>
+          <button class="btn primary wide">Unlock</button>
+          <p class="lock-note">Not you? <button type="button" class="text-link link-button" data-lock-signout>Sign out</button></p>
+        </form>`;
+      dialog.querySelector(".lock-who").textContent = `Signed in as ${name} (${email}). Enter your password to carry on.`;
+      dialog.querySelector("[name=email]").value = email;
+      const form = dialog.querySelector("form"), alertBox = dialog.querySelector(".form-alert");
+      form.addEventListener("submit", async e => {
+        e.preventDefault();
+        const button = form.querySelector(".btn");
+        button.disabled = true;
+        try {
+          const res = await fetch("/unlock", { method: "POST",
+            body: new URLSearchParams({ csrf, password: form.password.value }),
+            headers: { "X-Requested-With": "fetch", "X-CSRF-Token": csrf } });
+          const out = await res.json().catch(() => ({}));
+          if (res.ok) { unlock(); store(UNLOCKED, Date.now()); return; }
+          if (out.signed_out) { location.href = out.url || "/login"; return; }
+          alertBox.textContent = out.error || "That didn't work. Try again.";
+          alertBox.hidden = false;
+          form.password.select();
+        } catch (err) {
+          alertBox.textContent = "Couldn't reach CAE CRM. Check your connection and try again.";
+          alertBox.hidden = false;
+        } finally { button.disabled = false; }
+      });
+      dialog.querySelector("[data-lock-signout]").addEventListener("click", () => {
+        const out = document.createElement("form");
+        out.method = "post";
+        out.action = "/logout";
+        out.innerHTML = '<input type="hidden" name="csrf">';
+        out.csrf.value = csrf;
+        document.body.append(out);
+        out.submit();
+      });
+      dialog.addEventListener("cancel", e => e.preventDefault());  // Escape doesn't get past it
+      dialog.addEventListener("close", () => { if (locked) dialog.showModal(); });
+      document.body.append(dialog);
+    };
+    const lock = () => {
+      if (locked) return;
+      locked = true;
+      hideWarning();
+      realFetch("/session/lock", { method: "POST", body: new URLSearchParams({ csrf }),
+        headers: { "X-Requested-With": "fetch", "X-CSRF-Token": csrf } }).catch(() => {});
+      $$("dialog[open]").forEach(d => { if (d !== dialog) d.close(); });
+      if (!dialog) build();
+      dialog.querySelector(".form-alert").hidden = true;
+      dialog.querySelector("form").password.value = "";
+      dialog.showModal();
+      dialog.querySelector("[name=password]").focus();
+    };
+    const unlock = () => {
+      if (!locked) return;
+      locked = false;
+      mine = lastPing = Date.now();
+      store(ACTIVE, mine);
+      dialog.close();
+    };
+
+    // A save the server turned away because the screen locked shows the lock, not just an error.
+    const realFetch = window.fetch.bind(window);
+    window.fetch = async (...args) => {
+      const res = await realFetch(...args);
+      if (res.status === 401) res.clone().json().then(out => { if (out.locked) lock(); }).catch(() => {});
+      return res;
+    };
+    // Unlocking in one tab unlocks the others.
+    addEventListener("storage", e => { if (e.key === UNLOCKED && locked) unlock(); });
+    setInterval(() => {
+      if (locked) return;
+      const idle = Date.now() - lastActive();
+      if (idle >= after) lock();
+      else if (idle >= after - warnFor) showWarning(after - idle);
+      else hideWarning();
+    }, 1000);
+  })();
 })();

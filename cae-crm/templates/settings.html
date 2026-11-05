@@ -71,6 +71,13 @@
   </section>
 
   <section class="panel">
+    <h2 class="panel-title">Screen lock</h2>
+    <label class="field"><span class="field-label">Lock the screen after</span>
+      <select name="lock_minutes">{% for minutes, label in lock_choices.items() %}<option value="{{ minutes }}" {{ 'selected' if minutes == (form.lock_minutes | int if form.lock_minutes else workspace.lock_minutes) }}>{{ label }} with nothing done</option>{% endfor %}</select>
+      <span class="field-hint">For everyone in your team. Unlocking takes their password only, not the authenticator code, and the page they were on is kept. After 12 hours away they sign in again in full.</span></label>
+  </section>
+
+  <section class="panel">
     <h2 class="panel-title">Sales target</h2>
     <div class="form-grid">
       {{ field('Monthly target, excluding VAT', 'monthly_target', form.monthly_target, errors=errors, required=true, hint='Drives the month track on Home. The quarterly quota is three times this.', extra='inputmode=decimal') }}

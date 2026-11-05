@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon %}
-{% block title %}Help articles{% endblock %}
-{% block heading %}Help articles{% endblock %}
-{% block subtitle %}<p class="subtitle">Short answers for your customers. Published articles have public pages and are what the website chat answers from.</p>{% endblock %}
+{% block title %}Write articles{% endblock %}
+{% block heading %}Write articles{% endblock %}
+{% block subtitle %}<p class="subtitle">Short answers for your customers and your team. Everyone in the team reads published articles in the <a class="text-link" href="{{ url_for('knowledge_base') }}">Knowledge base</a>; they also have public pages, which the website chat answers from.</p>{% endblock %}
 {% block actions %}{% if token %}<a class="btn ghost" href="{{ url_for('help_index', token=token) }}" target="_blank" rel="noopener">{{ icon('external') }} View public page</a>{% endif %}{% endblock %}
 
 {% block content %}

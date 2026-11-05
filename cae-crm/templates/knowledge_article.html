@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}{{ a.title }}{% endblock %}
+{% block heading %}{{ a.title }}{% endblock %}
+{% block subtitle %}<p class="subtitle"><a class="text-link" href="{{ url_for('knowledge_base') }}">Knowledge base</a> · Updated {{ a.updated_at | uk_datetime }}{% if not a.published %} · <span class="chip">Draft</span>{% endif %}</p>{% endblock %}
+{% block actions %}
+  {% if a.published and token %}<a class="btn ghost" href="{{ url_for('help_article', token=token, article_id=a.id) }}" target="_blank" rel="noopener">{{ icon('external') }} Public page</a>{% endif %}
+  {% if current_user.role == 'admin' %}<a class="btn" href="{{ url_for('help_articles', edit=a.id) }}">{{ icon('edit') }} Edit</a>{% endif %}
+{% endblock %}
+
+{% block content %}
+<article class="panel kb-article">{{ a.body | article }}</article>
+{% endblock %}

@@ -1987,3 +1987,9 @@ form.settings > .form-end, form.settings .form-end:last-child { position: sticky
 .public-form-card h1 { margin-bottom: 4px; }
 .public-intro { margin-bottom: 18px; }
 .public-form-card .public-actions .btn { min-width: 160px; }
+
+/* Documents and the Knowledge base. */
+.doc-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.kb-article { max-width: 72ch; padding: 24px 28px; font-size: 15.5px; line-height: 1.65; }
+.kb-article p { margin: 0 0 1em; }
+.kb-article ul { margin: 0 0 1em; padding-left: 1.3em; }

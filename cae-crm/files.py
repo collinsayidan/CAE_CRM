@@ -12,7 +12,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from flask import Response, abort, current_app, flash, g, redirect, request, url_for
+from flask import Response, abort, current_app, flash, g, redirect, render_template, request, url_for
 
 from core import now, one, rows, ws
 from db import get_db
@@ -83,8 +83,57 @@ def human_size(n):
     return f"{n / 1024 / 1024:.1f} MB" if n >= 1024 * 1024 else f"{max(1, round(n / 1024))} KB"
 
 
+# For the filter on the Documents page, by file ending.
+KINDS = {"pdf": ("PDFs", {"pdf"}),
+         "image": ("Images", {"png", "jpg", "jpeg", "gif", "webp", "heic"}),
+         "office": ("Documents and spreadsheets", {"doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods", "odp", "rtf",
+                                                  "txt", "csv"}),
+         "email": ("Emails", {"msg", "eml"}),
+         "zip": ("Zip files", {"zip"})}
+RECORD_LABELS = {"contact": "Contacts", "company": "Companies", "deal": "Deals", "ticket": "Tickets"}
+RECORD_PAGES = {"contact": ("contact", "contact_id"), "company": ("company", "company_id"), "deal": ("deal", "deal_id"),
+                "ticket": ("ticket", "ticket_id")}
+DOCUMENTS_SHOWN = 300
+
+
+def kind_of(filename):
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    return next((k for k, (_, endings) in KINDS.items() if ext in endings), "other")
+
+
+def all_documents():
+    """Every file attached to a contact, company, deal or ticket that still exists, newest first, with its record."""
+    return rows(
+        "SELECT a.id, a.filename, a.size, a.uploaded_by, a.created_at, a.record_type, a.record_id,"
+        " COALESCE(ct.first_name || ' ' || COALESCE(ct.last_name, ''), co.name, d.title, t.subject) AS record_name"
+        " FROM attachments a"
+        " LEFT JOIN contacts ct ON a.record_type='contact' AND ct.id=a.record_id AND ct.workspace_id=a.workspace_id"
+        " LEFT JOIN companies co ON a.record_type='company' AND co.id=a.record_id AND co.workspace_id=a.workspace_id"
+        " LEFT JOIN deals d ON a.record_type='deal' AND d.id=a.record_id AND d.workspace_id=a.workspace_id"
+        " LEFT JOIN tickets t ON a.record_type='ticket' AND t.id=a.record_id AND t.workspace_id=a.workspace_id"
+        " WHERE a.workspace_id=? AND COALESCE(ct.id, co.id, d.id, t.id) IS NOT NULL"
+        " ORDER BY a.created_at DESC, a.id DESC", ws())
+
+
 def register(app):
     app.add_template_global(for_record, "record_files")
+
+    @app.get("/documents")
+    def documents_page():
+        """Every file attached anywhere in the CRM, in one list to search and filter."""
+        found = all_documents()
+        people = sorted({f["uploaded_by"] for f in found})
+        active = {k: request.args.get(k, "").strip()[:100] for k in ("q", "record", "kind", "by")}
+        q = active["q"].lower()
+        shown = [f for f in found
+                 if (not q or q in f["filename"].lower() or q in (f["record_name"] or "").lower())
+                 and (not active["record"] or f["record_type"] == active["record"])
+                 and (not active["kind"] or kind_of(f["filename"]) == active["kind"])
+                 and (not active["by"] or f["uploaded_by"] == active["by"])]
+        return render_template("documents.html", files=shown[:DOCUMENTS_SHOWN], matched=len(shown), total=len(found),
+                               active=active, people=people, kinds=KINDS, record_labels=RECORD_LABELS,
+                               record_pages=RECORD_PAGES, kind_of=kind_of, limit=DOCUMENTS_SHOWN,
+                               filtered=any(active.values()))
     app.add_template_filter(human_size, "filesize")
 
     @app.post("/files")

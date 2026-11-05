@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, empty_state %}
+{% block title %}Knowledge base{% endblock %}
+{% block heading %}Knowledge base{% endblock %}
+{% block subtitle %}<p class="subtitle">Answers to the questions customers ask, for your team to read and send. Published articles also have public pages, which the website chat answers from.</p>{% endblock %}
+{% block actions %}
+  {% if token %}<a class="btn ghost" href="{{ url_for('help_index', token=token) }}" target="_blank" rel="noopener">{{ icon('external') }} Public page</a>{% endif %}
+  {% if current_user.role == 'admin' %}<a class="btn primary" href="{{ url_for('help_articles') }}">{{ icon('plus') }} Write an article</a>{% endif %}
+{% endblock %}
+
+{% block content %}
+<section class="panel flush">
+  <form class="list-toolbar" method="get" role="search" action="{{ url_for('knowledge_base') }}">
+    <label class="search-field">{{ icon('search') }}<input type="search" name="q" value="{{ q }}" placeholder="Search articles" aria-label="Search the knowledge base"></label>
+    {% if q %}<a class="text-link sm" href="{{ url_for('knowledge_base') }}">Clear search</a>{% endif %}
+  </form>
+  <ul class="saved-reply-list">
+    {% for a in articles %}
+      <li>
+        <div><a class="text-link" href="{{ url_for('knowledge_article', article_id=a.id) }}"><b>{{ a.title }}</b></a>
+          {% if not a.published %}<span class="chip">Draft</span>{% endif %}
+          <p class="muted small">{{ a.body | snippet }}</p></div>
+        {% if current_user.role == 'admin' %}
+          <div class="row-actions"><a class="btn ghost sm" href="{{ url_for('help_articles', edit=a.id) }}">{{ icon('edit') }} Edit</a></div>
+        {% endif %}
+      </li>
+    {% else %}
+      <li class="empty-line">
+        {% if q %}No articles match "{{ q }}".
+        {% elif current_user.role == 'admin' %}{% call empty_state('book', 'No articles yet', 'Start with the questions customers ask most: opening hours, delivery, returns, how to book.', 'blue') %}
+          <a class="btn primary" href="{{ url_for('help_articles') }}">{{ icon('plus') }} Write the first one</a>{% endcall %}
+        {% else %}No articles yet. An admin can write them.{% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

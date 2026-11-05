@@ -7,10 +7,14 @@ def test_homepage_is_short_and_makes_true_claims_only(anon):
     assert page.count("<h1") == 1
     headline = re.sub(r"<[^>]+>", "", re.search(r"<h1>(.*?)</h1>", page, re.S).group(1))
     assert headline == "The CRM that already knows how UK business works."
-    for heading in ("Contacts, companies and deals", "Support tickets with real service levels", "Invoices HMRC would recognise",
-                    "UK GDPR built in", "What you'd pay extra for elsewhere, included", "Set up your business in two minutes."):
+    for heading in ("Sales, support and invoicing, working from the same records", "Up and running this afternoon",
+                    "What you'd pay extra for elsewhere, included", "Set up your business in two minutes.",
+                    "Good to know before you start"):
         assert f">{heading}</h2>" in page, heading
-    assert page.count("<section") == 4  # hero, features, comparison, call to action
+    for tile in ("Contacts, companies and deals", "Support tickets with real service levels", "Invoices HMRC would recognise",
+                 "UK GDPR built in", "Create your workspace", "Bring your customers in", "Invite your team"):
+        assert f"<h3>{tile}</h3>" in page, tile
+    assert page.count("<section") == 6  # hero, features, how it works, comparison, pricing, questions
     # Nothing invented: no reviews, ratings or uptime figures, and sample figures are labelled.
     for invented in ("★", "⭐", "99.95", "testimonial", "Trusted by"):
         assert invented not in page
@@ -57,3 +61,14 @@ def test_signed_in_people_go_to_their_workspace(client):
 def test_accessibility_statement(anon):
     page = anon.get("/legal/accessibility").get_data(as_text=True)
     assert "WCAG" in page and "2.2" in page
+
+
+def test_questions_and_calculator_use_real_settings(app, anon):
+    page = anon.get("/welcome").get_data(as_text=True)
+    # The FAQ works without JavaScript: native details, one open at a time.
+    assert page.count('<details class="lp-q" name="faq"') == 7
+    assert "No. You get 14 days free" in page and "£15 per user a month, paid monthly" in page
+    assert "server in Germany" in page and 'href="/legal/privacy"' in page
+    # The team-size calculator starts hidden (it needs JavaScript) and works from the configured price.
+    assert 'data-seat="1500"' in page and '<div class="lp-calc" hidden>' in page and "£75.00" in page
+

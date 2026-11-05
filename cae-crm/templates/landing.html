@@ -31,7 +31,9 @@
       <a class="lp-logo" href="{{ url_for('landing') }}"><img src="{{ url_for('static', filename='brand/icon.svg') }}" alt="" width="30" height="30">CAE CRM</a>
       <nav class="lp-nav" aria-label="Page">
         <a href="#features">Features</a>
+        <a href="#how-it-works">How it works</a>
         <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
         <a href="{{ url_for('start_demo') }}">Demo</a>
       </nav>
       <div class="lp-header-actions">
@@ -88,24 +90,121 @@
       </div>
     </section>
 
-    <section class="lp-body" id="features" aria-label="What's included">
+    <section class="lp-body" id="features" aria-labelledby="features-title">
       <div class="lp-wrap lp-narrow">
-        <div class="lp-pillars">
-          {% for ic, tone, title, text in [
-            ('users', 'blue', 'Contacts, companies and deals', 'One timeline of notes, calls, emails and meetings for every record. A drag-and-drop pipeline, and quotes your customers sign online.'),
-            ('lifebuoy', 'coral', 'Support tickets with real service levels', "Deadlines count UK working hours and skip bank holidays. Customers' emails become tickets, and replies thread back."),
-            ('pound', 'yellow', 'Invoices HMRC would recognise', 'VAT invoices from your deals, card payments, automatic reminders and aged debt. Send Making Tax Digital VAT returns to HMRC.'),
-            ('shield', 'green', 'UK GDPR built in', "Record a lawful basis and marketing consent for every person. Export or erase someone's data in one click, with a full audit trail.")] %}
-            <article class="lp-pillar lp-reveal">
-              <span class="lp-pillar-icon lp-tone-{{ tone }}">{{ icon(ic) }}</span>
-              <h2>{{ title }}</h2>
-              <p>{{ text }}</p>
-            </article>
-          {% endfor %}
+        <div class="lp-section-head lp-reveal">
+          <p class="lp-kicker">Everything included</p>
+          <h2 id="features-title">Sales, support and invoicing, working from the same records</h2>
         </div>
-        <p class="lp-also lp-reveal">{{ icon('sparkle') }} <span><b>Also included:</b> an AI assistant, workflows, email campaigns, web forms, Gmail and Outlook logging, Xero sync, an API and a Power BI feed.</span></p>
 
-        <section class="lp-compare lp-reveal" aria-labelledby="compare-title">
+        {# Each tile carries a small drawing of the real screen, with made-up figures, labelled as such. #}
+        <div class="lp-bento">
+          <article class="lp-tile lp-tile-wide lp-reveal">
+            <div class="lp-tile-copy">
+              <span class="lp-pillar-icon lp-tone-blue">{{ icon('users') }}</span>
+              <h3>Contacts, companies and deals</h3>
+              <p>One timeline of notes, calls, emails and meetings for every record. A drag-and-drop pipeline, and quotes your customers sign online.</p>
+            </div>
+            <div class="lp-vis lp-vis-board" aria-hidden="true">
+              {% for stage, deals in [('Qualified', [('Harbour Lane', '£4,800'), ('Pennine Joinery', '£2,150')]),
+                                      ('Proposal', [('Fenwick and Co', '£9,600')]),
+                                      ('Won', [('Northgate Dental', '£6,240')])] %}
+                <div class="lp-col"><span class="lp-col-name">{{ stage }}</span>
+                  {% for name, value in deals %}<div class="lp-deal{{ ' is-won' if stage == 'Won' }}"><b>{{ name }}</b><span>{{ value }}</span></div>{% endfor %}
+                </div>
+              {% endfor %}
+              <em class="lp-sample">Sample</em>
+            </div>
+          </article>
+
+          <article class="lp-tile lp-reveal">
+            <div class="lp-tile-copy">
+              <span class="lp-pillar-icon lp-tone-coral">{{ icon('lifebuoy') }}</span>
+              <h3>Support tickets with real service levels</h3>
+              <p>Deadlines count UK working hours and skip bank holidays. Customers' emails become tickets, and replies thread back.</p>
+            </div>
+            <div class="lp-vis lp-vis-sla" aria-hidden="true">
+              <span class="lp-ring" style="--done: 68%"><b>2h 14m</b></span>
+              <span class="lp-sla-text"><b>First reply due</b><small>Clock paused over the bank holiday</small></span>
+            </div>
+          </article>
+
+          <article class="lp-tile lp-reveal">
+            <div class="lp-tile-copy">
+              <span class="lp-pillar-icon lp-tone-yellow">{{ icon('pound') }}</span>
+              <h3>Invoices HMRC would recognise</h3>
+              <p>VAT invoices from your deals, card payments, automatic reminders and aged debt. Send Making Tax Digital VAT returns to HMRC.</p>
+            </div>
+            <div class="lp-vis lp-vis-invoice" aria-hidden="true">
+              <div class="lp-inv-row lp-inv-head"><b>INV-0142</b><span class="lp-paid">{{ icon('check') }} Paid</span></div>
+              <div class="lp-inv-row"><span>Subtotal</span><span>£1,200.00</span></div>
+              <div class="lp-inv-row"><span>VAT at 20%</span><span>£240.00</span></div>
+              <div class="lp-inv-row lp-inv-total"><span>Total</span><span>£1,440.00</span></div>
+            </div>
+          </article>
+
+          <article class="lp-tile lp-tile-wide lp-reveal">
+            <div class="lp-tile-copy">
+              <span class="lp-pillar-icon lp-tone-green">{{ icon('shield') }}</span>
+              <h3>UK GDPR built in</h3>
+              <p>Record a lawful basis and marketing consent for every person. Export or erase someone's data in one click, with a full audit trail.</p>
+            </div>
+            <div class="lp-vis lp-vis-consent" aria-hidden="true">
+              <div class="lp-consent-row"><span>Lawful basis</span><b>Legitimate interests</b></div>
+              <div class="lp-consent-row"><span>Marketing email</span><b class="lp-ok">{{ icon('check') }} Agreed on 14 Oct</b></div>
+              <div class="lp-consent-row"><span>Audit trail</span><b>12 changes recorded</b></div>
+              <div class="lp-consent-actions"><span>{{ icon('download') }} Export</span><span>{{ icon('trash') }} Erase</span></div>
+              <em class="lp-sample">Sample</em>
+            </div>
+          </article>
+
+          <article class="lp-tile lp-tile-full lp-reveal">
+            <div class="lp-tile-copy lp-also-copy">
+              <span class="lp-pillar-icon lp-tone-blue">{{ icon('sparkle') }}</span>
+              <h3>Also included</h3>
+            </div>
+            <ul class="lp-chips">
+              {% for item in ['AI assistant', 'Workflows', 'Email campaigns', 'Web forms', 'Gmail and Outlook logging', 'Xero sync', 'API', 'Power BI feed'] %}
+                <li>{{ item }}</li>
+              {% endfor %}
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="lp-steps-band" id="how-it-works" aria-labelledby="steps-title">
+      <div class="lp-wrap lp-narrow">
+        <div class="lp-section-head lp-reveal">
+          <p class="lp-kicker">How it works</p>
+          <h2 id="steps-title">Up and running this afternoon</h2>
+        </div>
+        <ol class="lp-steps lp-reveal">
+          <li>
+            <span class="lp-step-num">1</span>
+            <h3>Create your workspace</h3>
+            <p>Your business name and email address. No card, and nothing to install.</p>
+          </li>
+          <li>
+            <span class="lp-step-num">2</span>
+            <h3>Bring your customers in</h3>
+            <p>Import contacts and companies from a CSV spreadsheet, or start with sample data to look around first.</p>
+          </li>
+          <li>
+            <span class="lp-step-num">3</span>
+            <h3>Invite your team</h3>
+            <p>Add your colleagues. Everyone gets every feature, so nobody waits for an upgrade.</p>
+          </li>
+        </ol>
+        <div class="lp-steps-cta lp-reveal">
+          <a class="lp-btn lp-btn-cta lp-btn-lg" href="{{ url_for('auth.signup') }}">Start your free trial</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="lp-body lp-body-tight" aria-labelledby="compare-title">
+      <div class="lp-wrap lp-narrow">
+        <div class="lp-compare lp-reveal">
           <h2 id="compare-title">What you'd pay extra for elsewhere, included</h2>
           <div class="lp-table-wrap">
             <table class="lp-table">
@@ -121,23 +220,35 @@
             </table>
           </div>
           <p class="lp-footnote">Based on the published starter plans of popular CRMs, October 2026.</p>
-        </section>
+        </div>
       </div>
     </section>
 
     <section class="lp-cta" id="pricing" aria-labelledby="cta-title">
       <div class="lp-wrap lp-cta-grid lp-reveal">
         <div class="lp-cta-copy">
+          <p class="lp-kicker lp-kicker-light">Pricing</p>
           <h2 id="cta-title">Set up your business in two minutes.</h2>
           <p>Start with sample data to look around, or import your contacts from a spreadsheet. {{ price }} per user a month{{ ' plus VAT' if vat }} after your {{ trial_days }}-day trial, with every feature included.</p>
+          <ul class="lp-trust">
+            <li>{{ icon('check') }} Cancel at any time from Settings</li>
+            <li>{{ icon('download') }} Export your records as CSV whenever you like</li>
+            <li>{{ icon('shield') }} UK GDPR tools and a data processing agreement</li>
+          </ul>
           <div class="lp-actions">
             <a class="lp-btn lp-btn-light lp-btn-lg" href="{{ url_for('start_demo') }}">Try the demo</a>
             {% if demo_url %}<a class="lp-btn lp-btn-light lp-btn-lg" href="{{ demo_url }}">Book a demo</a>{% endif %}
           </div>
         </div>
-        <div class="lp-price">
+        <div class="lp-price" data-lp-price data-seat="{{ seat_price }}">
           <p class="lp-price-name">One plan, everything in it</p>
           <p class="lp-price-figure"><b>{{ price }}</b> <span>per user a month{{ ' plus VAT' if vat }}</span></p>
+          {# The calculator needs JavaScript; without it the card still shows the price per user. #}
+          <div class="lp-calc" hidden>
+            <label for="lp-seats">Your team: <output id="lp-seats-out" for="lp-seats">5 people</output></label>
+            <input type="range" id="lp-seats" min="1" max="50" value="5">
+            <p class="lp-calc-total"><b data-lp-total>{{ gbp(seat_price * 5) }}</b> a month{{ ' plus VAT' if vat }}</p>
+          </div>
           <ul>
             {% for item in ['Contacts, deals, quotes and products', 'Help desk with UK service levels', 'VAT invoices and Making Tax Digital',
                             'Email campaigns, web forms and workflows', 'AI assistant, API and Power BI feed'] %}
@@ -146,6 +257,38 @@
           </ul>
           <a class="lp-btn lp-btn-cta lp-btn-lg lp-btn-block" href="{{ url_for('auth.signup') }}">Create your workspace</a>
           <p class="lp-price-note">{{ trial_days }} days free. No card needed.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="lp-body lp-faq-band" id="faq" aria-labelledby="faq-title">
+      <div class="lp-wrap lp-faq-grid">
+        <div class="lp-section-head lp-faq-head lp-reveal">
+          <p class="lp-kicker">Questions</p>
+          <h2 id="faq-title">Good to know before you start</h2>
+          <p>Something else on your mind?{% if company.email %} Email <a href="mailto:{{ company.email }}">{{ company.email }}</a>.{% else %} <a href="{{ url_for('start_demo') }}">Try the demo</a> and look around.{% endif %}</p>
+        </div>
+        <div class="lp-faq lp-reveal">
+          {% for q, a in [
+            ('Do I need a card to start the trial?',
+             'No. You get ' ~ trial_days ~ ' days free with every feature. After that it is ' ~ price ~ ' per user a month' ~ (' plus VAT' if vat else '') ~ ', paid monthly in advance through Stripe.'),
+            ("What happens if my trial ends and I don't subscribe?",
+             'Your workspace becomes read-only. Your team can still see and export everything, and you can pick up where you left off by subscribing.'),
+            ('Can I cancel at any time?',
+             "Yes, from Settings, then Billing. Your subscription runs to the end of the month you've paid for."),
+            ('Can I bring my data in, and take it out again?',
+             'Import contacts, companies and more from a CSV spreadsheet, up to 5,000 rows at a time. You can export your records as CSV at any time, or read them through the API.'),
+            ('Where is my data stored?',
+             'CAE CRM and its database run on a server in Germany, and encrypted nightly backups are kept in the Netherlands. UK adequacy regulations cover both. The privacy notice lists every provider we use.'),
+            ('Does it handle VAT and Making Tax Digital?',
+             'Yes. Invoices show VAT the way HMRC expects, and you can send your nine-box VAT return to HMRC through Making Tax Digital from inside the app.'),
+            ('Is every feature really included?',
+             'Yes. There is one plan, and everyone on your team gets all of it: the help desk, invoicing, campaigns, workflows, the AI assistant and the API.')] %}
+            <details class="lp-q" name="faq"{{ ' open' if loop.first }}>
+              <summary>{{ q }}<span class="lp-q-icon" aria-hidden="true">{{ icon('plus') }}</span></summary>
+              <p>{{ a }}{% if loop.index == 5 %} <a href="{{ url_for('legal', doc='privacy') }}">Read the privacy notice</a>.{% endif %}</p>
+            </details>
+          {% endfor %}
         </div>
       </div>
     </section>

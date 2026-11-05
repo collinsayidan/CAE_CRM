@@ -7,7 +7,7 @@
 {% block page %}
 <nav class="crumbs" aria-label="Breadcrumb"><a href="{{ url_for('tickets') }}">Tickets</a> <span aria-hidden="true">/</span> <span>#{{ t.id }}</span></nav>
 <div class="record">
-  <aside class="record-left">
+  <aside class="record-left" aria-label="Record details">
     <section class="panel record-card">
       <span class="deal-badge ticket">{{ icon('lifebuoy') }}</span>
       <h1>{{ t.subject }}</h1>

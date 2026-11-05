@@ -7,7 +7,7 @@
 {% block page %}
 <nav class="crumbs" aria-label="Breadcrumb"><a href="{{ url_for('pipeline') }}">Deals</a> <span aria-hidden="true">/</span> <span>{{ d.title }}</span></nav>
 <div class="record">
-  <aside class="record-left">
+  <aside class="record-left" aria-label="Record details">
     <section class="panel record-card">
       <span class="deal-badge {{ 'won' if d.stage == 'Won' else 'lost' if d.stage == 'Lost' else '' }}">{{ icon('pipeline') }}</span>
       <h1>{{ d.title }}</h1>
@@ -92,7 +92,7 @@
       {% if lines %}
         <div class="table-wrap">
           <table class="lines">
-            <thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Discount</th><th class="num">VAT</th><th class="num">Net</th><th></th></tr></thead>
+            <thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Discount</th><th class="num">VAT</th><th class="num">Net</th><th><span class="sr-only">Actions</span></th></tr></thead>
             <tbody>
               {% for li in lines %}
                 <tr>

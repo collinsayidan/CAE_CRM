@@ -14,7 +14,8 @@
   </script>
 </head>
 <body {% if lock_after %}data-lock-after="{{ lock_after }}" data-lock-warn="{{ lock_warn }}" data-lock-name="{{ current_user.name }}" data-lock-email="{{ current_user.email }}"{% endif %} {% if team_names %}data-team='{{ team_names | tojson | forceescape }}'{% endif %}>
-  <aside class="sidebar" id="sidebar">
+  <a class="skip-link" href="#content">Skip to main content</a>
+  <aside class="sidebar" id="sidebar" aria-label="Sidebar">
     <a class="brand" href="{{ url_for('overview') }}">
       <img class="mark" src="{{ url_for('static', filename='brand/icon.svg') }}" alt="" width="32" height="32">
       <span class="brand-text"><span class="brand-name">CAE CRM</span><span class="brand-ws" title="Your workspace">{{ workspace.name }}</span></span>
@@ -34,7 +35,7 @@
     </nav>
     <div class="sidebar-foot">
       {% set in_settings = settings_active in (settings_tabs | map(attribute=0) | list) or request.endpoint == 'workspace_settings' %}
-      <nav class="admin-links" aria-label="Settings">
+      <nav class="admin-links" aria-label="Admin">
         <a href="{{ url_for('workspace_settings') }}" {% if in_settings %}aria-current="page"{% endif %}>{{ icon('cog') }}<span>Settings</span></a>
       </nav>
       <a class="me" href="{{ url_for('auth.member', user_id=current_user.id) }}" title="Your profile">
@@ -117,9 +118,9 @@
         <form method="post" action="{{ url_for('auth.resend_verification') }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="text-link sm">Send a new link</button></form>
       </div>
     {% endif %}
-    <main id="content">
+    <main id="content" tabindex="-1">
       {% if settings_active in (settings_tabs | map(attribute=0) | list) %}
-        <nav class="settings-tabs" aria-label="Settings">
+        <nav class="settings-tabs" aria-label="Settings sections">
           <a href="{{ url_for('workspace_settings') }}">{{ icon('cog') }}<span>Settings</span></a>
           {% for endpoint, label, _ in settings_tabs %}
             <a href="{{ url_for(endpoint) }}" {% if settings_active == endpoint %}aria-current="page"{% endif %}>{{ label }}</a>

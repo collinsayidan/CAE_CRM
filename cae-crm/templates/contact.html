@@ -9,7 +9,7 @@
 {% block page %}
 <nav class="crumbs" aria-label="Breadcrumb"><a href="{{ url_for('contacts') }}">Contacts</a> <span aria-hidden="true">/</span> <span>{{ name }}</span></nav>
 <div class="record">
-  <aside class="record-left">
+  <aside class="record-left" aria-label="Record details">
     <section class="panel record-card">
       {{ avatar(name, 'xl') }}
       <h1>{{ name }}</h1>

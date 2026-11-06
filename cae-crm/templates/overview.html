@@ -37,7 +37,7 @@
 </section>
 {% endif %}
 {% set ahead = track.gap >= 0 %}
-<section class="track" aria-label="{{ track.month }} revenue against target"
+<section class="track {{ 'is-ahead' if ahead else 'is-behind' }}" aria-label="{{ track.month }} revenue against target"
          style="--won: {{ '%.2f' | format(track.won_pct) }}%; --expected: {{ '%.2f' | format(track.expected_pct) }}%">
   <div class="track-head">
     <div>
@@ -48,7 +48,7 @@
       </p>
     </div>
     <div class="track-verdict {{ 'ahead' if ahead else 'behind' }}">
-      <p class="verdict-main">{{ (track.gap | abs) | money }} {{ 'ahead of' if ahead else 'behind' }} pace</p>
+      <p class="verdict-main">{{ icon('trend' if ahead else 'alert') }}{{ (track.gap | abs) | money }} {{ 'ahead of' if ahead else 'behind' }} pace</p>
       {% if track.left %}
         <p>Win {{ track.per_day | money }} each working day to hit target. {{ track.left }} working days left.</p>
       {% else %}
@@ -67,6 +67,10 @@
     <span>{{ track.days[0].strftime('%a ') ~ (track.days[0] | uk_date_short) }}</span>
     <span>{{ track.elapsed }} of {{ track.days | length }} working days gone</span>
     <span>{{ track.days[-1].strftime('%a ') ~ (track.days[-1] | uk_date_short) }}</span>
+  </div>
+  <div class="track-key">
+    <span><i class="key-won"></i>Won so far: {{ 'on or ahead of pace' if ahead else 'behind pace' }}</span>
+    <span><i class="key-pace"></i>Where an even pace would be today</span>
   </div>
 </section>
 
@@ -111,16 +115,35 @@
         <h2>Revenue won</h2>
         <p class="panel-note" data-chart-summary></p>
       </div>
-      <div class="segmented" role="group" aria-label="Range">
-        <button type="button" data-range="6">6 months</button>
-        <button type="button" data-range="12" aria-pressed="true">12 months</button>
+      <div class="chart-controls">
+        <div class="segmented" role="group" aria-label="Chart type">
+          {% for value, text in (('bars', 'Bars'), ('line', 'Line'), ('running', 'Running total')) %}
+            <button type="button" data-chart-view="{{ value }}" aria-pressed="{{ 'true' if views.revenue == value else 'false' }}">{{ text }}</button>
+          {% endfor %}
+        </div>
+        <div class="segmented" role="group" aria-label="Range" data-range-group {% if views.revenue == 'running' %}hidden{% endif %}>
+          <button type="button" data-range="6">6 months</button>
+          <button type="button" data-range="12" aria-pressed="true">12 months</button>
+        </div>
       </div>
     </header>
-    <div class="chart" id="revenue-chart" aria-label="Revenue won each month against the monthly target"></div>
-    <div class="chart-legend">
+    <div class="chart" id="revenue-chart" data-view="{{ views.revenue }}" aria-label="Revenue won against target"></div>
+    <div class="chart-legend" data-legend="bars" {% if views.revenue != 'bars' %}hidden{% endif %}>
       <span><i class="key-hit"></i>Met target</span>
       <span><i class="key-miss"></i>Below target</span>
       <span><i class="key-target"></i>Monthly target, {{ (track.target) | money_short }}</span>
+    </div>
+    <div class="chart-legend" data-legend="line" {% if views.revenue != 'line' %}hidden{% endif %}>
+      <span><i class="key-line"></i>Won each month</span>
+      <span><i class="key-dot hit"></i>Met target</span>
+      <span><i class="key-dot"></i>Below target</span>
+      <span><i class="key-target"></i>Monthly target, {{ (track.target) | money_short }}</span>
+    </div>
+    <div class="chart-legend" data-legend="running" {% if views.revenue != 'running' %}hidden{% endif %}>
+      <span><i class="key-line"></i>Won so far</span>
+      <span><i class="key-projected"></i>At today's pace</span>
+      <span><i class="key-even"></i>Even pace to target</span>
+      <span><i class="key-target"></i>Target, {{ (track.target) | money_short }}</span>
     </div>
     <script type="application/json" id="revenue-data">{{ series_json | safe }}</script>
   </section>
@@ -175,11 +198,30 @@
   </section>
 
   <section class="panel">
-    <header class="panel-head"><h2>Pipeline by stage</h2></header>
-    <div class="mix">
+    <header class="panel-head">
+      <h2>Pipeline by stage</h2>
+      <div class="segmented" role="group" aria-label="Chart type">
+        {% for value, text in (('bar', 'Bar'), ('donut', 'Donut'), ('funnel', 'Funnel')) %}
+          <button type="button" data-pipeline-view="{{ value }}" aria-pressed="{{ 'true' if views.pipeline == value else 'false' }}">{{ text }}</button>
+        {% endfor %}
+      </div>
+    </header>
+    <div class="mix" data-mix-view="{{ views.pipeline }}">
       <p class="mix-total"><b>{{ pipeline_value | money }}</b><span>across {{ open_count }} open deals</span></p>
-      {{ mix_bar }}
-      <ul class="stage-bars">
+      <div data-pipeline-panel="bar" {% if views.pipeline != 'bar' %}hidden{% endif %}>{{ mix_bar }}</div>
+      <div class="donut-wrap" data-pipeline-panel="donut" {% if views.pipeline != 'donut' %}hidden{% endif %}>{{ mix_donut }}</div>
+      {% set biggest = (mix | map(attribute='total') | max) or 1 %}
+      <ol class="funnel" data-pipeline-panel="funnel" aria-label="Open pipeline value by stage, earliest stage first" {% if views.pipeline != 'funnel' %}hidden{% endif %}>
+        {% for m in mix %}
+          <li>
+            <span class="fn-name">{{ m.stage }}</span>
+            <span class="fn-track"><i style="width: {{ [m.total / biggest * 100, 1.5] | max }}%; background: {{ stage_colours[m.stage] }}"></i></span>
+            <span class="fn-value">{{ m.total | money_short }}</span>
+            <span class="fn-n" title="Deals">{{ m.n }}</span>
+          </li>
+        {% endfor %}
+      </ol>
+      <ul class="stage-bars" data-pipeline-key {% if views.pipeline == 'funnel' %}hidden{% endif %}>
         {% for m in mix %}
           <li>
             <i class="sb-swatch" style="background: {{ stage_colours[m.stage] }}"></i>

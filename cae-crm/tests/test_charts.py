@@ -1,3 +1,5 @@
+import re
+
 import charts
 
 
@@ -22,7 +24,8 @@ def test_sparkline_is_a_single_line():
 
 def test_home_shows_pipeline_as_a_bar(client):
     page = client.get("/").get_data(as_text=True)
-    assert 'class="stack-bar"' in page and "donut" not in page
+    # The bar is the default; the donut and funnel are choices (tests/test_home_charts.py).
+    assert 'class="stack-bar"' in page and re.search(r'data-pipeline-panel="donut"\s+hidden', page)
     assert "% of quarterly quota" in page
 
 

@@ -27,3 +27,22 @@ def stacked_bar(segments, label):
             parts.append(f'<i style="flex: {float(value) / total:.4f}; background: {colour}" title="{escape(title)}"></i>')
     parts.append("</div>")
     return Markup("".join(parts))
+
+
+def donut(segments, figure, caption, label):
+    """A ring split by share. segments: list of (value, css colour). The centre names the whole: a figure and a caption."""
+    total = sum(float(v) for v, _ in segments)
+    parts = [f'<svg class="donut" viewBox="0 0 42 42" role="img" aria-label="{escape(label)}">',
+             '<circle class="donut-track" cx="21" cy="21" r="15.915"/>']
+    start = 0.0
+    shown = [(float(v), c) for v, c in segments if float(v) > 0]
+    gap = 0.8 if len(shown) > 1 else 0
+    for value, colour in shown:
+        share = value / total * 100
+        length = max(share - gap, 0.4)
+        parts.append(f'<circle class="donut-seg" cx="21" cy="21" r="15.915" style="stroke: {colour}" '
+                     f'stroke-dasharray="{length:.3f} {100 - length:.3f}" stroke-dashoffset="{25 - start:.3f}"/>')
+        start += share
+    parts.append(f'<text class="donut-figure" x="21" y="21.4" text-anchor="middle">{escape(figure)}</text>'
+                 f'<text class="donut-caption" x="21" y="26" text-anchor="middle">{escape(caption)}</text></svg>')
+    return Markup("".join(parts))

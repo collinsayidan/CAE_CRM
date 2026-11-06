@@ -127,7 +127,8 @@ CREATE TABLE IF NOT EXISTS users (
     invited_by TEXT,
     invite_accepted_at TEXT,
     summary_off INTEGER NOT NULL DEFAULT 0,
-    summary_sent_on TEXT
+    summary_sent_on TEXT,
+    chart_prefs TEXT
 );
 CREATE TABLE IF NOT EXISTS companies (
     id {pk},
@@ -820,7 +821,7 @@ ADDED_COLUMNS = {
               "linkedin TEXT", "bio TEXT", "photo TEXT", "photo_updated TEXT", "totp_secret TEXT", "totp_enabled_at TEXT",
               "totp_last_step INTEGER", "recovery_codes TEXT", "email_verified_at TEXT", "verify_sent_at TEXT",
               "invited_at TEXT", "invited_by TEXT", "invite_accepted_at TEXT", "summary_off INTEGER NOT NULL DEFAULT 0",
-              "summary_sent_on TEXT"],
+              "summary_sent_on TEXT", "chart_prefs TEXT"],
     "companies": ["workspace_id INTEGER", "website TEXT", "phone TEXT", "owner TEXT", "custom TEXT", "ch_status TEXT",
                   "ch_sic TEXT", "ch_checked_at TEXT"],
     "contacts": ["workspace_id INTEGER", "lifecycle_stage TEXT", "lead_status TEXT", "owner TEXT", "unsubscribed_at TEXT",

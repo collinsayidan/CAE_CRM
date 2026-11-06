@@ -247,91 +247,141 @@
     }
   }
 
+  /* Home chart choices ---------------------------------------------------- */
+  // Remembered on the person's account, so the choice follows them to other devices.
+  const saveView = (chart, view) => fetch("/home/chart-view", {
+    method: "POST", body: new URLSearchParams({ csrf, chart, view }),
+    headers: { "X-Requested-With": "fetch", "X-CSRF-Token": csrf },
+  }).catch(() => {});
+
   /* Revenue chart -------------------------------------------------------- */
   const chartEl = $("#revenue-chart");
   const chartData = $("#revenue-data");
   if (chartEl && chartData) {
-    const { series, target } = JSON.parse(chartData.textContent);
+    const { series, target, running } = JSON.parse(chartData.textContent);
     const summary = $("[data-chart-summary]");
     const NS = "http://www.w3.org/2000/svg";
     let range = 12;
+    let view = chartEl.dataset.view || "bars";
 
     const el = (name, attrs) => {
       const node = document.createElementNS(NS, name);
       for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
       return node;
     };
+    const money = v => v === 0 ? "£0" : v >= 1e6 ? `£${+(v / 1e6).toFixed(1)}M` : `£${+(v / 1000).toFixed(1)}K`;
+    // A round gridline step giving four or five lines.
+    const niceStep = max => {
+      const raw = max / 4, mag = 10 ** Math.floor(Math.log10(raw || 1));
+      return [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw) || mag * 10;
+    };
 
-    function draw() {
-      const data = series.slice(-range);
+    function frame(peak) {
       const W = chartEl.clientWidth || 800, H = chartEl.clientHeight || 290;
       const pad = { l: 52, r: 12, t: 18, b: 30 };
-      const step = 50000;
-      const yMax = Math.max(step, Math.ceil(Math.max(target, ...data.map(d => d.value)) * 1.12 / step) * step);
+      const step = niceStep(peak * 1.12);
+      const yMax = Math.max(step, Math.ceil(peak * 1.12 / step) * step);
       const y = v => pad.t + (H - pad.t - pad.b) * (1 - v / yMax);
-      const slot = (W - pad.l - pad.r) / data.length;
-      const barW = Math.min(46, slot * 0.58);
-      const cx = i => pad.l + slot * (i + 0.5);
-
-      const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Monthly won revenue against target" });
-      // Hatching marks the current month, which is still in progress.
-      const defs = el("defs", {});
-      const hatch = el("pattern", { id: "partial-hatch", width: 6, height: 6, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" });
-      hatch.append(el("rect", { width: 6, height: 6, fill: "var(--surface-2)" }), el("line", { x1: 0, y1: 0, x2: 0, y2: 6, stroke: "var(--muted)", "stroke-width": 1.5, opacity: 0.45 }));
-      defs.append(hatch);
-      svg.append(defs);
-
-      for (let v = 0; v <= yMax; v += step) {
+      const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": chartEl.getAttribute("aria-label") });
+      for (let v = 0; v <= yMax + 1e-6; v += step) {
         svg.append(el("line", { class: "grid", x1: pad.l, x2: W - pad.r, y1: y(v), y2: y(v) }));
         const t = el("text", { class: "axis", x: pad.l - 10, y: y(v) + 4, "text-anchor": "end" });
-        t.textContent = v === 0 ? "£0" : `£${v / 1000}K`;
+        t.textContent = money(v);
         svg.append(t);
       }
+      return { W, H, pad, y, svg };
+    }
 
-      const bars = data.map((d, i) => {
-        const x0 = cx(i) - barW / 2, top = y(d.value), base = y(0);
-        const h = Math.max(0, base - top), r = Math.min(1.5, barW / 2, h);
-        // Square bars, the top corners only just softened.
-        const path = h > 0
-          ? `M${x0},${base} V${top + r} Q${x0},${top} ${x0 + r},${top} H${x0 + barW - r} Q${x0 + barW},${top} ${x0 + barW},${top + r} V${base} Z`
-          : `M${x0},${base} H${x0 + barW}`;
-        const bar = el("path", { class: `bar${d.value >= target ? " hit" : ""}${d.partial ? " partial" : ""}`, d: path });
-        svg.append(bar);
-        const label = el("text", { class: "axis", x: cx(i), y: H - 8, "text-anchor": "middle" });
-        label.textContent = d.label;
-        if (range <= 6 || slot > 44 || i % 2 === (data.length - 1) % 2) svg.append(label);
-        return bar;
-      });
-
-      svg.append(el("line", { class: "baseline", x1: pad.l, x2: W - pad.r, y1: y(0), y2: y(0) }));
+    function targetLine({ svg, W, pad, y }, label) {
       svg.append(el("line", { class: "target", x1: pad.l, x2: W - pad.r, y1: y(target), y2: y(target) }));
       const tl = el("text", { class: "target-label", x: W - pad.r, y: y(target) - 7, "text-anchor": "end" });
-      tl.textContent = `Target ${gbp.format(target)}`;
+      tl.textContent = label;
       svg.append(tl);
+    }
 
+    function mount(svg, onMove, onLeave) {
       const tip = document.createElement("div");
       tip.className = "chart-tip";
       chartEl.replaceChildren(svg, tip);
-
       chartEl.onpointermove = e => {
         const box = chartEl.getBoundingClientRect();
-        const px = (e.clientX - box.left) * (W / box.width);
-        const i = Math.max(0, Math.min(data.length - 1, Math.floor((px - pad.l) / slot)));
-        const d = data[i];
-        bars.forEach((bar, j) => bar.classList.toggle("active", j === i));
-        const diff = d.value - target;
-        tip.innerHTML = `<span></span><b></b><span></span>`;
-        tip.children[0].textContent = d.full + (d.partial ? " so far" : "");
-        tip.children[1].textContent = gbp.format(d.value);
-        tip.children[2].textContent = d.partial ? "Month in progress" : `${gbp.format(Math.abs(diff))} ${diff >= 0 ? "over" : "under"} target`;
-        tip.style.left = `${cx(i) / W * 100}%`;
-        tip.style.top = `${Math.min(y(d.value), y(target)) / H * 100}%`;
+        onMove((e.clientX - box.left) * ((chartEl.clientWidth || 800) / box.width), tip);
         chartEl.classList.add("hovering");
       };
-      chartEl.onpointerleave = () => {
-        chartEl.classList.remove("hovering");
-        bars.forEach(bar => bar.classList.remove("active"));
-      };
+      chartEl.onpointerleave = () => { chartEl.classList.remove("hovering"); onLeave(); };
+    }
+
+    function setTip(tip, lines, left, top) {
+      tip.replaceChildren(...lines.map((text, i) => {
+        const node = document.createElement(i === 1 ? "b" : "span");
+        node.textContent = text;
+        return node;
+      }));
+      tip.style.left = `${left}%`;
+      tip.style.top = `${top}%`;
+    }
+
+    function monthly(asLine) {
+      const data = series.slice(-range);
+      const f = frame(Math.max(target, ...data.map(d => d.value)));
+      const { svg, W, H, pad, y } = f;
+      const slot = (W - pad.l - pad.r) / data.length;
+      const cx = i => pad.l + slot * (i + 0.5);
+      const marks = [];
+
+      if (asLine) {
+        const pt = (d, i) => `${cx(i)},${y(d.value)}`;
+        const done = data.filter(d => !d.partial);
+        if (done.length) {
+          svg.append(el("path", { class: "area", d: `M${cx(0)},${y(0)} L${done.map(pt).join(" L")} L${cx(done.length - 1)},${y(0)} Z` }));
+          svg.append(el("path", { class: "line", d: `M${done.map(pt).join(" L")}` }));
+        }
+        const last = data.length - 1;
+        if (data[last].partial && last > 0) {
+          svg.append(el("path", { class: "line partial", d: `M${pt(data[last - 1], last - 1)} L${pt(data[last], last)}` }));
+        }
+        data.forEach((d, i) => {
+          const dot = el("circle", { class: `dot${d.value >= target ? " hit" : ""}${d.partial ? " partial" : ""}`, cx: cx(i), cy: y(d.value), r: 4.5 });
+          svg.append(dot);
+          marks.push(dot);
+        });
+      } else {
+        // Hatching marks the current month, which is still in progress.
+        const defs = el("defs", {});
+        const hatch = el("pattern", { id: "partial-hatch", width: 6, height: 6, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" });
+        hatch.append(el("rect", { width: 6, height: 6, class: "hatch-bg" }), el("line", { x1: 0, y1: 0, x2: 0, y2: 6, class: "hatch-line" }));
+        defs.append(hatch);
+        svg.append(defs);
+        const barW = Math.min(46, slot * 0.58);
+        data.forEach((d, i) => {
+          const x0 = cx(i) - barW / 2, top = y(d.value), base = y(0);
+          const h = Math.max(0, base - top), r = Math.min(1.5, barW / 2, h);
+          // Square bars, the top corners only just softened.
+          const path = h > 0
+            ? `M${x0},${base} V${top + r} Q${x0},${top} ${x0 + r},${top} H${x0 + barW - r} Q${x0 + barW},${top} ${x0 + barW},${top + r} V${base} Z`
+            : `M${x0},${base} H${x0 + barW}`;
+          const bar = el("path", { class: `bar${d.value >= target ? " hit" : ""}${d.partial ? " partial" : ""}`, d: path });
+          svg.append(bar);
+          marks.push(bar);
+        });
+      }
+      data.forEach((d, i) => {
+        if (!(range <= 6 || slot > 44 || i % 2 === (data.length - 1) % 2)) return;
+        const label = el("text", { class: "axis", x: cx(i), y: H - 8, "text-anchor": "middle" });
+        label.textContent = d.label;
+        svg.append(label);
+      });
+      svg.append(el("line", { class: "baseline", x1: pad.l, x2: W - pad.r, y1: y(0), y2: y(0) }));
+      targetLine(f, `Target ${gbp.format(target)}`);
+
+      mount(svg, (px, tip) => {
+        const i = Math.max(0, Math.min(data.length - 1, Math.floor((px - pad.l) / slot)));
+        const d = data[i], diff = d.value - target;
+        marks.forEach((m, j) => m.classList.toggle("active", j === i));
+        setTip(tip, [d.full + (d.partial ? " so far" : ""), gbp.format(d.value),
+          d.partial ? "Month in progress" : `${gbp.format(Math.abs(diff))} ${diff >= 0 ? "over" : "under"} target`],
+          cx(i) / W * 100, Math.min(y(d.value), y(target)) / H * 100);
+      }, () => marks.forEach(m => m.classList.remove("active")));
 
       const total = data.reduce((s, d) => s + d.value, 0);
       const complete = data.filter(d => !d.partial);
@@ -339,12 +389,93 @@
       summary.textContent = `${gbp.format(total)} won in ${range} months. Target met in ${hits} of ${complete.length} complete months.`;
     }
 
+    function runningTotal() {
+      const days = running.days;
+      const peak = Math.max(target, running.projected || 0, ...days.map(d => d.won || 0));
+      const f = frame(peak);
+      const { svg, W, H, pad, y } = f;
+      const x = i => pad.l + (W - pad.l - pad.r) * (days.length > 1 ? i / (days.length - 1) : 0.5);
+      const path = key => days.map((d, i) => d[key] == null ? null : `${x(i)},${y(d[key])}`).filter(Boolean);
+
+      svg.append(el("path", { class: "even", d: `M${path("pace").join(" L")}` }));
+      const won = path("won");
+      if (won.length) {
+        const lastWon = days.map(d => d.won != null).lastIndexOf(true);
+        svg.append(el("path", { class: "area", d: `M${x(0)},${y(0)} L${won.join(" L")} L${x(lastWon)},${y(0)} Z` }));
+        svg.append(el("path", { class: "line", d: `M${won.join(" L")}` }));
+      }
+      const projected = path("projected");
+      if (projected.length > 1) {
+        svg.append(el("path", { class: "projected", d: `M${projected.join(" L")}` }));
+        const end = days.length - 1;
+        svg.append(el("circle", { class: "dot projected-end", cx: x(end), cy: y(days[end].projected), r: 4 }));
+      }
+      days.forEach((d, i) => {
+        if (!(i === 0 || (i + 1) % 5 === 0 || i === days.length - 1)) return;
+        const label = el("text", { class: "axis", x: x(i), y: H - 8, "text-anchor": i === 0 ? "start" : i === days.length - 1 ? "end" : "middle" });
+        label.textContent = d.label;
+        svg.append(label);
+      });
+      svg.append(el("line", { class: "baseline", x1: pad.l, x2: W - pad.r, y1: y(0), y2: y(0) }));
+      targetLine(f, `Target ${gbp.format(target)}`);
+      const guide = el("line", { class: "guide", x1: 0, x2: 0, y1: pad.t, y2: y(0) });
+      const marker = el("circle", { class: "dot hover-dot", r: 4.5, cx: -10, cy: -10 });
+      svg.append(guide, marker);
+
+      mount(svg, (px, tip) => {
+        const step = (W - pad.l - pad.r) / Math.max(1, days.length - 1);
+        const i = Math.max(0, Math.min(days.length - 1, Math.round((px - pad.l) / step)));
+        const d = days[i];
+        const value = d.won != null ? d.won : d.projected;
+        guide.setAttribute("x1", x(i));
+        guide.setAttribute("x2", x(i));
+        if (value != null) { marker.setAttribute("cx", x(i)); marker.setAttribute("cy", y(value)); }
+        const lines = d.won != null
+          ? [`${d.full}: won so far`, gbp.format(d.won), `Even pace: ${gbp.format(d.pace)}`]
+          : d.projected != null
+            ? [`${d.full}: at today's pace`, gbp.format(d.projected), `Even pace: ${gbp.format(d.pace)}`]
+            : [d.full, gbp.format(d.pace), "Even pace to target"];
+        setTip(tip, lines, x(i) / W * 100, Math.min(y(value ?? d.pace), y(target)) / H * 100);
+      }, () => { marker.setAttribute("cx", -10); guide.setAttribute("x1", -10); guide.setAttribute("x2", -10); });
+
+      summary.textContent = running.projected == null
+        ? `${gbp.format(running.won)} won so far in ${running.month}. Too early in the month to project.`
+        : `${gbp.format(running.won)} won so far in ${running.month}. At today's pace you'll reach ${gbp.format(running.projected)}, ${running.projected >= target ? "over" : "short of"} the ${gbp.format(target)} target.`;
+    }
+
+    function draw() {
+      if (view === "running") runningTotal();
+      else monthly(view === "line");
+    }
+
     $$("[data-range]").forEach(b => b.addEventListener("click", () => {
       range = Number(b.dataset.range);
       $$("[data-range]").forEach(o => o.setAttribute("aria-pressed", o === b));
       draw();
     }));
+    $$("[data-chart-view]").forEach(b => b.addEventListener("click", () => {
+      view = b.dataset.chartView;
+      chartEl.dataset.view = view;
+      $$("[data-chart-view]").forEach(o => o.setAttribute("aria-pressed", o === b));
+      $$("[data-legend]").forEach(l => { l.hidden = l.dataset.legend !== view; });
+      $("[data-range-group]").hidden = view === "running";
+      draw();
+      saveView("revenue", view);
+    }));
     new ResizeObserver(() => draw()).observe(chartEl);
+  }
+
+  /* Pipeline by stage: bar, donut or funnel ---------------------------- */
+  const mixEl = $("[data-mix-view]");
+  if (mixEl) {
+    $$("[data-pipeline-view]").forEach(b => b.addEventListener("click", () => {
+      const view = b.dataset.pipelineView;
+      mixEl.dataset.mixView = view;
+      $$("[data-pipeline-view]").forEach(o => o.setAttribute("aria-pressed", o === b));
+      $$("[data-pipeline-panel]", mixEl).forEach(p => { p.hidden = p.dataset.pipelinePanel !== view; });
+      $("[data-pipeline-key]", mixEl).hidden = view === "funnel";
+      saveView("pipeline", view);
+    }));
   }
 
   /* Pipeline drag and drop ---------------------------------------------- */

@@ -30,6 +30,45 @@ def quick_create_choices():
                 billing_periods=BILLING_PERIODS, stage_colours=STAGE_COLOURS)
 
 
+# The ways each home chart can be shown. The first is the default.
+CHART_VIEWS = {"revenue": ("bars", "line", "running"), "pipeline": ("bar", "donut", "funnel")}
+
+
+def chart_views(user):
+    """This person's chosen view for each home chart, falling back to the default."""
+    try:
+        saved = json.loads(scalar("SELECT chart_prefs FROM users WHERE id=?", user["id"]) or "{}")
+    except (ValueError, TypeError):
+        saved = {}
+    return {chart: saved.get(chart) if saved.get(chart) in views else views[0] for chart, views in CHART_VIEWS.items()}
+
+
+def running_total(this_month, next_month, t, workdays, target):
+    """This month day by day: won so far, an even pace to target (by working days), and where today's pace ends up."""
+    won_on = {r[0]: plain(r[1]) or 0 for r in rows(
+        "SELECT substr(closed_at,1,10), SUM(value) FROM deals WHERE workspace_id=? AND stage='Won' AND closed_at >= ? "
+        "AND closed_at < ? GROUP BY 1", ws(), this_month.isoformat(), next_month.isoformat())}
+    total_days = len(workdays) or 1
+    done = sum(1 for d in workdays if d <= t)
+    won_now = sum(v for k, v in won_on.items() if k <= t.isoformat())
+    rate = won_now / done if done else None
+    points, cumulative, d = [], 0, this_month
+    while d < next_month:
+        cumulative += won_on.get(d.isoformat(), 0)
+        worked = sum(1 for w in workdays if w <= d)
+        point = {"label": str(d.day), "full": d.strftime("%a ") + ukfmt.uk_date_short(d),
+                 "pace": target * worked / total_days / 100, "won": None, "projected": None}
+        if d <= t:
+            point["won"] = cumulative / 100
+        if rate is not None and d >= t:
+            point["projected"] = (won_now + rate * (worked - done)) / 100
+        points.append(point)
+        d += timedelta(days=1)
+    projected = points[-1]["projected"]
+    return {"days": points, "target": target / 100, "month": this_month.strftime("%B"), "won": won_now / 100,
+            "projected": projected}
+
+
 def won_between(start, end):
     return scalar("SELECT SUM(value) FROM deals WHERE workspace_id=? AND stage='Won' AND closed_at >= ? AND closed_at < ?",
                   ws(), start.isoformat(), end.isoformat())
@@ -82,6 +121,7 @@ def register(app):
             "GROUP BY 1", ws(), months[0].isoformat())}
         series = [{"label": m.strftime("%b"), "full": m.strftime("%B %Y"),
                    "value": by_month.get(m.strftime("%Y-%m"), 0) / 100, "partial": m == this_month} for m in months]
+        running = running_total(this_month, next_month, t, days, target)
 
         pipeline_value = scalar(f"SELECT SUM(value) FROM deals WHERE workspace_id=? AND {OPEN_SQL}", ws())
         open_count = scalar(f"SELECT COUNT(*) FROM deals WHERE workspace_id=? AND {OPEN_SQL}", ws())
@@ -138,12 +178,29 @@ def register(app):
             mix_bar=charts.stacked_bar([(m["total"], STAGE_COLOURS[m["stage"]],
                                          f'{m["stage"]}: {money(m["total"])} across {m["n"]} deals') for m in mix],
                                        label="Open pipeline value by stage"),
-            series_json=json.dumps({"series": series, "target": target / 100}),
+            mix_donut=charts.donut([(m["total"], STAGE_COLOURS[m["stage"]]) for m in mix], str(open_count),
+                                   f"open {'deal' if open_count == 1 else 'deals'}",
+                                   label="Open pipeline value by stage, as a ring"),
+            views=chart_views(g.user),
+            series_json=json.dumps({"series": series, "target": target / 100, "running": running}),
             closing_soon=closing_soon, soon_cutoff=(t + timedelta(days=7)).isoformat(), mix=mix,
             quota=quota, quota_won=quota_won, quota_pct=quota_pct,
             fy_label=fy_label, fy_q=q, q_end=q_end - timedelta(days=1), agenda=agenda,
             tickets_open=tickets_open, tickets_breached=tickets_breached,
             empty=not scalar("SELECT COUNT(*) FROM companies WHERE workspace_id=?", ws()))
+
+    @app.post("/home/chart-view")
+    def chart_view():
+        """Remember how this person likes a home chart shown. Only known charts and views are kept."""
+        chart, view = request.form.get("chart"), request.form.get("view")
+        if view not in CHART_VIEWS.get(chart, ()):
+            return jsonify(error="Unknown chart view."), 400
+        views = chart_views(g.user)
+        views[chart] = view
+        db = get_db()
+        db.execute("UPDATE users SET chart_prefs=? WHERE id=?", (json.dumps(views), g.user["id"]))
+        db.commit()
+        return ("", 204) if request.headers.get("X-Requested-With") == "fetch" else redirect(url_for("overview"))
 
     @app.route("/api/search")
     def search():

@@ -1998,3 +1998,62 @@ form.settings > .form-end, form.settings .form-end:last-child { position: sticky
 .kb-article { max-width: 72ch; padding: 24px 28px; font-size: 15.5px; line-height: 1.65; }
 .kb-article p { margin: 0 0 1em; }
 .kb-article ul { margin: 0 0 1em; padding-left: 1.3em; }
+
+/* Home charts: the won panel in deep navy, and chart choices (bars, line, running total; bar, donut, funnel) */
+.track { --track-bg: #13214a; --on-navy: #ffffff; --on-navy-muted: #b9c6e8; --status: #f5a524; --status-ink: #ffc95c;
+  background: var(--track-bg); }
+.track.is-ahead { --status: #3fbf7f; --status-ink: #8ee6b8; }
+:root[data-theme="dark"] .track { --track-bg: #1a2b5e; border: 1px solid rgba(255, 255, 255, .07); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .track { --track-bg: #1a2b5e; border: 1px solid rgba(255, 255, 255, .07); } }
+.track .rail { background: rgba(255, 255, 255, .12); }
+.track .rail-fill { background: var(--status); }
+.track .rail-ticks i { border-right-color: color-mix(in srgb, var(--track-bg) 70%, transparent); }
+.track-verdict.ahead .verdict-main, .track-verdict.behind .verdict-main { color: var(--status-ink); }
+.verdict-main { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+.verdict-main .icon { width: 17px; height: 17px; flex: none; }
+.track-key { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 12.5px; color: var(--on-navy-muted); }
+.track-key span { display: inline-flex; align-items: center; gap: 7px; }
+.key-won { width: 14px; height: 8px; border-radius: 4px; background: var(--status); }
+.key-pace { width: 2px; height: 12px; background: #fff; }
+
+.chart-controls { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.chart .hatch-bg { fill: var(--surface-2); }
+.chart .hatch-line { stroke: var(--muted); stroke-width: 1.5; opacity: .45; }
+.chart .line { fill: none; stroke: var(--chart-line); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.chart .line.partial { stroke-dasharray: 4 4; }
+.chart .area { fill: var(--chart-fill); }
+.chart .dot { fill: var(--surface); stroke: var(--chart-line); stroke-width: 2; transition: r .12s; }
+.chart .dot.hit { fill: var(--chart-hit); stroke: var(--surface); }
+.chart .dot.partial { stroke-dasharray: 2 2; }
+.chart .dot.active { r: 6.5; }
+.chart .projected { fill: none; stroke: var(--chart-line); stroke-width: 2; stroke-dasharray: 6 5; opacity: .75; }
+.chart .projected-end { fill: var(--surface); stroke: var(--chart-line); }
+.chart .even { fill: none; stroke: var(--muted); stroke-width: 1.5; opacity: .6; }
+.chart .guide { stroke: var(--line); stroke-width: 1; }
+.chart .hover-dot { fill: var(--chart-line); stroke: var(--surface); }
+.chart:not(.hovering) .hover-dot, .chart:not(.hovering) .guide { visibility: hidden; }
+.key-line { width: 16px; height: 0; border-top: 2.5px solid var(--chart-line); }
+.key-dot { width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--chart-line); background: var(--surface); }
+.key-dot.hit { background: var(--chart-hit); border-color: var(--chart-hit); }
+.key-projected { width: 16px; border-top: 2px dashed var(--chart-line); }
+.key-even { width: 16px; border-top: 1.5px solid var(--muted); }
+.chart-legend[hidden], [data-range-group][hidden], [data-pipeline-panel][hidden], [data-pipeline-key][hidden] { display: none; }
+
+.donut-wrap { display: grid; place-items: center; }
+.donut { width: min(200px, 100%); height: auto; transform: rotate(0deg); }
+.donut circle { fill: none; stroke-width: 6.5; }
+.donut-track { stroke: var(--surface-2); }
+.donut-figure { fill: var(--ink); font-size: 6.5px; font-weight: 700; font-family: var(--display); }
+.donut-caption { fill: var(--muted); font-size: 3.2px; font-weight: 600; font-family: var(--body); }
+.funnel { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.funnel li { display: grid; grid-template-columns: 82px 1fr auto 28px; gap: 10px; align-items: center; font-size: 13.5px; }
+.fn-name { font-weight: 500; }
+.fn-track { display: flex; justify-content: center; height: 22px; }
+.fn-track i { display: block; height: 100%; border-radius: var(--r-sm); }
+.fn-value { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.fn-n { text-align: right; color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) {
+  .chart-panel .panel-head { flex-wrap: wrap; }
+  .chart-controls { justify-content: flex-start; }
+  .verdict-main { justify-content: flex-start; }
+}

@@ -63,7 +63,7 @@
           </ul>
           {# Opens the launch film in a player on the page; without scripts the link plays the file itself. #}
           <a class="lp-film-link" href="{{ url_for('static', filename='film/cae-crm-launch-60s.mp4') }}" data-lp-film>
-            <span class="lp-film-play">{{ icon('play') }}</span><span>Watch the film</span><span class="lp-film-len">1 min</span>
+            <span class="lp-film-play">{{ icon('play') }}</span><span>Watch CAE CRM in 60 seconds</span>
           </a>
         </div>
 
@@ -315,8 +315,8 @@
     </p>
   </footer>
 
-  <dialog class="lp-film" data-lp-film-dialog aria-label="CAE CRM film, one minute">
-    <button type="button" class="lp-film-close" data-lp-film-close aria-label="Close the film">{{ icon('x') }}</button>
+  <dialog class="lp-film" data-lp-film-dialog aria-label="CAE CRM in 60 seconds">
+    <button type="button" class="lp-film-close" data-lp-film-close aria-label="Close the video">{{ icon('x') }}</button>
     <video controls playsinline preload="none" width="1920" height="1080"
       poster="{{ url_for('static', filename='film/poster.jpg') }}">
       <source src="{{ url_for('static', filename='film/cae-crm-launch-60s.mp4') }}" type="video/mp4">

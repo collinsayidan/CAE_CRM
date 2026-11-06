@@ -303,7 +303,6 @@ html:has(body.lp) { background: var(--canvas); }
 .lp-film-play { display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--primary); color: #fff;
   box-shadow: 0 6px 18px color-mix(in srgb, var(--primary) 35%, transparent); }
 .lp-film-play .icon { width: 18px; height: 18px; fill: currentColor; stroke: none; margin-left: 2px; }
-.lp-film-len { color: var(--lp-muted); font-weight: 600; font-size: 13.5px; }
 .lp-film { width: min(1120px, calc(100vw - 32px)); max-width: none; padding: 0; border: 0; border-radius: 18px; background: #04060c;
   overflow: hidden; box-shadow: 0 40px 120px rgba(0, 0, 0, .55); }
 .lp-film::backdrop { background: rgba(4, 6, 12, .82); backdrop-filter: blur(6px); }

@@ -76,7 +76,7 @@ def test_questions_and_calculator_use_real_settings(app, anon):
 
 def test_launch_film_plays_from_our_own_site_with_captions(anon):
     page = anon.get("/welcome").get_data(as_text=True)
-    assert "Watch the film" in page and 'data-lp-film-dialog' in page
+    assert "Watch CAE CRM in 60 seconds" in page and 'aria-label="CAE CRM in 60 seconds"' in page and 'data-lp-film-dialog' in page
     # Without scripts the link still plays the film: it points at the file itself.
     assert re.search(r'<a class="lp-film-link" href="/static/film/cae-crm-launch-60s\.mp4(\?v=\w+)?"', page)
     assert '<track kind="captions" srclang="en"' in page and 'preload="none"' in page

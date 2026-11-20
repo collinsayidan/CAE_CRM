@@ -96,6 +96,11 @@
 .lp { --lp-glow: var(--canvas); }
 .lp-btn-light { color: #0e2240 !important; }
 .lp-track { background: var(--brand-track); }
+.rail-fill, .lp-rail-fill, .auth-aside-rail span { background: var(--brand-glow); }
+.lp-note .icon, .lp-trust .icon, .auth-aside-points .icon { color: var(--brand-glow); }
+.lp-mark { background: none; }
+.lp-tag-b { background: var(--brand-glow); color: var(--navy-deep); }
+:root .lp .lp-tone-yellow { background: var(--accent-soft); color: var(--primary); }
 .lp-tile { border-top: 3px solid color-mix(in srgb, var(--brand-teal) 55%, var(--line)); }
 .lp-tone-blue { color: var(--primary); background: var(--accent-soft); }
 .lp-workflow-intro { margin: 14px 0 0; color: var(--muted); font-size: 16px; }

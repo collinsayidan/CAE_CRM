@@ -2,17 +2,19 @@
 {% from "_macros.html" import icon, avatar, logo, field, select, stage_chip with context %}
 {% from "_tags.html" import tags_panel with context %}
 {% from "_ai_helpers.html" import ai_helpers with context %}
-{% from "_record.html" import composer, timeline, upcoming_tasks, assoc, prop, custom_props, custom_inputs, files_panel with context %}
+{% from "_record.html" import composer, timeline, upcoming_tasks, assoc, prop, custom_props, custom_inputs, files_panel, business_summary, financial_links with context %}
 {% set name = c.first_name ~ ' ' ~ c.last_name %}
 {% block title %}{{ name }}{% endblock %}
 
 {% block page %}
 <nav class="crumbs" aria-label="Breadcrumb"><a href="{{ url_for('contacts') }}">Contacts</a> <span aria-hidden="true">/</span> <span>{{ name }}</span></nav>
+<header class="record-page-head"><div><h1>{{ name }}</h1><p class="subtitle">Contact relationship</p></div><div class="page-actions"><button type="button" class="btn ghost" data-open="dlg-edit-contact">{{ icon('edit') }} Edit details</button><a class="btn primary" href="#record-composer" data-compose="task">{{ icon('plus') }} Plan a follow-up</a></div></header>
+{{ business_summary(insights, 'contact') }}
 <div class="record">
   <aside class="record-left" aria-label="Record details">
     <section class="panel record-card">
       {{ avatar(name, 'xl') }}
-      <h1>{{ name }}</h1>
+      <p class="identity-title">{{ name }}</p>
       <p class="muted">{{ c.role or 'Contact' }}{% if company %} at <a href="{{ url_for('company', company_id=company.id) }}">{{ company.name }}</a>{% endif %}</p>
       <p class="record-chips"><span class="chip lifecycle-{{ c.lifecycle_stage | slug }}">{{ c.lifecycle_stage or 'Lead' }}</span>
         {% if c.lead_status %}<span class="chip">{{ c.lead_status }}</span>{% endif %}</p>
@@ -60,13 +62,13 @@
   </aside>
 
   <section class="record-mid">
-    {{ composer(record, call_outcomes, owners) }}
     {{ upcoming_tasks(upcoming) }}
+    {{ composer(record, call_outcomes, owners) }}
     {{ ai_helpers('contact', c.id) }}
     {{ timeline(entries) }}
   </section>
 
-  <aside class="record-right">
+  <aside class="record-right" aria-label="Related records">
     {% call assoc('Company', 1 if company else 0) %}
       {% if company %}
         <a class="assoc-item" href="{{ url_for('company', company_id=company.id) }}">{{ logo(company.name, 'sm') }}
@@ -85,6 +87,8 @@
           <small>#{{ t.id }}, {{ t.status }}, {{ t.priority }} priority</small></span></a>
       {% else %}<p class="muted small">No tickets.</p>{% endfor %}
     {% endcall %}
+    <p class="association-scope">Quotes are addressed to this contact or linked through their deals. Invoices are linked through their deals.</p>
+    {{ financial_links(insights) }}
     {{ files_panel('contact', c.id) }}
   </aside>
 </div>

@@ -1,43 +1,35 @@
 # CAE CRM brand
 
-The logo is **Stages**: two nested "C"s closing on a point, a sales pipeline narrowing to a won deal. It's built from simple shapes, so it stays sharp from a 16px browser tab to a sign.
+The CAE CRM logo is **Stages**: two nested "C"s closing on a point, a sales pipeline narrowing to a won deal. The original logo artwork is kept in this folder and in `cae-crm/static/brand/`.
 
-## Files
+## Company colours
 
-| File | Use it for |
-| --- | --- |
-| `cae-crm-icon.svg` | The app icon: the mark on its coral tile. Social profiles, app stores, slides. |
-| `cae-crm-mark.svg` | The mark alone, for white or light backgrounds. |
-| `cae-crm-mark-on-dark.svg` | The mark alone, for dark backgrounds and photos. |
-| `cae-crm-logo.svg` | Full logo with the name, for light backgrounds. |
-| `cae-crm-logo-on-dark.svg` | Full logo with the name, for dark backgrounds. |
-| `favicon.ico` | Browser tab icon (16, 32 and 48px). |
-| `png/cae-crm-icon-*.png` | The app icon as PNG at 16 to 1024px, for anywhere SVG isn't accepted. |
-| `png/cae-crm-mark-512.png` | The mark alone as PNG, transparent background. |
-| `png/cae-crm-logo-484.png`, `-968.png` | Full logo as PNG for light backgrounds (transparent). |
-| `png/cae-crm-logo-on-dark-484.png`, `-968.png` | Full logo as PNG for dark backgrounds (transparent). |
+The CRM interface follows the parent company website, [Collinalitics](https://www.collinalitics.co.uk/), whose design tokens are defined in `collinalitics-official-website/app/globals.css`.
 
-The full logos are drawn in Plus Jakarta Sans (ExtraBold for "CAE", Medium for "CRM") with the letters turned into shapes, so they look right everywhere, including print and tools that don't have the font.
-
-## Colours
-
-The logo's coral, peach and sunshine palette now carries through the app and public homepage. Deep coral is used for readable links and actions, peach for quiet surfaces, and sunshine yellow for small navigation highlights. The navigation rail uses warm charcoal. Green, amber and red keep their status meanings. The logo artwork itself is unchanged.
-
-| Name | Hex | Where |
+| Colour | Hex | Interface use |
 | --- | --- | --- |
-| Coral | `#ff5f3d` | The icon's tile, the mark on light backgrounds |
-| Deep coral | `#d13f23` | "CRM" in the logo, main buttons (white text passes contrast) |
-| Pale coral | `#ffd3c7` | Inner ring on the tile |
-| Sunshine yellow | `#ffc93c` | The centre dot: the won deal |
-| Readable coral | `#b83d24` | Links, the current page and charts on light backgrounds |
-| Warm charcoal | `#291e21` | Navigation rail and supporting dark surfaces |
-| Logo ink | `#1b1d29` | "CAE" in the original logo |
-| Warm ink | `#292124` | App text and headings on light surfaces |
+| Navy | `#0E2240` | Sidebar, dark panels and sign-in backdrop |
+| Teal | `#0B7E7C` | Primary buttons, charts and accents |
+| Dark teal | `#0A716F` | Readable links and text on light or tinted surfaces |
+| Cyan | `#19CECA` | Highlights and focus indicators on dark backgrounds |
+| White | `#FFFFFF` | Light-mode cards and panels |
+| Light background | `#F5F7FA` | Light-mode workspace canvas |
+| Ink | `#0D1B2E` | Main text on light surfaces |
 
-The shared palette is in `cae-crm/static/brand.css`, loaded after the base styles. Dark mode uses lighter coral text on dark surfaces. Keep normal text at a contrast ratio of at least 4.5:1; do not use the bright logo coral for small white text buttons.
+The shared palette lives in `cae-crm/static/brand.css`, loaded after the base styles. Dark mode uses navy surfaces and lighter teal/cyan text. Bright cyan is not suitable for normal text on white. Keep normal text at a contrast ratio of at least 4.5:1. Status indicators retain green, amber and red, with text labels.
 
-## Keep it clear
+The original coral logo remains an individual product mark; its colours do not define the interface palette.
 
-- Leave space around the logo at least as wide as the inner ring.
-- Don't stretch, rotate, recolour, add shadows or outlines, or put the light version on a busy photo.
-- Below 24px, use the icon alone without the name.
+## Logo files
+
+| File | Use |
+| --- | --- |
+| `cae-crm-icon.svg` | App icon on its original tile |
+| `cae-crm-mark.svg` | Mark on light backgrounds |
+| `cae-crm-mark-on-dark.svg` | Mark on dark backgrounds |
+| `cae-crm-logo.svg` | Full logo on light backgrounds |
+| `cae-crm-logo-on-dark.svg` | Full logo on dark backgrounds |
+| `favicon.ico` | Browser tab icon |
+| `png/` | PNG exports of the marks and logos |
+
+The full logos use Plus Jakarta Sans with letters converted to paths. Leave clear space around the logo, preserve its proportions and use the icon alone below 24px.

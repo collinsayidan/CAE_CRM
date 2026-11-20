@@ -777,7 +777,9 @@
       if (!totalShown && !empty) {
         empty = document.createElement("li");
         empty.className = "empty-line feed-none";
-        empty.textContent = "No activity matches this search and type. Clear the search or choose All.";
+        empty.textContent = items.length
+          ? "No activity matches this search and type. Clear the search or choose All."
+          : "Nothing logged yet. Use the activity box above to add a note or log a call.";
         feed.append(empty);
       }
       if (empty) empty.hidden = totalShown > 0;

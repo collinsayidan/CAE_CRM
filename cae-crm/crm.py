@@ -147,6 +147,28 @@ def timeline(column, record_id):
     return entries, upcoming
 
 
+def record_insights(entries, tasks, owner, deals=(), tickets=(), invoices=(), quotes=()):
+    """Read-only record summary. Callers supply only rows belonging to this workspace and record."""
+    from payments import balance
+    from quotes import quote_state
+    open_deals = [d for d in deals if d["stage"] in OPEN_STAGES]
+    invoice_cards = [dict(row=i, balance=max(0, balance(i)) if not i["paid_date"] else 0,
+                          state="Paid" if i["paid_date"] or balance(i) <= 0 else
+                          "Overdue" if i["due_date"] < today().isoformat() else "Due") for i in invoices]
+    quote_cards = [dict(row=q, state=quote_state(q)) for q in quotes]
+    pending = sorted((a for a in tasks if not a["done"]), key=lambda a: (a["due_at"], a["id"]))
+    conversations = [e for e in entries if e["kind"] in ENGAGEMENT_KINDS]
+    return dict(owner=owner or "Unassigned", open_value=sum(d["value"] for d in open_deals),
+                open_deals=len(open_deals), open_tickets=sum(t["status"] != "Closed" for t in tickets),
+                outstanding=sum(i["balance"] for i in invoice_cards),
+                overdue_invoices=sum(i["state"] == "Overdue" for i in invoice_cards),
+                waiting_quotes=sum(q["state"] == "Sent" for q in quote_cards),
+                invoice_cards=invoice_cards, quote_cards=quote_cards,
+                next_task=pending[0] if pending else None,
+                overdue_tasks=sum(a["due_at"][:10] < today().isoformat() for a in pending),
+                last_activity=max((e["when"] for e in conversations), default=None))
+
+
 def validate_company(f):
     errors, data = {}, {}
     data["name"] = f.get("name", "").strip()
@@ -240,13 +262,21 @@ def register(app):
         c = get_or_404("contacts", contact_id)
         company = one("SELECT * FROM companies WHERE id=? AND workspace_id=?", c["company_id"], ws()) if c["company_id"] else None
         entries, upcoming = timeline("contact_id", contact_id)
+        deals = rows("SELECT d.*, co.name AS company FROM deals d JOIN companies co ON co.id=d.company_id"
+                     " WHERE d.workspace_id=? AND d.contact_id=? ORDER BY d.stage IN ('Won','Lost'), d.close_date",
+                     ws(), contact_id)
+        tickets = rows("SELECT * FROM tickets WHERE workspace_id=? AND contact_id=? ORDER BY status='Closed', id DESC",
+                       ws(), contact_id)
+        invoices = rows("SELECT i.* FROM invoices i JOIN deals d ON d.id=i.deal_id AND d.workspace_id=?"
+                        " WHERE i.workspace_id=? AND d.contact_id=? ORDER BY i.issue_date DESC, i.id DESC",
+                        ws(), ws(), contact_id)
+        quotes = rows("SELECT q.* FROM quotes q LEFT JOIN deals d ON d.id=q.deal_id AND d.workspace_id=?"
+                      " WHERE q.workspace_id=? AND (q.contact_id=? OR d.contact_id=?) ORDER BY q.id DESC",
+                      ws(), ws(), contact_id, contact_id)
         return render_template(
             "contact.html", c=c, company=company, entries=entries, upcoming=upcoming,
-            deals=rows("SELECT d.*, co.name AS company FROM deals d JOIN companies co ON co.id=d.company_id"
-                       " WHERE d.workspace_id=? AND d.contact_id=? ORDER BY d.stage IN ('Won','Lost'), d.close_date",
-                       ws(), contact_id),
-            tickets=rows("SELECT * FROM tickets WHERE workspace_id=? AND contact_id=? ORDER BY status='Closed', id DESC",
-                         ws(), contact_id),
+            deals=deals, tickets=tickets,
+            insights=record_insights(entries, upcoming, c["owner"], deals, tickets, invoices, quotes),
             record=dict(contact_id=contact_id, company_id=c["company_id"]), call_outcomes=CALL_OUTCOMES,
             lead_statuses=LEAD_STATUSES)
 
@@ -349,20 +379,23 @@ def register(app):
     def company(company_id):
         c = get_or_404("companies", company_id)
         entries, upcoming = timeline("company_id", company_id)
+        deals = rows("SELECT * FROM deals WHERE workspace_id=? AND company_id=? ORDER BY stage IN ('Won','Lost'), close_date",
+                     ws(), company_id)
+        invoices = rows("SELECT * FROM invoices WHERE workspace_id=? AND company_id=? ORDER BY issue_date DESC",
+                        ws(), company_id)
+        tickets = rows("SELECT * FROM tickets WHERE workspace_id=? AND company_id=? ORDER BY status='Closed', id DESC",
+                       ws(), company_id)
+        quotes = rows("SELECT * FROM quotes WHERE workspace_id=? AND company_id=? ORDER BY id DESC", ws(), company_id)
+        insights = record_insights(entries, upcoming, c["owner"], deals, tickets, invoices, quotes)
         stats = dict(
             lifetime=scalar("SELECT SUM(value) FROM deals WHERE workspace_id=? AND company_id=? AND stage='Won'", ws(), company_id),
             pipeline=scalar(f"SELECT SUM(value) FROM deals WHERE workspace_id=? AND company_id=? AND {OPEN_SQL}", ws(), company_id),
-            outstanding=scalar("SELECT SUM(net + vat) FROM invoices WHERE workspace_id=? AND company_id=? AND paid_date IS NULL",
-                               ws(), company_id),
+            outstanding=insights["outstanding"],
         )
         return render_template(
-            "company.html", c=c, stats=stats, entries=entries, upcoming=upcoming,
+            "company.html", c=c, stats=stats, entries=entries, upcoming=upcoming, insights=insights,
             contacts=rows("SELECT * FROM contacts WHERE workspace_id=? AND company_id=? ORDER BY last_name", ws(), company_id),
-            deals=rows("SELECT * FROM deals WHERE workspace_id=? AND company_id=? ORDER BY stage IN ('Won','Lost'), close_date DESC",
-                       ws(), company_id),
-            invoices=rows("SELECT * FROM invoices WHERE workspace_id=? AND company_id=? ORDER BY issue_date DESC", ws(), company_id),
-            tickets=rows("SELECT * FROM tickets WHERE workspace_id=? AND company_id=? ORDER BY status='Closed', id DESC",
-                         ws(), company_id),
+            deals=deals, invoices=invoices, tickets=tickets,
             record=dict(company_id=company_id), call_outcomes=CALL_OUTCOMES, lead_statuses=LEAD_STATUSES,
             errors=g.get("contact_errors") or {}, form=g.get("contact_form") or {})
 
@@ -417,13 +450,13 @@ def register(app):
         lines = rows("SELECT * FROM line_items WHERE workspace_id=? AND deal_id=? ORDER BY id", ws(), deal_id)
         totals = line_totals(lines)
         entries, upcoming = timeline("deal_id", deal_id)
+        invoices = rows("SELECT * FROM invoices WHERE workspace_id=? AND deal_id=? ORDER BY id DESC", ws(), deal_id)
+        quote_rows = rows("SELECT * FROM quotes WHERE workspace_id=? AND deal_id=? ORDER BY id DESC", ws(), deal_id)
         return render_template(
             "deal.html", d=d, company=company, contact=contact, lines=lines, totals=totals, entries=entries,
-            upcoming=upcoming,
+            upcoming=upcoming, insights=record_insights(entries, upcoming, d["owner"], [d], invoices=invoices, quotes=quote_rows),
             products=rows("SELECT * FROM products WHERE workspace_id=? AND active=1 ORDER BY name", ws()),
-            invoices=rows("SELECT * FROM invoices WHERE workspace_id=? AND deal_id=? ORDER BY id DESC", ws(), deal_id),
-            quotes=[(q, quote_state(q)) for q in rows("SELECT * FROM quotes WHERE workspace_id=? AND deal_id=? ORDER BY id DESC",
-                                                      ws(), deal_id)],
+            invoices=invoices, quotes=[(q, quote_state(q)) for q in quote_rows],
             company_contacts=rows("SELECT id, first_name, last_name FROM contacts WHERE workspace_id=? AND company_id=?"
                                   " ORDER BY first_name", ws(), d["company_id"]),
             record=dict(deal_id=deal_id, company_id=d["company_id"], contact_id=d["contact_id"]),

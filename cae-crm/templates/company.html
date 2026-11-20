@@ -2,16 +2,18 @@
 {% from "_macros.html" import icon, avatar, logo, field, select, stage_chip with context %}
 {% from "_tags.html" import tags_panel with context %}
 {% from "_ai_helpers.html" import ai_helpers with context %}
-{% from "_record.html" import composer, timeline, upcoming_tasks, assoc, prop, custom_props, custom_inputs, files_panel with context %}
+{% from "_record.html" import composer, timeline, upcoming_tasks, assoc, prop, custom_props, custom_inputs, files_panel, business_summary, financial_links with context %}
 {% block title %}{{ c.name }}{% endblock %}
 
 {% block page %}
 <nav class="crumbs" aria-label="Breadcrumb"><a href="{{ url_for('companies') }}">Companies</a> <span aria-hidden="true">/</span> <span>{{ c.name }}</span></nav>
+<header class="record-page-head"><div><h1>{{ c.name }}</h1><p class="subtitle">Company relationship</p></div><div class="page-actions"><button type="button" class="btn ghost" data-open="dlg-edit-company">{{ icon('edit') }} Edit details</button><a class="btn primary" href="#record-composer" data-compose="task">{{ icon('plus') }} Plan a follow-up</a></div></header>
+{{ business_summary(insights, 'company') }}
 <div class="record">
   <aside class="record-left" aria-label="Record details">
     <section class="panel record-card">
       {{ logo(c.name, 'xl') }}
-      <h1>{{ c.name }}</h1>
+      <p class="identity-title">{{ c.name }}</p>
       <p class="muted">{{ c.industry or 'Industry not set' }}{% if c.city %}, {{ c.city }}{% endif %}</p>
       {% if c.ch_status in ch_warn %}<p class="record-chips"><span class="chip bad" title="According to Companies House">{{ ch_status_label(c.ch_status) }}</span></p>{% endif %}
       {% if c.website %}<p><a class="text-link sm" href="{{ c.website }}" target="_blank" rel="noopener">{{ c.website | replace('https://', '') | replace('http://', '') }} {{ icon('external') }}</a></p>{% endif %}
@@ -26,8 +28,6 @@
 
     <section class="stats compact stacked" aria-label="Account figures">
       <div class="stat"><p class="stat-label">Lifetime revenue</p><p class="stat-value">{{ stats.lifetime | money }}</p></div>
-      <div class="stat"><p class="stat-label">Open pipeline</p><p class="stat-value">{{ stats.pipeline | money }}</p></div>
-      <div class="stat"><p class="stat-label">Unpaid invoices</p><p class="stat-value {{ 'is-bad' if stats.outstanding }}">{{ pennies(stats.outstanding) }}</p></div>
     </section>
 
     {{ tags_panel('company', c.id, 'companies') }}
@@ -62,13 +62,13 @@
   </aside>
 
   <section class="record-mid">
-    {{ composer(record, call_outcomes, owners) }}
     {{ upcoming_tasks(upcoming) }}
+    {{ composer(record, call_outcomes, owners) }}
     {{ ai_helpers('company', c.id) }}
     {{ timeline(entries) }}
   </section>
 
-  <aside class="record-right">
+  <aside class="record-right" aria-label="Related records">
     {% call assoc('People', contacts | length, 'dlg-contact', 'Add contact') %}
       {% for p in contacts %}
         <a class="assoc-item" href="{{ url_for('contact', contact_id=p.id) }}">{{ avatar(p.first_name ~ ' ' ~ p.last_name, 'sm') }}
@@ -87,12 +87,7 @@
           <small>#{{ t.id }}, {{ t.status }}, {{ t.priority }} priority</small></span></a>
       {% else %}<p class="muted small">No tickets.</p>{% endfor %}
     {% endcall %}
-    {% call assoc('Invoices', invoices | length, 'dlg-invoice', 'Raise') %}
-      {% for i in invoices %}
-        <a class="assoc-item" href="{{ url_for('invoice', invoice_id=i.id) }}"><span><b>{{ i.number }}</b>
-          <small>{{ pennies(i.net + i.vat) }}, {% if i.paid_date %}paid{% elif i.due_date < today.isoformat() %}<span class="bad-text">overdue</span>{% else %}due {{ i.due_date | uk_date }}{% endif %}</small></span></a>
-      {% else %}<p class="muted small">No invoices raised.</p>{% endfor %}
-    {% endcall %}
+    {{ financial_links(insights) }}
     {{ files_panel('company', c.id) }}
   </aside>
 </div>

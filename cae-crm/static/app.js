@@ -622,6 +622,8 @@
       li.classList.toggle("done", res.done);
       li.classList.toggle("late", false);
       form.querySelector(".tick").setAttribute("aria-pressed", res.done);
+      // The record's next-action summary must reflect the saved task state too.
+      if (document.querySelector(".record-business")) location.reload();
     } catch (err) { form.submit(); }
   }));
 
@@ -749,12 +751,17 @@
 
   /* Timeline filter ------------------------------------------------------ */
   $$("[data-timeline-filter]").forEach(group => {
-    const feed = $(".feed", group.closest(".timeline-panel"));
-    group.addEventListener("click", e => {
-      const b = e.target.closest("[data-kind]");
-      if (!b) return;
-      $$("[data-kind]", group).forEach(o => o.setAttribute("aria-pressed", o === b));
-      let monthHead = null, shown = 0, any = false;
+    const panel = group.closest(".timeline-panel"), feed = $(".feed", panel);
+    const search = $("[data-activity-search]", panel), count = $("[data-activity-count]", panel);
+    const tools = $("[data-activity-tools]", panel);
+    if (tools) tools.hidden = false;
+    let kind = "";
+    const apply = () => {
+      const query = (search?.value || "").trim().toLocaleLowerCase();
+      let monthHead = null, shown = 0, totalShown = 0;
+      const items = $$(".feed-item", feed);
+      // Hide the server-rendered empty state while a filtered result message is used.
+      $$(".empty-line:not(.feed-none)", feed).forEach(el => { el.hidden = true; });
       for (const li of feed.children) {
         if (li.hasAttribute("data-month")) {
           if (monthHead) monthHead.hidden = shown === 0;
@@ -762,19 +769,31 @@
           continue;
         }
         if (!li.dataset.kind) continue;
-        li.hidden = Boolean(b.dataset.kind) && li.dataset.kind !== b.dataset.kind;
-        if (!li.hidden) { shown++; any = true; }
+        li.hidden = (Boolean(kind) && li.dataset.kind !== kind) || !li.textContent.toLocaleLowerCase().includes(query);
+        if (!li.hidden) { shown++; totalShown++; }
       }
       if (monthHead) monthHead.hidden = shown === 0;
       let empty = $(".feed-none", feed);
-      if (!any && !empty) {
+      if (!totalShown && !empty) {
         empty = document.createElement("li");
         empty.className = "empty-line feed-none";
-        empty.textContent = "Nothing of this kind yet.";
+        empty.textContent = items.length
+          ? "No activity matches this search and type. Clear the search or choose All."
+          : "Nothing logged yet. Use the activity box above to add a note or log a call.";
         feed.append(empty);
       }
-      if (empty) empty.hidden = any;
+      if (empty) empty.hidden = totalShown > 0;
+      if (count) count.textContent = `${totalShown} of ${items.length} activities shown`;
+    };
+    group.addEventListener("click", e => {
+      const b = e.target.closest("[data-kind]");
+      if (!b) return;
+      kind = b.dataset.kind;
+      $$("[data-kind]", group).forEach(o => o.setAttribute("aria-pressed", o === b));
+      apply();
     });
+    search?.addEventListener("input", apply);
+    apply();
   });
 
   /* CSV file picker ------------------------------------------------------ */

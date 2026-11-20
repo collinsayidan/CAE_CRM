@@ -21,7 +21,7 @@ The full logos are drawn in Plus Jakarta Sans (ExtraBold for "CAE", Medium for "
 
 ## Colours
 
-The logo is coral, the app around it royal blue. Coral marks the brand and the one main button on each page; blue does everything else.
+The logo's coral, peach and sunshine palette now carries through the app and public homepage. Deep coral is used for readable links and actions, peach for quiet surfaces, and sunshine yellow for small navigation highlights. The navigation rail uses warm charcoal. Green, amber and red keep their status meanings. The logo artwork itself is unchanged.
 
 | Name | Hex | Where |
 | --- | --- | --- |
@@ -29,8 +29,12 @@ The logo is coral, the app around it royal blue. Coral marks the brand and the o
 | Deep coral | `#d13f23` | "CRM" in the logo, main buttons (white text passes contrast) |
 | Pale coral | `#ffd3c7` | Inner ring on the tile |
 | Sunshine yellow | `#ffc93c` | The centre dot: the won deal |
-| Royal blue | `#1e5bd6` | Links, the current page, charts, the month tracker |
-| Ink | `#1b1d29` | "CAE" in the logo, headings |
+| Readable coral | `#b83d24` | Links, the current page and charts on light backgrounds |
+| Warm charcoal | `#291e21` | Navigation rail and supporting dark surfaces |
+| Logo ink | `#1b1d29` | "CAE" in the original logo |
+| Warm ink | `#292124` | App text and headings on light surfaces |
+
+The shared palette is in `cae-crm/static/brand.css`, loaded after the base styles. Dark mode uses lighter coral text on dark surfaces. Keep normal text at a contrast ratio of at least 4.5:1; do not use the bright logo coral for small white text buttons.
 
 ## Keep it clear
 

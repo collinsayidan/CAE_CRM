@@ -3,9 +3,65 @@
 {% set KIND_ICON = {'note': 'note', 'email': 'mail', 'call': 'phone', 'meeting': 'meeting', 'task': 'task', 'system': 'bolt'} %}
 {% set KIND_LABEL = {'note': 'Note', 'email': 'Email', 'call': 'Call', 'meeting': 'Meeting', 'task': 'Task', 'system': 'Update'} %}
 
+{# A shared, read-only relationship summary. Every action still uses the normal record forms. #}
+{% macro business_summary(insights, kind='contact', closed=false) -%}
+<section class="record-business" aria-label="Business snapshot">
+  <div class="record-snapshot">
+    <div class="snapshot-head"><span class="eyebrow">BUSINESS SNAPSHOT</span><span class="snapshot-owner">{{ icon('users') }} {{ insights.owner }}</span></div>
+    <dl class="snapshot-metrics">
+      <div><dt>Open pipeline</dt><dd>{{ insights.open_value | money }}<small>{{ insights.open_deals }} open {{ 'deal' if insights.open_deals == 1 else 'deals' }}</small></dd></div>
+      <div><dt>Outstanding balance</dt><dd>{{ pennies(insights.outstanding) }}<small>{{ insights.overdue_invoices }} {{ 'invoice' if insights.overdue_invoices == 1 else 'invoices' }} overdue</small></dd></div>
+      <div><dt>Quotes awaiting reply</dt><dd>{{ insights.waiting_quotes }}<small>Sent and still valid</small></dd></div>
+      {% if kind != 'deal' %}<div><dt>Open support tickets</dt><dd>{{ insights.open_tickets }}<small>Directly linked to this {{ kind }}</small></dd></div>{% endif %}
+    </dl>
+    <p class="snapshot-basis">Pipeline excludes VAT. Balances include VAT, payments, credits and any late charges.</p>
+    <p class="snapshot-last">{{ icon('clock') }} Last logged conversation: {% if insights.last_activity %}{{ insights.last_activity | uk_datetime }}{% else %}No notes, calls, emails or meetings logged{% endif %}</p>
+  </div>
+  <div class="record-next {{ 'has-overdue' if insights.overdue_tasks }}">
+    <span class="eyebrow">NEXT ACTION</span>
+    {% if insights.next_task %}
+      <h2>{{ insights.next_task.subject }}</h2>
+      <p>{{ insights.next_task.owner }} · {{ insights.next_task.due_at | uk_datetime }}</p>
+      {% if insights.overdue_tasks %}<span class="chip bad">{{ insights.overdue_tasks }} overdue {{ 'task' if insights.overdue_tasks == 1 else 'tasks' }}</span>{% endif %}
+      <a class="text-link" href="#record-tasks">Review outstanding tasks {{ icon('chevron-right') }}</a>
+    {% elif closed %}
+      <h2>Keep the handover clear</h2><p>This deal is closed. Review its outcome, documents and any delivery follow-up.</p>
+      <a class="text-link" href="#related-quotes">Review related documents {{ icon('chevron-right') }}</a>
+    {% else %}
+      <h2>Give this relationship a next step</h2><p>No outstanding task is linked. Plan a call, meeting or follow-up so it stays visible.</p>
+      <a class="btn primary sm" href="#record-composer" data-compose="task">{{ icon('plus') }} Plan a follow-up</a>
+    {% endif %}
+  </div>
+</section>
+<nav class="record-jumps" aria-label="Record sections">
+  <a href="#record-composer">{{ icon('note') }} Log activity</a>
+  {% if insights.next_task %}<a href="#record-tasks">{{ icon('task') }} Outstanding tasks</a>{% endif %}
+  <a href="#record-activity">{{ icon('clock') }} Activity history</a>
+  <a href="#related-quotes">{{ icon('note') }} Quotes <span>{{ insights.quote_cards | length }}</span></a>
+  <a href="#related-invoices">{{ icon('pound') }} Invoices <span>{{ insights.invoice_cards | length }}</span></a>
+  {% if kind != 'deal' %}<a href="#related-tickets">{{ icon('lifebuoy') }} Tickets <span>{{ insights.open_tickets }} open</span></a>{% endif %}
+</nav>
+{%- endmacro %}
+
+{% macro financial_links(insights) -%}
+  {% call assoc('Quotes', insights.quote_cards | length) %}
+    {% for card in insights.quote_cards %}{% set q = card.row %}
+      <a class="assoc-item" href="{{ url_for('quote', quote_id=q.id) }}"><span><b>{{ q.number }} <span class="chip {{ 'ok' if card.state == 'Accepted' else 'warn' if card.state == 'Sent' else 'bad' if card.state in ('Expired', 'Declined') else '' }}">{{ card.state }}</span></b>
+        <small>{{ pennies(q.net + q.vat) }} · valid until {{ q.expiry_date | uk_date }}</small></span></a>
+    {% else %}<p class="muted small">No quotes linked yet.</p>{% endfor %}
+  {% endcall %}
+  {% call assoc('Invoices', insights.invoice_cards | length) %}
+    {% for card in insights.invoice_cards %}{% set i = card.row %}
+      <a class="assoc-item" href="{{ url_for('invoice', invoice_id=i.id) }}"><span><b>{{ i.number }} <span class="chip {{ 'ok' if card.state == 'Paid' else 'bad' if card.state == 'Overdue' else '' }}">{{ card.state }}</span></b>
+        <small>{{ pennies(card.balance) }} remaining · original total {{ pennies(i.net + i.vat) }}</small>
+        {% if card.state != 'Paid' %}<small>Due {{ i.due_date | uk_date }}</small>{% endif %}</span></a>
+    {% else %}<p class="muted small">No invoices linked yet.</p>{% endfor %}
+  {% endcall %}
+{%- endmacro %}
+
 {# Log a note, email, call or meeting, or create a task, against the record on this page. #}
 {% macro composer(record, call_outcomes, owners) -%}
-<section class="panel composer" aria-label="Log activity">
+<section class="panel composer" id="record-composer" aria-label="Log activity">
   <form method="post" action="{{ url_for('log_engagement') }}">
     <input type="hidden" name="csrf" value="{{ csrf_token }}">
     <input type="hidden" name="next" value="{{ request.full_path }}">
@@ -37,7 +93,7 @@
 
 {# Everything that has happened on the record, newest first, grouped by month. #}
 {% macro timeline(entries) -%}
-<section class="panel timeline-panel" aria-label="Activity">
+<section class="panel timeline-panel" id="record-activity" aria-label="Activity">
   <header class="panel-head">
     <h2>Activity</h2>
     <div class="segmented" role="group" aria-label="Show" data-timeline-filter>
@@ -50,6 +106,10 @@
       <button type="button" data-kind="system">Updates</button>
     </div>
   </header>
+  <div class="activity-search" data-activity-tools hidden>
+    <label class="search-field">{{ icon('search') }}<input type="search" data-activity-search placeholder="Search this record's activity" aria-label="Search activity history"></label>
+    <p class="muted small" data-activity-count role="status" aria-live="polite"></p>
+  </div>
   {% set ns = namespace(month='') %}
   <ol class="feed">
     {% for e in entries %}
@@ -82,8 +142,8 @@
 
 {% macro upcoming_tasks(tasks) -%}
 {% if tasks %}
-<section class="panel upcoming" aria-label="Upcoming">
-  <header class="panel-head"><h2>Upcoming</h2><span class="muted">{{ tasks | length }} to do</span></header>
+<section class="panel upcoming" id="record-tasks" aria-label="Outstanding tasks">
+  <header class="panel-head"><h2>Outstanding tasks</h2><span class="muted">{{ tasks | length }} to do</span></header>
   <ul class="tasks compact">
     {% for a in tasks %}
       <li class="{{ 'late' if a.due_at[:10] < today.isoformat() }}">
@@ -93,6 +153,7 @@
         </form>
         <div class="task-main"><p class="tl-title">{{ a.subject }}</p>
           <p class="tl-meta">{{ a.kind }} for {{ a.owner }}, {{ a.due_at | uk_datetime }}</p></div>
+        {% if a.due_at[:10] < today.isoformat() %}<span class="chip bad">Overdue</span>{% elif a.due_at[:10] == today.isoformat() %}<span class="chip">Due today</span>{% endif %}
       </li>
     {% endfor %}
   </ul>
@@ -102,7 +163,7 @@
 
 {# A card listing linked records, HubSpot's right-hand column. #}
 {% macro assoc(title, count, add_dialog=None, add_label='Add') -%}
-<section class="assoc">
+<section class="assoc" id="related-{{ title | slug }}">
   <header><h3>{{ title }} <span>{{ count }}</span></h3>
     {% if add_dialog %}<button type="button" class="text-link sm" data-open="{{ add_dialog }}">{{ icon('plus') }} {{ add_label }}</button>{% endif %}
   </header>

@@ -6,6 +6,7 @@
   <meta name="robots" content="noindex">
   <title>{% block title %}{% endblock %} – {{ business.name }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='brand.css') }}">
 </head>
 <body class="public-page {{ 'is-embed' if embed }}">
   {% if not embed %}

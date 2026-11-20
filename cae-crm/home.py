@@ -136,8 +136,22 @@ def register(app):
 
         closing_soon = rows(
             f"SELECT d.*, c.name AS company FROM deals d JOIN companies c ON c.id=d.company_id"
-            f" WHERE d.workspace_id=? AND {OPEN_SQL} AND d.close_date <= ? ORDER BY d.close_date, d.value DESC LIMIT 6",
-            ws(), (t + timedelta(days=30)).isoformat())
+            f" WHERE d.workspace_id=? AND {OPEN_SQL} AND d.close_date >= ? AND d.close_date <= ?"
+            " ORDER BY d.close_date, d.value DESC LIMIT 6",
+            ws(), t.isoformat(), (t + timedelta(days=30)).isoformat())
+        overdue_deals = rows(
+            f"SELECT d.*, c.name AS company FROM deals d JOIN companies c ON c.id=d.company_id"
+            f" WHERE d.workspace_id=? AND {OPEN_SQL} AND d.close_date < ?"
+            " ORDER BY d.close_date, d.value DESC LIMIT 4", ws(), t.isoformat())
+        overdue_deal_count = scalar(
+            f"SELECT COUNT(*) FROM deals WHERE workspace_id=? AND {OPEN_SQL} AND close_date < ?", ws(), t.isoformat())
+        overdue_tasks = scalar(
+            "SELECT COUNT(*) FROM activities WHERE workspace_id=? AND done=0 AND due_at < ?", ws(), t.isoformat())
+        # Keep overdue work visible rather than showing an empty agenda beside an overdue badge.
+        focus_tasks = rows(
+            "SELECT a.*, c.name AS company FROM activities a LEFT JOIN companies c ON c.id=a.company_id"
+            " WHERE a.workspace_id=? AND a.done=0 AND a.due_at < ? ORDER BY a.due_at, a.id LIMIT 4",
+            ws(), (t + timedelta(days=1)).isoformat())
         mix_rows = {r["stage"]: r for r in rows(
             f"SELECT stage, SUM(value) AS total, COUNT(*) AS n FROM deals WHERE workspace_id=? AND {OPEN_SQL} GROUP BY stage",
             ws())}
@@ -187,6 +201,8 @@ def register(app):
             quota=quota, quota_won=quota_won, quota_pct=quota_pct,
             fy_label=fy_label, fy_q=q, q_end=q_end - timedelta(days=1), agenda=agenda,
             tickets_open=tickets_open, tickets_breached=tickets_breached,
+            overdue_deals=overdue_deals, overdue_deal_count=overdue_deal_count,
+            overdue_tasks=overdue_tasks, focus_tasks=focus_tasks,
             empty=not scalar("SELECT COUNT(*) FROM companies WHERE workspace_id=?", ws()))
 
     @app.post("/home/chart-view")

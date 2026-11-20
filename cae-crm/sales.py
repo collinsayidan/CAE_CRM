@@ -56,6 +56,24 @@ def quiet_ids(workspace_id=None):
     return {r[0] for r in rows(f"SELECT d.id FROM deals d WHERE d.workspace_id=? AND {clause}", w["id"], *params)}
 
 
+DEAL_FOCUS = (("", "All open deals"), ("overdue", "Overdue close date"),
+              ("quiet", "No recent activity"), ("upcoming", "Closing in 30 days"))
+
+
+def deal_focus_clause(focus):
+    """Shared board/list filters. Upcoming includes today; overdue excludes today."""
+    t = today().isoformat()
+    if focus == "overdue":
+        return f"d.{OPEN_SQL} AND d.close_date < ?", [t]
+    if focus == "upcoming":
+        return f"d.{OPEN_SQL} AND d.close_date >= ? AND d.close_date <= ?", [
+            t, (today() + timedelta(days=30)).isoformat()]
+    if focus == "quiet":
+        clause, params = quiet_clause("d")
+        return f"{clause} AND d.close_date >= ?", params + [t]
+    return "", []
+
+
 def quiet_reason(deal, workspace=None):
     """Why a quiet deal is quiet, in words."""
     if deal["close_date"] < today().isoformat():
@@ -132,18 +150,19 @@ def register(app):
     @app.route("/pipeline")
     def pipeline():
         if request.args.get("view") == "list":
-            return render_index("deals", "deals.html", all_stages=OPEN_STAGES + ["Won", "Lost"], quiet=quiet_ids())
-        owner = request.args.get("owner", "")
-        sql = (f"SELECT d.*, c.name AS company FROM deals d JOIN companies c ON c.id=d.company_id"
-               f" WHERE d.workspace_id=? AND d.{OPEN_SQL}")
-        args = [ws()]
-        if owner in owner_names():
-            sql += " AND d.owner=?"
-            args.append(owner)
+            return render_index("deals", "deals.html", all_stages=OPEN_STAGES + ["Won", "Lost"],
+                                quiet=quiet_ids(), deal_focus=DEAL_FOCUS)
+        from crm import list_records
+        filters = {k: request.args.get(k, "") for k in ("q", "owner", "focus")}
+        filters["open"] = "1"
+        deals, _, _, active = list_records("deals", filters, paginate=False)
         columns = defaultdict(list)
-        for deal in rows(sql + " ORDER BY d.close_date", *args):
+        for deal in deals:
             columns[deal["stage"]].append(deal)
-        return render_template("pipeline.html", columns=columns, owner=owner, quiet=quiet_ids())
+        return render_template("pipeline.html", columns=columns, owner=active.get("owner", ""), active=active,
+                               quiet=quiet_ids(), deal_focus=DEAL_FOCUS,
+                               board_total=sum(d["value"] for d in deals), board_count=len(deals),
+                               board_forecast=sum(d["value"] * d["probability"] // 100 for d in deals))
 
     @app.post("/deals")
     def create_deal():

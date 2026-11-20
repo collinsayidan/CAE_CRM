@@ -6,7 +6,7 @@
 {% block subtitle %}<p class="subtitle">Every deal, open and closed. Filter, sort and save the view you use most.</p>{% endblock %}
 {% block actions %}
   <nav class="layout-switch" aria-label="Layout">
-    <a href="{{ url_for('pipeline') }}">{{ icon('columns') }}<span>Board</span></a>
+    <a href="{{ url_for('pipeline', owner=active.owner or None, q=active.q or None, focus=active.focus or None) }}">{{ icon('columns') }}<span>Board</span></a>
     <a href="{{ url_for('pipeline', view='list') }}" aria-current="true">{{ icon('list') }}<span>List</span></a>
   </nav>
   {% if current_user.role == 'admin' %}
@@ -21,10 +21,14 @@
 <section class="panel flush">
   <form class="list-toolbar" method="get" role="search">
     <input type="hidden" name="view" value="list">
+    {% if active.open %}<input type="hidden" name="open" value="1">{% endif %}
+    {% if active.quiet %}<input type="hidden" name="quiet" value="1">{% endif %}
+    {% if active.company %}<input type="hidden" name="company" value="{{ active.company }}">{% endif %}
     <label class="search-field">{{ icon('search') }}<input type="search" name="q" value="{{ active.q }}" placeholder="Search deal or company" aria-label="Search deals"></label>
     {{ filter_select('owner', 'Any owner', owners_all, active.owner) }}
     {{ filter_select('stage', 'Any stage', all_stages, active.stage) }}
     {{ filter_select('source', 'Any source', sources, active.source) }}
+    {{ filter_select('focus', 'Any follow-up status', deal_focus[1:] | map(attribute=1) | list, active.focus, values=deal_focus[1:] | map(attribute=0) | list) }}
     {{ filter_select('sort', 'Sort', ['Close date', 'Largest first', 'Newest first'], active.sort, values=['close', 'value', 'newest']) }}
     {% if current_query %}<a class="text-link sm" href="{{ url_for('pipeline', view='list') }}">Clear filters</a>{% endif %}
     <noscript><button class="btn sm">Apply</button></noscript>
@@ -47,7 +51,8 @@
               <td><a class="row-link" href="{{ url_for('deal', deal_id=d.id) }}">{{ logo(d.company, 'sm') }}<span><b>{{ d.title }}</b>
                 <small>{{ d.company }}</small></span></a></td>
               <td>{% if d.stage == 'Won' %}<span class="chip ok">Won</span>{% elif d.stage == 'Lost' %}<span class="chip bad" {% if d.outcome_reason %}title="{{ d.outcome_reason }}"{% endif %}>Lost</span>{% else %}{{ stage_chip(d.stage) }}{% endif %}
-                {% if d.id in quiet %}<span class="chip quiet">Gone quiet</span>{% endif %}</td>
+                {% if d.stage not in ('Won', 'Lost') and d.close_date < today.isoformat() %}<span class="chip bad">Close date overdue</span>
+                {% elif d.id in quiet %}<span class="chip quiet">No recent activity</span>{% endif %}</td>
               <td>{{ d.owner or '' }}</td>
               <td>{{ d.source or '' }}</td>
               <td>{{ (d.closed_at or d.close_date) | uk_date }}</td>

@@ -494,6 +494,12 @@
         const share = $("[data-col-share]", col);
         if (share) share.style.width = `${(value / all * 100).toFixed(1)}%`;
       });
+      const cards = $$(".column .card", board);
+      const total = $("[data-board-total]"), forecast = $("[data-board-forecast]"), count = $("[data-board-count]");
+      if (total) total.textContent = gbp.format(sum(cards) / 100);
+      if (count) count.textContent = cards.length;
+      if (forecast) forecast.textContent = gbp.format(cards.reduce((s, c) =>
+        s + Math.floor(Number(c.dataset.value) * Number(c.closest("[data-probability]").dataset.probability) / 100), 0) / 100);
     };
 
     board.addEventListener("dragstart", e => {

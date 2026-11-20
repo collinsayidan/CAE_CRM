@@ -20,10 +20,17 @@
   <form class="list-toolbar" method="get" role="search">
     <label class="search-field">{{ icon('search') }}<input type="search" name="q" value="{{ active.q }}" placeholder="Search name, email or company" aria-label="Search contacts"></label>
     {{ filter_select('owner', 'Any owner', owners_all, active.owner) }}
-    {{ filter_select('lifecycle', 'Any lifecycle stage', lifecycle_stages, active.lifecycle) }}
-    {{ filter_select('lead_status', 'Any lead status', lead_statuses, active.lead_status) }}
-    {{ filter_select('consent', 'Any consent', ['Opted in to marketing', 'Not opted in'], active.consent, values=['1', '0']) }}
-    {% if tag_names %}{{ filter_select('tag', 'Any tag', tag_names, active.tag) }}{% endif %}
+    {% set advanced_count = [active.lifecycle, active.lead_status, active.consent, active.tag, active.company] | select | list | length %}
+    {% if active.company %}<input type="hidden" name="company" value="{{ active.company }}">{% endif %}
+    <details class="advanced-filters" {{ 'open' if advanced_count }}>
+      <summary class="btn ghost">{{ icon('list') }} Filters{% if advanced_count %}<span class="filter-count">{{ advanced_count }}</span>{% endif %}</summary>
+      <div class="advanced-filter-grid">
+        <div><span>Lifecycle stage</span>{{ filter_select('lifecycle', 'Any lifecycle stage', lifecycle_stages, active.lifecycle) }}</div>
+        <div><span>Lead status</span>{{ filter_select('lead_status', 'Any lead status', lead_statuses, active.lead_status) }}</div>
+        <div><span>Marketing consent</span>{{ filter_select('consent', 'Any consent', ['Opted in to marketing', 'Not opted in'], active.consent, values=['1', '0']) }}</div>
+        {% if tag_names %}<div><span>Tag</span>{{ filter_select('tag', 'Any tag', tag_names, active.tag) }}</div>{% endif %}
+      </div>
+    </details>
     {{ filter_select('sort', 'Sort', ['Newest first', 'Name', 'Company', 'Lifecycle stage'], active.sort, values=['newest', 'name', 'company', 'lifecycle']) }}
     {% if current_query %}<a class="text-link sm" href="{{ url_for('contacts') }}">Clear filters</a>{% endif %}
     <noscript><button class="btn sm">Apply</button></noscript>

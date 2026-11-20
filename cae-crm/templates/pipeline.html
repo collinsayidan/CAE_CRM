@@ -1,28 +1,37 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon, avatar %}
+{% from "_lists.html" import filter_select with context %}
 {% block title %}Deals{% endblock %}
 {% block heading %}Deals{% endblock %}
 {% block subtitle %}<p class="subtitle">Drag a deal to another stage, or drop it on Won or Lost.</p>{% endblock %}
 {% block actions %}
   <nav class="layout-switch" aria-label="Layout">
     <a href="{{ url_for('pipeline') }}" aria-current="true">{{ icon('columns') }}<span>Board</span></a>
-    <a href="{{ url_for('pipeline', view='list') }}">{{ icon('list') }}<span>List</span></a>
-  </nav>
-  <nav class="filter-chips" aria-label="Filter by owner">
-    <a href="{{ url_for('pipeline') }}" {% if not owner %}aria-current="true"{% endif %}>Everyone</a>
-    {% for o in owners %}
-      <a href="{{ url_for('pipeline', owner=o) }}" {% if owner == o %}aria-current="true"{% endif %}>{{ o.split()[0] }}</a>
-    {% endfor %}
+    <a href="{{ url_for('pipeline', view='list', owner=active.owner or None, q=active.q or None, focus=active.focus or None, open='1') }}">{{ icon('list') }}<span>List</span></a>
   </nav>
   <button class="btn primary" data-open="dlg-deal">{{ icon('plus') }} Add deal</button>
 {% endblock %}
 
 {% block content %}
+<section class="pipeline-summary" aria-label="Filtered pipeline summary" aria-live="polite">
+  <div><span>Open pipeline</span><strong data-board-total>{{ board_total | money }}</strong></div>
+  <div><span>Weighted forecast</span><strong data-board-forecast>{{ board_forecast | money }}</strong></div>
+  <div><span>Deals shown</span><strong data-board-count>{{ board_count }}</strong></div>
+  <p>Values reflect your current filters.<br>Forecast uses each stage's probability.</p>
+</section>
+<form class="pipeline-toolbar" method="get" role="search" aria-label="Filter deals board">
+  <label class="search-field">{{ icon('search') }}<input type="search" name="q" value="{{ active.q }}" placeholder="Search deals or companies" aria-label="Search deals"></label>
+  {{ filter_select('owner', 'Any owner', owners, active.owner) }}
+  {{ filter_select('focus', 'All open deals', deal_focus[1:] | map(attribute=1) | list, active.focus, values=deal_focus[1:] | map(attribute=0) | list) }}
+  <button class="btn ghost sm">Search</button>
+  {% if active.q or active.owner or active.focus %}<a class="text-link sm" href="{{ url_for('pipeline') }}">Clear filters</a>{% endif %}
+</form>
+<p class="board-help" id="board-help">{{ icon('columns') }} Scroll across to see all stages. Use each deal's menu to move it without dragging.</p>
 {% set ns = namespace(total=0) %}{% for stage, prob in stages %}{% set ns.total = ns.total + (columns[stage] | sum(attribute='value')) %}{% endfor %}
-<div class="board" data-board>
+<div class="board" data-board role="region" aria-label="Deals by stage" aria-describedby="board-help" tabindex="0">
   {% for stage, prob in stages %}
     {% set deals = columns[stage] %}
-    <section class="column" data-stage="{{ stage }}" style="--c: {{ stage_colours[stage] }}">
+    <section class="column" data-stage="{{ stage }}" data-probability="{{ prob }}" style="--c: {{ stage_colours[stage] }}">
       <header>
         <div class="col-title"><i></i><h2>{{ stage }}</h2><span class="col-prob">{{ prob }}%</span></div>
         <p class="col-total"><span data-col-total>{{ deals | sum(attribute='value') | money }}</span>
@@ -46,7 +55,11 @@
               </details>
             </div>
             <p class="card-company">{{ d.company }}</p>
-            {% if d.id in quiet %}<p class="card-quiet"><span class="chip quiet" title="Nothing logged recently, or the close date has passed">{{ icon('clock') }} Gone quiet</span></p>{% endif %}
+            {% if d.close_date < today.isoformat() %}
+              <p class="card-quiet"><span class="chip bad">{{ icon('alert') }} Close date overdue</span></p>
+            {% elif d.id in quiet %}
+              <p class="card-quiet"><span class="chip quiet" title="No recent activity and no upcoming task">{{ icon('clock') }} No recent activity</span></p>
+            {% endif %}
             <div class="card-foot">
               <span class="card-value">{{ d.value | money }}</span>
               <span class="card-date" title="Expected close {{ d.close_date | uk_date }}">{{ d.close_date | uk_date_short }}</span>
@@ -59,6 +72,7 @@
     </section>
   {% endfor %}
 </div>
+{% if not board_count %}<div class="board-empty"><h2>No open deals match this view</h2><p>Try another owner, search or focus filter.</p><a class="btn" href="{{ url_for('pipeline') }}">Show all open deals</a></div>{% endif %}
 
 <div class="dock" data-dock aria-hidden="true">
   <div class="dock-zone won" data-stage="Won" data-dropzone>{{ icon('check') }} Won</div>

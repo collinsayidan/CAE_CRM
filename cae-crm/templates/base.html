@@ -7,6 +7,7 @@
   <meta name="csrf-token" content="{{ csrf_token }}">
   <title>{% block title %}{% endblock %} – {{ workspace.name }} – CAE CRM</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='workspace.css') }}">
   {% include "_brand_head.html" %}
   <script>
     document.documentElement.classList.add("js");
@@ -52,6 +53,7 @@
 
   <div class="main">
     <header class="topbar">
+      <span class="workspace-context">{{ workspace.name }}<small>Business workspace</small></span>
       <button class="icon-btn only-mobile" data-open-sidebar aria-label="Open menu">{{ icon('menu') }}</button>
       <button class="search-trigger" data-palette>
         {{ icon('search') }}<span>Search contacts, companies, deals and tickets</span><kbd>Ctrl K</kbd>

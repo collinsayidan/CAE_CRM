@@ -2,7 +2,11 @@
 {% from "_macros.html" import icon, avatar, logo, stage_chip with context %}
 {% block title %}Overview{% endblock %}
 {% block heading %}{{ greeting }}, {{ first_name }}{% endblock %}
-{% block subtitle %}<p class="subtitle">{{ today.strftime('%A') ~ ' ' ~ today.day ~ today.strftime(' %B %Y') }}</p>{% endblock %}
+{% block subtitle %}<p class="subtitle">{{ today.strftime('%A') ~ ' ' ~ today.day ~ today.strftime(' %B %Y') }} · Your business at a glance</p>{% endblock %}
+{% block actions %}
+  <a class="btn ghost" href="{{ url_for('reports') }}">{{ icon('trend') }} View reports</a>
+  <button type="button" class="btn primary" data-open="dlg-activity">{{ icon('plus') }} Plan a task</button>
+{% endblock %}
 
 {% block content %}
 {% if steps and steps_done < steps | length %}
@@ -36,6 +40,19 @@
   </ol>
 </section>
 {% endif %}
+<section class="attention-strip" aria-labelledby="attention-title">
+  <div class="attention-heading"><span class="eyebrow">DAILY FOCUS</span><h2 id="attention-title">What needs your attention</h2><p>Across your workspace</p></div>
+  <a href="{{ url_for('tasks') }}" class="attention-item {{ 'needs-action' if overdue_tasks }}">
+    <span class="attention-icon">{{ icon('task') }}</span><span><strong>{{ overdue_tasks }}</strong><span>Overdue tasks</span></span>{{ icon('chevron-right') }}
+  </a>
+  <a href="{{ url_for('pipeline', focus='overdue') }}" class="attention-item {{ 'needs-action' if overdue_deal_count }}">
+    <span class="attention-icon">{{ icon('pipeline') }}</span><span><strong>{{ overdue_deal_count }}</strong><span>Past close date</span></span>{{ icon('chevron-right') }}
+  </a>
+  <a href="{{ url_for('tickets', view='list', open='1', sort='due') }}" class="attention-item {{ 'needs-action' if tickets_breached }}">
+    <span class="attention-icon">{{ icon('lifebuoy') }}</span><span><strong>{{ tickets_breached }}</strong><span>Service deadlines missed</span></span>{{ icon('chevron-right') }}
+  </a>
+</section>
+
 {% set ahead = track.gap >= 0 %}
 <section class="track {{ 'is-ahead' if ahead else 'is-behind' }}" aria-label="{{ track.month }} revenue against target"
          style="--won: {{ '%.2f' | format(track.won_pct) }}%; --expected: {{ '%.2f' | format(track.expected_pct) }}%">
@@ -46,6 +63,7 @@
         <span data-countup="{{ track.won // 100 }}">{{ track.won | money }}</span>
         <span class="track-of">of {{ track.target | money }}</span>
       </p>
+      {% if change is not none %}<p class="track-comparison">{{ '%+d' | format(change) }}% on last month to date</p>{% endif %}
     </div>
     <div class="track-verdict {{ 'ahead' if ahead else 'behind' }}">
       <p class="verdict-main">{{ icon('trend' if ahead else 'alert') }}{{ (track.gap | abs) | money }} {{ 'ahead of' if ahead else 'behind' }} pace</p>
@@ -74,21 +92,13 @@
   </div>
 </section>
 
-<section class="stats" aria-label="Key figures">
-  <div class="stat">
-    <div class="stat-head"><span class="stat-icon tile tone-green">{{ icon('pound') }}</span><p class="stat-label">Won this month</p></div>
-    <p class="stat-value">{{ won_this | money }}</p>
-    <p class="stat-note">
-      {% if change is not none %}<span class="delta {{ 'up' if change >= 0 else 'down' }}">{{ '%+d' | format(change) }}%</span> on last month to date{% else %}Nothing was won by this point last month{% endif %}
-    </p>
-    {{ spark_won }}
-  </div>
-  <div class="stat">
+<section class="stats overview-stats" aria-label="Key figures">
+  <a class="stat stat-link" href="{{ url_for('pipeline') }}">
     <div class="stat-head"><span class="stat-icon tile tone-blue">{{ icon('pipeline') }}</span><p class="stat-label">Open pipeline</p></div>
     <p class="stat-value">{{ pipeline_value | money }}</p>
     <p class="stat-note">{{ open_count }} open deals</p>
     {{ spark_created }}
-  </div>
+  </a>
   <div class="stat">
     <div class="stat-head"><span class="stat-icon tile tone-yellow">{{ icon('trend') }}</span><p class="stat-label">Weighted forecast</p></div>
     <p class="stat-value">{{ forecast | money }}</p>
@@ -107,6 +117,37 @@
     <div class="winbar" aria-hidden="true"><i style="width: {{ win_rate }}%"></i></div>
   </div>
 </section>
+
+<div class="focus-grid">
+  <section class="panel focus-panel" aria-labelledby="focus-tasks-title">
+    <header class="panel-head"><div><span class="eyebrow">YOUR TEAM'S WORK</span><h2 id="focus-tasks-title">Due today &amp; overdue</h2></div><a class="text-link" href="{{ url_for('tasks') }}">All tasks {{ icon('chevron-right') }}</a></header>
+    <ul class="focus-list">
+      {% for a in focus_tasks %}
+        <li>
+          <span class="focus-task-icon">{{ icon('task') }}</span>
+          <a href="{{ url_for('tasks') }}#day-{{ a.due_at[:10] }}"><b>{{ a.subject }}</b><small>{{ a.owner }}{% if a.company %} · {{ a.company }}{% endif %}</small></a>
+          <span class="chip {{ 'bad' if a.due_at[:10] < today.isoformat() else 'due-today' }}">{{ 'Overdue' if a.due_at[:10] < today.isoformat() else 'Today' }} · {{ a.due_at | uk_date_short }}</span>
+        </li>
+      {% else %}
+        <li class="focus-empty">{{ icon('check') }} No outstanding tasks due today or earlier.</li>
+      {% endfor %}
+    </ul>
+  </section>
+  <section class="panel focus-panel" aria-labelledby="overdue-deals-title">
+    <header class="panel-head"><div><span class="eyebrow">PIPELINE HEALTH</span><h2 id="overdue-deals-title">Close dates to review</h2></div><a class="text-link" href="{{ url_for('pipeline', focus='overdue') }}">View deals {{ icon('chevron-right') }}</a></header>
+    <ul class="focus-list">
+      {% for d in overdue_deals %}
+        <li>
+          {{ logo(d.company, 'sm') }}
+          <a href="{{ url_for('deal', deal_id=d.id) }}"><b>{{ d.title }}</b><small>{{ d.company }} · {{ d.owner }}</small></a>
+          <span class="focus-value">{{ d.value | money }}<small>Due {{ d.close_date | uk_date_short }}</small></span>
+        </li>
+      {% else %}
+        <li class="focus-empty">{{ icon('check') }} No open deals have an overdue close date.</li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
 
 <div class="layout-main">
   <section class="panel chart-panel">

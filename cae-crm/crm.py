@@ -88,6 +88,12 @@ def list_records(obj, args, paginate=True):
         where.append(clause)
         params += extra
         active["quiet"] = "1"
+    if obj == "deals" and args.get("focus") in ("overdue", "quiet", "upcoming"):
+        from sales import deal_focus_clause
+        clause, extra = deal_focus_clause(args["focus"])
+        where.append(clause)
+        params += extra
+        active["focus"] = args["focus"]
     if obj == "tickets" and args.get("open") == "1":
         where.append("t.status <> 'Closed'")
         active["open"] = "1"

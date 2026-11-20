@@ -1,57 +1,59 @@
-/* Logo-led palette: coral actions, peach surfaces and sunshine highlights.
-   Success, warning and error tokens keep their semantic meaning. */
+/* Collinalitics company palette, matched to www.collinalitics.co.uk.
+   Navy #0E2240, teal #0B7E7C and cyan #19CECA.
+   Cyan is reserved for dark surfaces; normal text uses the site's darker teal.
+   Success, warning and error colours retain their semantic meaning. */
 :root {
-  --brand-coral: #ff5f3d; --brand-peach: #ffd3c7; --brand-sunshine: #ffc93c;
-  --primary: #b83d24; --on-primary: #ffffff; --accent: #c64b2e; --accent-soft: #fff0ea;
-  --cta: #c13e23; --cta-hover: #a9311b; --bright: #ff5f3d; --bright-ink: #b1361d; --bright-soft: #ffebe4;
-  --canvas: #faf7f5; --surface-2: #f6f1ed; --line: #e9dfd9; --line-soft: #f0e9e4;
-  --ink: #292124; --ink-2: #514747; --muted: #706360;
-  --navy: #4b2b24; --navy-deep: #291e21; --on-navy-muted: #f3cdc0;
-  --chart-hit: #c13e23; --chart-miss: #f5c9bb; --chart-bar: #df9b83; --chart-line: #b83d24;
-  --chart-fill: rgba(193, 62, 35, .1);
-  --stage-1: #f8dcd0; --stage-2: #edb8a3; --stage-3: #df9274; --stage-4: #c66442; --stage-5: #b23f24;
-  --brand-rail: #291e21; --brand-rail-hover: #402a29; --brand-rail-active: #61372c;
-  --brand-track: #342326;
+  --brand-teal: #0b7e7c; --brand-mint: #d9eeee; --brand-glow: #19ceca;
+  --primary: #0a716f; --on-primary: #ffffff; --accent: #0b7e7c; --accent-soft: #e7f2f2;
+  --cta: #0b7e7c; --cta-hover: #096e6d; --bright: #0b7e7c; --bright-ink: #0a716f; --bright-soft: #e7f2f2;
+  --canvas: #f5f7fa; --surface: #ffffff; --surface-2: #eef1f6; --line: #dce3eb; --line-soft: #e7edf3;
+  --ink: #0d1b2e; --ink-2: #213b55; --muted: #3a4d62;
+  --navy: #0e2240; --navy-deep: #081522; --on-navy-muted: #c2d5e8;
+  --chart-hit: #0b7e7c; --chart-miss: #b6d8d9; --chart-bar: #7db8bc; --chart-line: #0a716f;
+  --chart-fill: rgba(11, 126, 124, .10);
+  --stage-1: #d9e9ed; --stage-2: #add4d8; --stage-3: #75b8bd; --stage-4: #38999e; --stage-5: #0b7e7c;
+  --brand-rail: #0e2240; --brand-rail-hover: #112d4d; --brand-rail-active: #143459;
+  --brand-track: #0e2240;
 }
 :root[data-theme="dark"] {
-  --primary: #ffb29c; --on-primary: #291911; --accent: #ff9d80; --accent-soft: #452b26;
-  --cta: #c13e23; --cta-hover: #d64d30; --bright-ink: #ffb29c; --bright-soft: #452b26;
-  --canvas: #181416; --surface: #211c1f; --surface-2: #2b2427; --line: #443639; --line-soft: #352b2e;
-  --ink: #f8efeb; --ink-2: #e2d1ca; --muted: #c2afa8;
-  --navy: #4b2b24; --navy-deep: #21191c; --on-navy-muted: #f3cdc0;
-  --chart-hit: #ff9d80; --chart-miss: #674138; --chart-bar: #ac6c56; --chart-line: #ffb29c; --chart-fill: rgba(255, 157, 128, .12);
-  --stage-1: #55372f; --stage-2: #80503e; --stage-3: #b57050; --stage-4: #e59c70; --stage-5: #ffd3a3;
-  --brand-track: #38272a;
+  --primary: #19ceca; --on-primary: #071b2d; --accent: #19ceca; --accent-soft: #12383f;
+  --cta: #0b7e7c; --cta-hover: #096e6d; --bright: #19ceca; --bright-ink: #77e4e0; --bright-soft: #12383f;
+  --canvas: #081522; --surface: #0e2237; --surface-2: #143047; --line: #29455b; --line-soft: #20394d;
+  --ink: #edf5fa; --ink-2: #d0e1ed; --muted: #afc7da;
+  --navy: #0e2240; --navy-deep: #081522; --on-navy-muted: #c2d5e8;
+  --chart-hit: #19ceca; --chart-miss: #225660; --chart-bar: #367e87; --chart-line: #19ceca; --chart-fill: rgba(25, 206, 202, .12);
+  --stage-1: #163943; --stage-2: #225660; --stage-3: #367e87; --stage-4: #57b3b8; --stage-5: #8ee5e1;
+  --brand-track: #0e2240;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --primary: #ffb29c; --on-primary: #291911; --accent: #ff9d80; --accent-soft: #452b26;
-    --cta: #c13e23; --cta-hover: #d64d30; --bright-ink: #ffb29c; --bright-soft: #452b26;
-    --canvas: #181416; --surface: #211c1f; --surface-2: #2b2427; --line: #443639; --line-soft: #352b2e;
-    --ink: #f8efeb; --ink-2: #e2d1ca; --muted: #c2afa8;
-    --navy: #4b2b24; --navy-deep: #21191c; --on-navy-muted: #f3cdc0;
-    --chart-hit: #ff9d80; --chart-miss: #674138; --chart-bar: #ac6c56; --chart-line: #ffb29c; --chart-fill: rgba(255, 157, 128, .12);
-    --stage-1: #55372f; --stage-2: #80503e; --stage-3: #b57050; --stage-4: #e59c70; --stage-5: #ffd3a3;
-    --brand-track: #38272a;
+    --primary: #19ceca; --on-primary: #071b2d; --accent: #19ceca; --accent-soft: #12383f;
+    --cta: #0b7e7c; --cta-hover: #096e6d; --bright: #19ceca; --bright-ink: #77e4e0; --bright-soft: #12383f;
+    --canvas: #081522; --surface: #0e2237; --surface-2: #143047; --line: #29455b; --line-soft: #20394d;
+    --ink: #edf5fa; --ink-2: #d0e1ed; --muted: #afc7da;
+    --navy: #0e2240; --navy-deep: #081522; --on-navy-muted: #c2d5e8;
+    --chart-hit: #19ceca; --chart-miss: #225660; --chart-bar: #367e87; --chart-line: #19ceca; --chart-fill: rgba(25, 206, 202, .12);
+    --stage-1: #163943; --stage-2: #225660; --stage-3: #367e87; --stage-4: #57b3b8; --stage-5: #8ee5e1;
+    --brand-track: #0e2240;
   }
 }
-.sidebar { background: var(--brand-rail); border-color: #503530; }
-.sidebar > nav a { color: #f3d9ce; }
-.sidebar > nav a .icon { color: #d8b5a6; }
+.sidebar { background: var(--brand-rail); border-color: #29445f; }
+.sidebar > nav a { color: #dce8f5; }
+.sidebar > nav a .icon { color: #aac5df; }
 .sidebar > nav a:hover { background: var(--brand-rail-hover); }
-.sidebar > nav a[aria-current="page"] { background: var(--brand-rail-active); color: #fff; box-shadow: inset 3px 0 0 var(--brand-sunshine); }
-.sidebar > nav a[aria-current="page"] .icon { color: var(--brand-peach); }
-.sidebar .brand-ws, .sidebar .nav-heading, .sidebar .count { color: #d8b5a6; }
-.sidebar .sidebar-foot { border-color: #503530; }
-.sidebar .admin-links a { color: #f3d9ce; }
+.sidebar > nav a[aria-current="page"] { background: var(--brand-rail-active); color: #fff; box-shadow: inset 3px 0 0 var(--brand-glow); }
+.sidebar > nav a[aria-current="page"] .icon { color: var(--brand-mint); }
+.sidebar .brand-ws, .sidebar .nav-heading, .sidebar .count { color: #aac5df; }
+.sidebar .sidebar-foot { border-color: #29445f; }
+.sidebar .admin-links a { color: #dce8f5; }
 .sidebar .admin-links a:hover, .sidebar .admin-links a[aria-current] { background: var(--brand-rail-active); color: #fff; }
-.sidebar :focus-visible { outline-color: var(--brand-sunshine); }
-.sidebar .admin-links a[aria-current] .icon { color: var(--brand-peach); }
-.sidebar .count.alert { background: var(--brand-sunshine); color: #352719; }
-.track, :root[data-theme="dark"] .track { --track-bg: var(--brand-track); }
+.sidebar :focus-visible { outline-color: var(--brand-glow); }
+.sidebar .admin-links a[aria-current] .icon { color: var(--brand-mint); }
+.sidebar .count.alert { background: var(--bad-soft); color: var(--bad); }
+.track, :root[data-theme="dark"] .track { --track-bg: var(--brand-track); --on-navy-muted: #c2d5e8; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .track { --track-bg: var(--brand-track); } }
 .tone-blue { color: var(--primary); background: var(--accent-soft); }
-.record-card::before { background: linear-gradient(120deg, var(--accent-soft), color-mix(in srgb, var(--brand-peach) 22%, var(--surface))); }
+.record-card::before { background: var(--accent-soft); }
 .record-page-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 18px 0 22px; }
 .record-page-head h1 { font-size: clamp(24px, 2.4vw, 34px); letter-spacing: -.035em; overflow-wrap: anywhere; }
 .identity-title { font-size: 22px; font-weight: 750; line-height: 1.3; letter-spacing: -.025em; margin-top: 12px; overflow-wrap: anywhere; }
@@ -81,7 +83,7 @@
 .record-jumps .icon { width: 14px; }
 .record-jumps span { font-size: 10px; padding: 1px 5px; background: var(--surface-2); border-radius: 4px; }
 .record [id], #record-composer, #record-activity { scroll-margin-top: 90px; }
-.record-right .assoc { border-top: 3px solid color-mix(in srgb, var(--brand-coral) 65%, var(--line)); }
+.record-right .assoc { border-top: 3px solid color-mix(in srgb, var(--brand-teal) 65%, var(--line)); }
 .association-scope { color: var(--muted); font-size: 11px; line-height: 1.7; padding: 0 4px; }
 .activity-search { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-bottom: 16px; }
 .activity-search[hidden] { display: none; }
@@ -91,10 +93,15 @@
 .timeline-panel .panel-head { gap: 14px; }
 .timeline-panel .segmented { flex-wrap: wrap; }
 .upcoming .tasks li { flex-wrap: wrap; }
-.lp { --lp-glow: radial-gradient(50% 65% at 90% 0%, color-mix(in srgb, var(--brand-peach) 30%, transparent), transparent 70%), radial-gradient(40% 60% at 0% 15%, color-mix(in srgb, var(--brand-sunshine) 12%, transparent), transparent 70%); }
-.lp-btn-light { color: #a9311b !important; }
+.lp { --lp-glow: var(--canvas); }
+.lp-btn-light { color: #0e2240 !important; }
 .lp-track { background: var(--brand-track); }
-.lp-tile { border-top: 3px solid color-mix(in srgb, var(--brand-coral) 55%, var(--line)); }
+.rail-fill, .lp-rail-fill, .auth-aside-rail span { background: var(--brand-glow); }
+.lp-note .icon, .lp-trust .icon, .auth-aside-points .icon { color: var(--brand-glow); }
+.lp-mark { background: none; }
+.lp-tag-b { background: var(--brand-glow); color: var(--navy-deep); }
+:root .lp .lp-tone-yellow { background: var(--accent-soft); color: var(--primary); }
+.lp-tile { border-top: 3px solid color-mix(in srgb, var(--brand-teal) 55%, var(--line)); }
 .lp-tone-blue { color: var(--primary); background: var(--accent-soft); }
 .lp-workflow-intro { margin: 14px 0 0; color: var(--muted); font-size: 16px; }
 .lp-workflow { padding: 0; margin: 26px 0 32px; list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; text-align: left; }
@@ -102,7 +109,7 @@
 .lp-workflow li > span { display: inline-grid; place-items: center; width: 30px; height: 30px; background: var(--accent-soft); color: var(--primary); font-size: 11px; font-weight: 800; border-radius: 8px; margin-bottom: 12px; }
 .lp-workflow b { display: block; font-size: 13px; }
 .lp-workflow small { font-size: 12px; line-height: 1.7; margin-top: 7px; }
-.auth-aside { background: linear-gradient(145deg, #291e21, #653728); }
+.auth-aside { background: var(--brand-rail); }
 @media (max-width: 1180px) {
   .record-business { grid-template-columns: minmax(0, 1fr); }
   .record-next { border-left: 0; border-top: 1px solid var(--line); }

@@ -5,8 +5,8 @@
     { "src": "/static/brand/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/static/brand/icon-512.png", "sizes": "512x512", "type": "image/png" }
   ],
-  "theme_color": "#ff5f3d",
-  "background_color": "#ff5f3d",
+  "theme_color": "#0e2240",
+  "background_color": "#f5f7fa",
   "display": "standalone",
   "start_url": "/"
 }

@@ -4,12 +4,14 @@ invoices. It's only sent when there's something to report, and one click turns i
 
 The daily job calls send_all(). A working morning follows the workspace's bank holidays."""
 
+from pipelines import OPEN_STAGES
+
 import time
 
 from flask import current_app, flash, g, redirect, render_template, request, url_for
 
 from core import one, rows, sla_state, today
-from db import OPEN_STAGES, get_db
+from db import get_db
 from ukfmt import money
 
 SALT = "cae-daily-summary-off"

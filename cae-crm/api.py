@@ -7,6 +7,8 @@ the password in HTTP Basic sign-in, which is how Power BI sends them. Each key m
 The Power BI feed (/api/v1/feed/<table>) returns a whole table as CSV (or JSON) with plain column names and amounts in
 pounds, ready for Power BI, Excel or any reporting tool."""
 
+from pipelines import OPEN_STAGES, STAGE_PROBABILITY
+
 import base64
 import csv
 import hashlib
@@ -24,8 +26,7 @@ import auth
 import ukfmt
 from core import (actor_name, advance_lifecycle, chosen_owner, log_event, now, one, owned, owner_names, rows,
                   scalar, today, workspace, ws)
-from db import (LAWFUL_BASES, LEAD_STATUSES, LIFECYCLE_STAGES, OPEN_STAGES, SOURCES, STAGE_PROBABILITY,
-                TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_SOURCES, TICKET_STATUSES, get_db)
+from db import LAWFUL_BASES, LEAD_STATUSES, LIFECYCLE_STAGES, SOURCES, TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_SOURCES, TICKET_STATUSES, get_db
 from events import emit
 
 bp = Blueprint("api", __name__, url_prefix="/api/v1")
@@ -39,7 +40,7 @@ FIELDS = {
                  "owner", "lawful_basis", "marketing_consent", "consent_date", "created_at"],
     "companies": ["id", "name", "company_no", "vat_no", "industry", "address", "city", "region", "postcode", "website",
                   "phone", "owner", "created_at"],
-    "deals": ["id", "title", "company_id", "contact_id", "value", "stage", "probability", "owner", "source", "close_date",
+    "deals": ["id", "title", "company_id", "contact_id", "value", "stage", "probability", "pipeline_id", "owner", "source", "close_date",
               "closed_at", "created_at"],
     "tickets": ["id", "subject", "description", "status", "priority", "category", "source", "owner", "company_id",
                 "contact_id", "created_at", "first_response_due", "resolution_due", "first_responded_at", "closed_at"],
@@ -154,18 +155,22 @@ def custom_in(obj, data, saved):
     """Apply "custom": {"Label": value} from a request to a record's saved custom values."""
     given = data.get("custom")
     if given is None:
-        return saved
+        given = {}
     require(isinstance(given, dict), "custom must be an object of field names and values.", "custom")
     from fields import definitions, parse
     by_name = {f["label"].lower(): f for f in definitions(obj)} | {str(f["id"]): f for f in definitions(obj)}
     for name, value in given.items():
         f = by_name.get(str(name).lower())
         require(f is not None, f"There's no custom field called {name}.", "custom")
+        require(f["field_type"]!="calculated", "Calculated fields are read only.", "custom")
         raw = ("on" if value else "") if f["field_type"] == "yes_no" else ("" if value is None else str(value))
         parsed, problem = parse(f, raw)
         require(not problem, problem or "", "custom")
         saved[str(f["id"])] = parsed
-    return saved
+    from fields import problems,calculate
+    errors=problems(definitions(obj),saved)
+    require(not errors," ".join(errors),"custom")
+    return calculate(definitions(obj),saved)
 
 
 def record(obj, record_id):
@@ -277,7 +282,13 @@ def iso_date(data, field, old_value):
 
 def save_deal(data, old=None):
     from sales import set_stage
-    check_choice(data, "stage", OPEN_STAGES if old is None else list(STAGE_PROBABILITY))
+    from pipelines import stage_rows
+    pid=data.get("pipeline_id", old["pipeline_id"] if old else None)
+    if pid is not None:
+        require(isinstance(pid,int) and one("SELECT id FROM sales_pipelines WHERE id=? AND workspace_id=?",pid,ws()), "Choose a pipeline in your workspace.","pipeline_id")
+    options=dict((r["name"],r["probability"]) for r in stage_rows(pid)) if pid else dict(__import__("db").STAGES)
+    require(data.get("stage", old["stage"] if old else next(iter(options))) in (options | ({"Won":100,"Lost":0} if old else {})), "Choose a stage in this pipeline.","stage")
+    require(not old or pid==old["pipeline_id"], "A deal's pipeline cannot be changed through this endpoint.","pipeline_id")
     check_choice(data, "source", SOURCES)
     check_owner(data)
     check_link(data, "company_id", "companies")
@@ -298,9 +309,13 @@ def save_deal(data, old=None):
     custom = json.dumps(custom_in("deals", data, json.loads(old["custom"] or "{}") if old else {}))
     db = get_db()
     if old is None:
-        stage = data.get("stage", "Lead")
+        stage = data.get("stage", next(iter(options)))
+        from pipelines import validate_stage
+        from werkzeug.exceptions import HTTPException
+        try:validate_stage(dict(pipeline_id=pid,contact_id=contact_id,value=value,source=source),stage)
+        except HTTPException as exc:raise ApiError(422,exc.description,{"stage":exc.description}) from None
         deal_id = db.insert("deals", workspace_id=ws(), company_id=company_id, contact_id=contact_id, title=title,
-                            value=value, stage=stage, probability=STAGE_PROBABILITY[stage], owner=owner, source=source,
+                            value=value, stage=stage, probability=options[stage], pipeline_id=pid, owner=owner, source=source,
                             close_date=close_date, custom=custom, created_at=today().isoformat())
         log_event("Deal created", f"{title}, {ukfmt.money(value)}, in {stage}. Added by {actor_name()}.", deal_id=deal_id,
                   company_id=company_id, contact_id=contact_id)

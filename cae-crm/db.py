@@ -128,7 +128,8 @@ CREATE TABLE IF NOT EXISTS users (
     invite_accepted_at TEXT,
     summary_off INTEGER NOT NULL DEFAULT 0,
     summary_sent_on TEXT,
-    chart_prefs TEXT
+    chart_prefs TEXT,
+    record_scope TEXT NOT NULL DEFAULT 'workspace'
 );
 CREATE TABLE IF NOT EXISTS companies (
     id {pk},
@@ -187,7 +188,9 @@ CREATE TABLE IF NOT EXISTS deals (
     custom TEXT,
     outcome_reason TEXT,
     outcome_note TEXT,
-    quiet_since TEXT
+    quiet_since TEXT,
+    pipeline_id INTEGER,
+    forecast_category TEXT NOT NULL DEFAULT 'Pipeline'
 );
 CREATE TABLE IF NOT EXISTS activities (
     id {pk},
@@ -430,6 +433,10 @@ CREATE TABLE IF NOT EXISTS connections (
     provider TEXT NOT NULL,
     account TEXT,
     tenant_id TEXT,
+    granted_scopes TEXT,
+    sync_page TEXT,
+    sync_window_start TEXT,
+    sync_window_latest TEXT,
     access_token TEXT,
     refresh_token TEXT,
     expires_at TEXT,
@@ -588,6 +595,10 @@ CREATE TABLE IF NOT EXISTS custom_fields (
     object TEXT NOT NULL,
     label TEXT NOT NULL,
     field_type TEXT NOT NULL,
+    required INTEGER NOT NULL DEFAULT 0,
+    condition_field INTEGER,
+    condition_value TEXT,
+    calculation TEXT,
     options TEXT,
     position INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
@@ -809,6 +820,97 @@ CREATE TABLE IF NOT EXISTS mail_usage (
     sent INTEGER NOT NULL DEFAULT 0,
     UNIQUE (workspace_id, day)
 );
+CREATE TABLE IF NOT EXISTS sales_pipelines (
+    id {pk}, workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    name TEXT NOT NULL, created_at TEXT NOT NULL, UNIQUE(workspace_id, name)
+);
+CREATE TABLE IF NOT EXISTS pipeline_stages (
+    id {pk}, workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    pipeline_id INTEGER NOT NULL REFERENCES sales_pipelines(id) ON DELETE CASCADE,
+    name TEXT NOT NULL, probability INTEGER NOT NULL, position INTEGER NOT NULL,
+    required_fields TEXT NOT NULL DEFAULT '[]', UNIQUE(pipeline_id, name)
+);
+CREATE TABLE IF NOT EXISTS booking_pages (
+ id {pk}, workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+ user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, token TEXT NOT NULL UNIQUE,
+ title TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, UNIQUE(user_id)
+);
+CREATE TABLE IF NOT EXISTS bookings (
+ id {pk}, workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+ user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, contact_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL,
+ starts_at TEXT NOT NULL, ends_at TEXT NOT NULL, name TEXT NOT NULL, email TEXT NOT NULL,
+ external_id TEXT, sync_error TEXT, created_at TEXT NOT NULL, UNIQUE(user_id,starts_at)
+);
+CREATE TABLE IF NOT EXISTS automation_plans (
+ id {pk}, workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+ name TEXT NOT NULL, on_event TEXT NOT NULL, steps TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1,
+ created_by TEXT NOT NULL, created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS automation_jobs (
+ id {pk}, workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+ plan_id INTEGER NOT NULL REFERENCES automation_plans(id) ON DELETE CASCADE,
+ event_key TEXT NOT NULL, event_data TEXT NOT NULL, steps TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 0,
+ status TEXT NOT NULL DEFAULT 'queued', due_at TEXT NOT NULL, lease_until TEXT, attempts INTEGER NOT NULL DEFAULT 0,
+ last_error TEXT, created_at TEXT NOT NULL, UNIQUE(plan_id,event_key)
+);
+CREATE TABLE IF NOT EXISTS sequence_plans (
+ id {pk}, workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+ name TEXT NOT NULL, steps TEXT NOT NULL, created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS sequence_enrollments (
+ id {pk}, workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+ plan_id INTEGER NOT NULL REFERENCES sequence_plans(id) ON DELETE CASCADE,
+ contact_id INTEGER NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+ owner TEXT NOT NULL, steps TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 0,
+ status TEXT NOT NULL DEFAULT 'active', stop_reason TEXT, due_at TEXT NOT NULL,
+ created_at TEXT NOT NULL, UNIQUE(plan_id,contact_id)
+);
+CREATE TABLE IF NOT EXISTS report_definitions (
+ id {pk}, workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+ name TEXT NOT NULL, definition TEXT NOT NULL, created_by INTEGER NOT NULL REFERENCES users(id),
+ recipient_id INTEGER REFERENCES users(id), schedule TEXT, next_send TEXT, last_error TEXT
+);
+CREATE TABLE IF NOT EXISTS forecast_reviews (
+ id {pk}, workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+ deal_id INTEGER NOT NULL REFERENCES deals(id) ON DELETE CASCADE, category TEXT NOT NULL,
+ note TEXT, reviewed_by TEXT NOT NULL, created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS sales_targets (
+ id {pk}, workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+ user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, month TEXT NOT NULL,
+ amount BIGINT NOT NULL, UNIQUE(user_id,month)
+);
+CREATE TABLE IF NOT EXISTS portal_sites (
+ id {pk}, workspace_id INTEGER NOT NULL UNIQUE REFERENCES workspaces(id) ON DELETE CASCADE,
+ token TEXT NOT NULL UNIQUE
+);
+CREATE TABLE IF NOT EXISTS portal_members (
+ id {pk}, workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+ contact_id INTEGER NOT NULL UNIQUE REFERENCES contacts(id) ON DELETE CASCADE,
+ company_access INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS portal_links (
+ id {pk}, workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+ contact_id INTEGER NOT NULL REFERENCES contacts(id) ON DELETE CASCADE, token_hash TEXT NOT NULL UNIQUE,
+ expires_at TEXT NOT NULL, used_at TEXT, created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS portal_attempts (
+ id {pk}, workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+ fingerprint TEXT NOT NULL, created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS job_health (
+ id {pk}, name TEXT NOT NULL UNIQUE, started_at TEXT, finished_at TEXT, status TEXT, summary TEXT
+);
+CREATE TABLE IF NOT EXISTS workspace_templates (
+ id {pk}, workspace_id INTEGER NOT NULL UNIQUE REFERENCES workspaces(id) ON DELETE CASCADE,
+ name TEXT NOT NULL, applied_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS mailbox_outbox (
+ id {pk}, workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+ user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ contact_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL,
+ request_key TEXT NOT NULL UNIQUE, status TEXT NOT NULL, created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS schema_state (
     id INTEGER PRIMARY KEY,
     fingerprint TEXT NOT NULL
@@ -817,11 +919,13 @@ CREATE TABLE IF NOT EXISTS schema_state (
 
 # Columns added after the first release. Databases created by an earlier version gain them on start-up.
 ADDED_COLUMNS = {
+    "custom_fields": ["required INTEGER NOT NULL DEFAULT 0", "condition_field INTEGER", "condition_value TEXT", "calculation TEXT"],
+    "connections": ["granted_scopes TEXT", "sync_page TEXT", "sync_window_start TEXT", "sync_window_latest TEXT"],
     "users": ["workspace_id INTEGER", "job_title TEXT", "department TEXT", "phone TEXT", "location TEXT",
               "linkedin TEXT", "bio TEXT", "photo TEXT", "photo_updated TEXT", "totp_secret TEXT", "totp_enabled_at TEXT",
               "totp_last_step INTEGER", "recovery_codes TEXT", "email_verified_at TEXT", "verify_sent_at TEXT",
               "invited_at TEXT", "invited_by TEXT", "invite_accepted_at TEXT", "summary_off INTEGER NOT NULL DEFAULT 0",
-              "summary_sent_on TEXT", "chart_prefs TEXT"],
+              "summary_sent_on TEXT", "chart_prefs TEXT", "record_scope TEXT NOT NULL DEFAULT 'workspace'"],
     "companies": ["workspace_id INTEGER", "website TEXT", "phone TEXT", "owner TEXT", "custom TEXT", "ch_status TEXT",
                   "ch_sic TEXT", "ch_checked_at TEXT"],
     "contacts": ["workspace_id INTEGER", "lifecycle_stage TEXT", "lead_status TEXT", "owner TEXT", "unsubscribed_at TEXT",
@@ -845,7 +949,7 @@ ADDED_COLUMNS = {
                    # Existing workspaces count as approved; open sign-ups start unapproved (auth.create_workspace).
                    "approved INTEGER NOT NULL DEFAULT 1"],
     "deals": ["workspace_id INTEGER", "contact_id INTEGER", "custom TEXT", "outcome_reason TEXT", "outcome_note TEXT",
-              "quiet_since TEXT"],
+              "quiet_since TEXT", "pipeline_id INTEGER", "forecast_category TEXT NOT NULL DEFAULT 'Pipeline'"],
     "tickets": ["custom TEXT"],
     # The screen lock (idlelock.py) is kept on the server, so an older copy of the cookie can't undo it.
     "user_sessions": ["locked INTEGER NOT NULL DEFAULT 0", "unlocked_at BIGINT"],
@@ -927,6 +1031,8 @@ class Database:
                                     prepare_threshold=None, connect_timeout=10)
 
     def execute(self, sql, params=()):
+        from permissions import secure_sql
+        sql = secure_sql(self, sql)
         if self.postgres:
             sql = sql.replace("%", "%%").replace("?", "%s")
         if not self.checked_out:
@@ -952,6 +1058,8 @@ class Database:
 
     def insert(self, table, **values):
         """INSERT a row and return its new id."""
+        from permissions import check_insert
+        check_insert(self, table, values)
         cols = ", ".join(values)
         marks = ", ".join("?" * len(values))
         return self.execute(f"INSERT INTO {table} ({cols}) VALUES ({marks}) RETURNING id",
@@ -1048,6 +1156,12 @@ def migrate(db, today):
                    "AND company_id IN (SELECT company_id FROM deals WHERE stage='Won')")
         db.execute("UPDATE contacts SET lifecycle_stage='Lead' WHERE lifecycle_stage IS NULL")
     for sql in (
+        "CREATE INDEX IF NOT EXISTS ix_pipeline_stages_ws ON pipeline_stages(workspace_id,pipeline_id,position)",
+        "CREATE INDEX IF NOT EXISTS ix_bookings_user ON bookings(user_id,starts_at,ends_at)",
+        "CREATE INDEX IF NOT EXISTS ix_automation_due ON automation_jobs(status,due_at)",
+        "CREATE INDEX IF NOT EXISTS ix_sequences_due ON sequence_enrollments(status,due_at)",
+        "CREATE INDEX IF NOT EXISTS ix_portal_expiry ON portal_links(expires_at)",
+        "CREATE INDEX IF NOT EXISTS ix_portal_attempts ON portal_attempts(workspace_id,fingerprint,created_at)",
         "CREATE INDEX IF NOT EXISTS ix_companies_ws ON companies (workspace_id)",
         "CREATE INDEX IF NOT EXISTS ix_contacts_ws ON contacts (workspace_id)",
         "CREATE INDEX IF NOT EXISTS ix_deals_ws ON deals (workspace_id, stage)",

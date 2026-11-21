@@ -1,5 +1,7 @@
 """Contacts, companies and deal record pages, the activity timeline, list views and bulk actions."""
 
+from pipelines import OPEN_STAGES
+
 import json
 from datetime import datetime
 from urllib.parse import parse_qsl, urlencode
@@ -12,8 +14,7 @@ import ukfmt
 from events import emit
 from core import (OPEN_SQL, advance_lifecycle, back, local_or_none, chosen_owner, get_or_404, log_event, now, one, owned,
                   owner_names, rows, scalar, today, ws)
-from db import (ACTIVITY_KINDS, CALL_OUTCOMES, LAWFUL_BASES, LEAD_STATUSES, LIFECYCLE_STAGES, OPEN_STAGES, SOURCES,
-                TICKET_STATUSES, get_db)
+from db import ACTIVITY_KINDS, CALL_OUTCOMES, LAWFUL_BASES, LEAD_STATUSES, LIFECYCLE_STAGES, SOURCES, TICKET_STATUSES, get_db
 
 PAGE_SIZE = 50
 ENGAGEMENT_KINDS = ("note", "call", "email", "meeting")
@@ -79,6 +80,10 @@ def list_records(obj, args, paginate=True):
             where.append(clause)
             params.append(int(value) if key in ("company", "consent") and value.isdigit() else value)
             active[key] = value
+    if obj == "deals" and args.get("pipeline_id"):
+        from pipelines import selected_id
+        pid=selected_id()
+        where.append("d.pipeline_id = ?");params.append(pid);active["pipeline_id"]=str(pid)
     if obj == "deals" and args.get("open") == "1":
         where.append(f"d.{OPEN_SQL}")
         active["open"] = "1"

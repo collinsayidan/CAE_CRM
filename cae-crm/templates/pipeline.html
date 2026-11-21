@@ -13,6 +13,7 @@
 {% endblock %}
 
 {% block content %}
+<form method="get" class="pipeline-toolbar"><label>Sales pipeline <select name="pipeline_id"><option value="">Default sales</option>{% for p in sales_pipelines() %}<option value="{{ p.id }}" {{ 'selected' if selected_pipeline == p.id }}>{{ p.name }}</option>{% endfor %}</select></label><button class="btn">Open pipeline</button>{% if current_user.role == 'admin' %}<a class="text-link" href="{{ url_for('pipeline_settings') }}">Manage pipelines</a>{% endif %}</form>
 <section class="pipeline-summary" aria-label="Filtered pipeline summary" aria-live="polite">
   <div><span>Open pipeline</span><strong data-board-total>{{ board_total | money }}</strong></div>
   <div><span>Weighted forecast</span><strong data-board-forecast>{{ board_forecast | money }}</strong></div>
@@ -20,7 +21,7 @@
   <p>Values reflect your current filters.<br>Forecast uses each stage's probability.</p>
 </section>
 <form class="pipeline-toolbar" method="get" role="search" aria-label="Filter deals board">
-  <label class="search-field">{{ icon('search') }}<input type="search" name="q" value="{{ active.q }}" placeholder="Search deals or companies" aria-label="Search deals"></label>
+  <input type="hidden" name="pipeline_id" value="{{ selected_pipeline or '' }}"><label class="search-field">{{ icon('search') }}<input type="search" name="q" value="{{ active.q }}" placeholder="Search deals or companies" aria-label="Search deals"></label>
   {{ filter_select('owner', 'Any owner', owners, active.owner) }}
   {{ filter_select('focus', 'All open deals', deal_focus[1:] | map(attribute=1) | list, active.focus, values=deal_focus[1:] | map(attribute=0) | list) }}
   <button class="btn ghost sm">Search</button>

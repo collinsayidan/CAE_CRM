@@ -23,7 +23,7 @@ bp = Blueprint("auth", __name__)
 MIN_PASSWORD = 10  # NCSC guidance favours length over complexity rules
 MAX_FAILED = 5
 LOCKOUT = timedelta(minutes=15)
-ROLES = ("admin", "member")
+ROLES = ("admin", "member", "manager", "sales", "support", "finance")
 PROFILE_FIELDS = ("job_title", "department", "phone", "location", "linkedin", "bio")
 MAX_BIO = 500
 MAX_PHOTO_BYTES = 5 * 1024 * 1024
@@ -98,7 +98,7 @@ def load_user():
     if user_id is None:
         return None
     user = get_db().execute("SELECT id, email, name, role, workspace_id, job_title, password_hash, totp_enabled_at, "
-                            "email_verified_at FROM users WHERE id=?",
+                            "email_verified_at, department, record_scope FROM users WHERE id=?",
                             (user_id,)).fetchone()
     if user is None:
         return None

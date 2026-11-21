@@ -8,6 +8,8 @@
 <nav class="crumbs" aria-label="Breadcrumb"><a href="{{ url_for('pipeline') }}">Deals</a> <span aria-hidden="true">/</span> <span>{{ d.title }}</span></nav>
 <header class="record-page-head"><div><h1>{{ d.title }}</h1><p class="subtitle">Deal workspace</p></div><div class="page-actions"><button type="button" class="btn ghost" data-open="dlg-edit-deal">{{ icon('edit') }} Edit details</button><a class="btn primary" href="#record-composer" data-compose="task">{{ icon('plus') }} Plan a follow-up</a></div></header>
 {{ business_summary(insights, 'deal', closed=d.stage in ('Won', 'Lost')) }}
+{% if d.stage not in ('Won','Lost') %}<details class="panel"><summary>Change sales pipeline</summary><p>The deal moves to the first stage of the chosen process. Its requirements must be met. The change is recorded on the timeline.</p><form method="post" action="{{ url_for('transfer_deal_pipeline',deal_id=d.id) }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><label class="field">Destination pipeline<select name="pipeline_id"><option value="">Default sales</option>{% for p in sales_pipelines() %}<option value="{{ p.id }}" {{ 'selected' if d.pipeline_id==p.id }}>{{ p.name }}</option>{% endfor %}</select></label><button class="btn">Move deal to pipeline</button></form></details>{% endif %}
+
 <div class="record">
   <aside class="record-left" aria-label="Record details">
     <section class="panel record-card">

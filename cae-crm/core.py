@@ -10,7 +10,7 @@ from flask import abort, current_app, g, redirect, request, session, url_for
 from db import LIFECYCLE_STAGES, OPEN_STAGES, get_db
 
 UK_TZ = ZoneInfo("Europe/London")
-OPEN_SQL = f"stage IN ({','.join(repr(s) for s in OPEN_STAGES)})"
+OPEN_SQL = "stage NOT IN ('Won','Lost')"
 # Tables whose rows carry a workspace_id, so a form can only point at the caller's own records.
 OWNED_TABLES = {"companies", "contacts", "deals", "tickets", "products", "invoices", "activities", "projects",
                 "engagements", "line_items", "saved_views", "imports", "users", "quotes", "web_forms", "email_campaigns"}

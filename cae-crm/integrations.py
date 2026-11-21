@@ -35,13 +35,13 @@ def providers():
     return {
         "google": dict(name="Gmail", level="user", env="GOOGLE",
                        auth="https://accounts.google.com/o/oauth2/v2/auth", token="https://oauth2.googleapis.com/token",
-                       scope="openid email https://www.googleapis.com/auth/gmail.readonly",
+                       scope="openid email https://www.googleapis.com/auth/gmail.readonly" + (" https://www.googleapis.com/auth/gmail.send" if c.get("MAIL_SEND_ENABLED") else "") + (" https://www.googleapis.com/auth/calendar.events" if c.get("CALENDAR_ENABLED") else ""),
                        extra={"access_type": "offline", "prompt": "consent", "include_granted_scopes": "true"},
                        blurb="Log emails between you and your contacts to their timelines."),
         "microsoft": dict(name="Outlook", level="user", env="MICROSOFT",
                           auth="https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
                           token="https://login.microsoftonline.com/common/oauth2/v2.0/token",
-                          scope="offline_access openid email User.Read Mail.Read", extra={"prompt": "select_account"},
+                          scope="offline_access openid email User.Read Mail.Read" + (" Mail.Send" if c.get("MAIL_SEND_ENABLED") else "") + (" Calendars.ReadWrite" if c.get("CALENDAR_ENABLED") else ""), extra={"prompt": "select_account"},
                           blurb="Log emails between you and your contacts to their timelines. Works with Microsoft 365."),
         "xero": dict(name="Xero", level="workspace", env="XERO",
                      auth="https://login.xero.com/identity/connect/authorize", token="https://identity.xero.com/connect/token",
@@ -132,6 +132,8 @@ def save_tokens(conn_id, tokens):
     db = get_db()
     db.execute("UPDATE connections SET access_token=?, expires_at=? WHERE id=?",
                (seal(tokens["access_token"]), expires.isoformat(timespec="seconds"), conn_id))
+    if tokens.get("scope"):
+        db.execute("UPDATE connections SET granted_scopes=? WHERE id=?", (tokens["scope"],conn_id))
     if tokens.get("refresh_token"):  # Xero and Microsoft issue a new one each time
         db.execute("UPDATE connections SET refresh_token=? WHERE id=?", (seal(tokens["refresh_token"]), conn_id))
     db.commit()

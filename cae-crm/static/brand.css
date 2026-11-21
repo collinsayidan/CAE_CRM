@@ -125,3 +125,20 @@
   .record-jumps a { white-space: nowrap; }
   .record .record-left, .record .record-mid, .record .record-right { min-width: 0; }
 }
+
+/* Business tools share the parent company's palette and work without pointer gestures. */
+.roadmap-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr)); gap:1rem; margin-block:1.25rem; }
+.roadmap-grid .panel { margin:0; }
+.public-services { max-width:60rem; margin:2rem auto; padding:1rem; }
+.public-services .panel { margin-block:1.5rem; padding:1.5rem; }
+.message-text { white-space:pre-wrap; overflow-wrap:anywhere; font:inherit; line-height:1.65; max-height:32rem; overflow:auto; padding-block:1rem; }
+.panel details { margin-block:1rem; }
+.panel details > summary { cursor:pointer; font-weight:650; padding-block:.75rem; }
+.panel .field { min-width:0; margin-block:.75rem; }
+.panel input:not([type=checkbox]):not([type=radio]), .panel select, .panel textarea { max-width:100%; }
+.panel .form-grid { gap:1rem; }
+.setup-list { padding-left:1.25rem; }
+.setup-list li { padding-block:.65rem; }
+.setup-list span { color:var(--muted); margin-right:.5rem; }
+.honeypot { position:absolute; left:-10000px; }
+@media(max-width:640px) { .panel .form-grid { grid-template-columns:1fr; } .public-services { margin:.5rem auto; } .public-services .panel { padding:1rem; } .panel input,.panel select,.panel textarea { font-size:1rem; } .panel .btn { min-height:44px; } }

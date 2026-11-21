@@ -4,6 +4,8 @@ form with a Confirm button, which posts to the same page a person would use (see
 
 Admin-only areas (the audit trail, API keys, billing, bank details) have no tools, so the assistant can't reach them."""
 
+from pipelines import OPEN_STAGES, STAGE_PROBABILITY
+
 import json
 from datetime import date, timedelta
 
@@ -12,7 +14,7 @@ from flask import g
 import fields
 import tags
 from core import OPEN_SQL, now, one, owned, owner_names, rows, scalar, today, ws
-from db import ACTIVITY_KINDS, OPEN_STAGES, STAGE_PROBABILITY, TICKET_PRIORITIES, TICKET_STATUSES
+from db import ACTIVITY_KINDS, TICKET_PRIORITIES, TICKET_STATUSES
 from ukfmt import money
 
 LIMIT = 25  # rows per list, so one answer can't pull in the whole database
@@ -109,6 +111,16 @@ SUGGESTIONS = {"suggest_task", "suggest_note", "suggest_deal_stage"}
 
 class ToolError(Exception):
     """A tool couldn't do what was asked. The message goes back to the model."""
+
+
+def tools_for_workspace():
+    import copy
+    tools=copy.deepcopy(TOOLS)
+    for tool in tools:
+        props=tool["input_schema"].get("properties",{})
+        if "stage" in props and tool["name"] in ("list_deals","suggest_deal_stage"):
+            props["stage"]["enum"]=[*OPEN_STAGES,"Won","Lost"]+(["open"] if tool["name"]=="list_deals" else [])
+    return tools
 
 
 def _date(value, name):

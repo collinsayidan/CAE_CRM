@@ -5,14 +5,14 @@ from the record itself. They show in the record's About panel and are edited in 
 import json
 from datetime import date
 
-from flask import flash, g, redirect, render_template, request, url_for
+from flask import abort, flash, g, redirect, render_template, request, url_for
 
 import auth
 from core import change_failed, now, rows, ws
 from db import get_db
 
 OBJECTS = {"contacts": "Contacts", "companies": "Companies", "deals": "Deals", "tickets": "Tickets"}
-TYPES = {"text": "Text", "number": "Number", "date": "Date", "choice": "Dropdown", "yes_no": "Yes or no"}
+TYPES = {"text": "Text", "number": "Number", "date": "Date", "choice": "Dropdown", "yes_no": "Yes or no", "calculated": "Calculated number"}
 # Edit pages that also save custom fields: endpoint -> (table, URL argument).
 EDITS = {"edit_contact": ("contacts", "contact_id"), "edit_company": ("companies", "company_id"),
          "edit_deal": ("deals", "deal_id"), "edit_ticket": ("tickets", "ticket_id")}
@@ -23,7 +23,7 @@ def definitions(obj):
     key = f"fields_{obj}"
     if key not in g:
         found = rows("SELECT * FROM custom_fields WHERE workspace_id=? AND object=? ORDER BY position, id", ws(), obj)
-        setattr(g, key, [dict(f, options=json.loads(f["options"] or "[]")) for f in found])
+        setattr(g, key, [dict(f, options=json.loads(f["options"] or "[]"), calculation_spec=json.loads(f["calculation"] or "{}")) for f in found])
     return getattr(g, key)
 
 
@@ -51,6 +51,8 @@ def parse(field, raw):
     """(value, problem) from a form value."""
     raw = (raw or "").strip()
     kind = field["field_type"]
+    if kind == "calculated":
+        return None, None
     if kind == "yes_no":
         return raw == "on", None
     if not raw:
@@ -71,7 +73,70 @@ def parse(field, raw):
     return raw[:500], None
 
 
+def visible(field, saved):
+    return not field["condition_field"] or str(saved.get(str(field["condition_field"]),"")) == (field["condition_value"] or "")
+
+
+def calculate(defs, saved):
+    from decimal import Decimal, InvalidOperation
+    for f in defs:
+        if f["field_type"] != "calculated" or not f["calculation"]:continue
+        spec=json.loads(f["calculation"])
+        a,b=saved.get(str(spec["left"])),saved.get(str(spec["right"]))
+        value=None
+        try:
+            if a is not None and b is not None:
+                x,y=Decimal(str(a)),Decimal(str(b))
+                value={"add":lambda:x+y,"subtract":lambda:x-y,"multiply":lambda:x*y,"divide":lambda:x/y}[spec["operation"]]()
+                value=float(round(value,4)) if value.is_finite() and abs(value)<Decimal("1e15") else None
+        except (InvalidOperation,ZeroDivisionError):pass
+        saved[str(f["id"])]=value
+    return saved
+
+
+def problems(defs,saved):
+    return [f["label"]+" is required." for f in defs if f["required"] and visible(f,saved) and (saved.get(str(f["id"])) in (None, "") or (f["field_type"]=="yes_no" and not saved.get(str(f["id"]))))]
+
+
 def register(app):
+    app.add_template_global(visible,"custom_visible")
+    app.add_template_global(lambda obj, fid: next((f["label"] for f in definitions(obj) if f["id"]==fid),"another field"),"custom_field_label")
+    @app.before_request
+    def validate_custom_before_edit():
+        target=EDITS.get(request.endpoint)
+        if not target or request.method!="POST" or not g.get("user"):return
+        table,arg=target
+        record=get_db().execute(f"SELECT * FROM {table} WHERE id=? AND workspace_id=?",(request.view_args[arg],ws())).fetchone()
+        if record is None:abort(404)
+        defs=definitions(table)
+        if not any(f["required"] for f in defs):return
+        saved=values(record);errors=[]
+        for f in defs:
+            if request.form.get("cf_present")!="1":continue
+            value,error=parse(f,request.form.get(f"cf_{f['id']}"))
+            if error:errors.append(error)
+            elif f["field_type"]!="calculated":saved[str(f["id"])]=value
+        errors+=problems(defs,saved)
+        if errors:abort(422," ".join(errors))
+
+    @app.post("/custom-fields/<int:field_id>/configure")
+    def configure_custom_field(field_id):
+        auth.admin_required();db=get_db()
+        f=db.execute("SELECT * FROM custom_fields WHERE id=? AND workspace_id=?",(field_id,ws())).fetchone()
+        if not f:abort(404)
+        position=request.form.get("position","0");condition=request.form.get("condition_field","")
+        if not position.isdigit() or int(position)>100:abort(422)
+        if condition and (not condition.isdigit() or int(condition)==field_id or not db.execute("SELECT id FROM custom_fields WHERE id=? AND workspace_id=? AND object=? AND field_type<>'calculated'",(int(condition),ws(),f["object"])).fetchone()):abort(422)
+        calculation=None
+        if f["field_type"]=="calculated":
+            left,right=request.form.get("left",""),request.form.get("right","");operation=request.form.get("operation")
+            if operation not in ("add","subtract","multiply","divide") or not left.isdigit() or not right.isdigit():abort(422)
+            for source in (left,right):
+                if not db.execute("SELECT id FROM custom_fields WHERE id=? AND workspace_id=? AND object=? AND field_type='number'",(int(source),ws(),f["object"])).fetchone():abort(422)
+            calculation=json.dumps(dict(left=int(left),right=int(right),operation=operation))
+        db.execute("UPDATE custom_fields SET position=?,required=?,condition_field=?,condition_value=?,calculation=? WHERE id=? AND workspace_id=?",(int(position),int(request.form.get("required")=="on" and f["field_type"]!="calculated"),int(condition) if condition else None,request.form.get("condition_value","")[:100],calculation,field_id,ws()))
+        db.commit();return redirect(url_for("custom_fields_page"))
+
     app.add_template_global(definitions, "custom_fields")
     app.add_template_global(values, "custom_values")
     app.add_template_global(display, "custom_display")
@@ -100,6 +165,7 @@ def register(app):
                 problems.append(problem)
             else:
                 current[str(f["id"])] = value
+        current=calculate(fields,current)
         db.execute(f"UPDATE {table} SET custom=? WHERE id=? AND workspace_id=?", (json.dumps(current), record_id, ws()))
         db.commit()
         if problems:

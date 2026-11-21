@@ -117,6 +117,10 @@ def busy_for(workspace_id, user_id, start, end):
 
 
 def slots(page, day):
+    import ukholidays
+
+    if day in ukholidays.for_workspace(page["workspace_id"]):
+        return []
     if day < today() or day > today() + timedelta(days=30) or day.weekday() >= 5:
         return []
     start = datetime.combine(day, time(9), UK_TZ)

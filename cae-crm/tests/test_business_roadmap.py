@@ -387,3 +387,217 @@ def test_mailbox_read_failure_is_displayed_without_send_state(app, client, monke
     monkeypatch.setattr(mailbox, "conversation", fail)
     r = client.get(f"/mailbox?connection_id={conn}&contact_id={cid}")
     assert r.status_code == 200 and b"Reconnect your mailbox" in r.data
+
+
+def test_stage_rename_and_transfer_keep_record_identity(app, client):
+    r = post(client, "/settings/pipelines", name="Renewals", stages="Review | 50\nAgreement | 80")
+    pid = int(r.location.split("pipeline_id=")[1])
+    did = first_id(app, "deals", app.ws, "stage NOT IN ('Won','Lost')")
+    assert post(client, f"/deals/{did}/pipeline", pipeline_id=pid).status_code == 302
+    sid = query(app, "SELECT id FROM pipeline_stages WHERE pipeline_id=? ORDER BY position", pid)[0][0]
+    assert (
+        post(client, f"/settings/pipelines/stages/{sid}", name="Account review", probability="55").status_code
+        == 302
+    )
+    assert tuple(query(app, "SELECT stage,probability,pipeline_id FROM deals WHERE id=?", did)[0]) == (
+        "Account review",
+        55,
+        pid,
+    )
+    assert client.get(f"/deals/{did}").status_code == 200
+
+
+def test_pipeline_api_rejects_foreign_ids_and_entry_gate_bypass(app, client, rival):
+    from test_api_automation import make_key, bearer
+
+    key = make_key(client)
+    r = post(client, "/settings/pipelines", name="Gated", stages="Review | 50 | contact_id,value")
+    pid = int(r.location.split("pipeline_id=")[1])
+    co = first_id(app, "companies", app.ws)
+    data = dict(
+        title="API deal", company_id=co, pipeline_id=pid, stage="Review", close_date="2026-11-30", value=100
+    )
+    assert client.post("/api/v1/deals", json=data, headers=bearer(key)).status_code == 422
+    data["contact_id"] = first_id(app, "contacts", app.ws)
+    assert client.post("/api/v1/deals", json=data, headers=bearer(key)).status_code == 201
+    foreign = make_key(rival)
+    assert rival.post("/api/v1/deals", json=data, headers=bearer(foreign)).status_code == 422
+
+
+def test_scoped_update_parenthesises_or_and_protects_other_owner(app):
+    uid = query(app, "SELECT id FROM users WHERE email=?", MEMBER[1])[0][0]
+    execute(app, "UPDATE users SET record_scope='own' WHERE id=?", uid)
+    cid = first_id(app, "contacts", app.ws)
+    execute(app, "UPDATE contacts SET owner=? WHERE id=?", ADMIN[0], cid)
+    with app.test_request_context("/"):
+        db = get_db()
+        g.user = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+        db.execute("UPDATE contacts SET first_name='Do not change' WHERE id=? OR owner=?", (cid, MEMBER[0]))
+        db.commit()
+    assert query(app, "SELECT first_name FROM contacts WHERE id=?", cid)[0][0] != "Do not change"
+
+
+def test_sequence_revoked_consent_stops_before_sending(app, client):
+    cid = first_id(
+        app,
+        "contacts",
+        app.ws,
+        "marketing_consent=1 AND unsubscribed_at IS NULL AND email_bounced_at IS NULL",
+    )
+    post(
+        client, "/sequences", name="Permission", kind_0="task", days_0="0", subject_0="Never create this task"
+    )
+    pid = query(app, "SELECT id FROM sequence_plans WHERE workspace_id=?", app.ws)[0][0]
+    post(client, "/sequences/enroll", plan_id=pid, contact_id=cid)
+    execute(app, "UPDATE contacts SET marketing_consent=0 WHERE id=?", cid)
+    from sequences import run_due
+
+    with app.test_request_context("/"):
+        g.user = None
+        assert run_due() == 0
+    assert query(app, "SELECT status FROM sequence_enrollments WHERE plan_id=?", pid)[0][0] == "stopped"
+    assert query(app, "SELECT COUNT(*) FROM activities WHERE subject='Never create this task'")[0][0] == 0
+
+
+def test_worker_lease_prevents_overlapping_run(app):
+    from operations import fast_jobs
+
+    insert(app, "job_health", name="fast", status="running", started_at="2026-10-16T10:59:00")
+    with app.test_request_context("/"):
+        g.user = None
+        assert fast_jobs() == {"status": "already_running"}
+
+
+def test_full_mail_body_is_escaped_and_private_to_current_mailbox(app, client, monkeypatch):
+    import connected_mail
+
+    uid = query(app, "SELECT id FROM users WHERE email=?", ADMIN[1])[0][0]
+    cid = first_id(app, "contacts", app.ws)
+    conn = insert(
+        app, "connections", workspace_id=app.ws, user_id=uid, provider="google", created_at="2026-10-16"
+    )
+    monkeypatch.setattr(
+        connected_mail,
+        "conversation",
+        lambda *args: [
+            dict(
+                subject="Meeting",
+                sender="Customer",
+                when="Today",
+                body="<script>alert(1)</script>",
+                thread="thread",
+            )
+        ],
+    )
+    r = client.get(f"/mailbox?connection_id={conn}&contact_id={cid}")
+    assert b"&lt;script&gt;alert(1)&lt;/script&gt;" in r.data
+    other = login(app, MEMBER[1], MEMBER[2])
+    assert other.get(f"/mailbox?connection_id={conn}&contact_id={cid}").status_code == 404
+
+
+def test_mail_sync_keeps_high_water_until_all_pages_finish(app, monkeypatch):
+    import mailsync
+    from datetime import timezone
+
+    uid = query(app, "SELECT id FROM users WHERE email=?", ADMIN[1])[0][0]
+    conn = insert(
+        app,
+        "connections",
+        workspace_id=app.ws,
+        user_id=uid,
+        provider="google",
+        account=ADMIN[1],
+        created_at="2026-10-16",
+        sync_cursor="2026-10-01T00:00:00+00:00",
+    )
+    cid = first_id(app, "contacts", app.ws, "email IS NOT NULL")
+    email = query(app, "SELECT email FROM contacts WHERE id=?", cid)[0][0]
+    monkeypatch.setattr(mailsync, "access_token", lambda c: "token")
+
+    def messages(token, since):
+        page = g.get("mail_page")
+        g.mail_next_page = None if page else "next-page"
+        return [
+            dict(
+                id="older" if page else "newer",
+                subject="Message",
+                sender=email,
+                recipients=ADMIN[1],
+                when=datetime(2026, 10, 12 if page else 15, tzinfo=timezone.utc),
+                preview="Body",
+            )
+        ]
+
+    monkeypatch.setattr(mailsync, "gmail_messages", messages)
+    with app.test_request_context("/"):
+        g.user = None
+        g.public_workspace = app.ws
+        db = get_db()
+        mailsync.sync(db.execute("SELECT * FROM connections WHERE id=?", (conn,)).fetchone())
+        row = db.execute("SELECT * FROM connections WHERE id=?", (conn,)).fetchone()
+        assert row["sync_cursor"] == "2026-10-01T00:00:00+00:00" and row["sync_page"] == "next-page"
+        mailsync.sync(row)
+        row = db.execute("SELECT * FROM connections WHERE id=?", (conn,)).fetchone()
+        assert row["sync_page"] is None and row["sync_cursor"].startswith("2026-10-15")
+
+
+def test_failed_automation_can_retry_without_partial_task(app, client, monkeypatch):
+    import automation
+    import workflows
+
+    post(
+        client,
+        "/automation",
+        name="Retry",
+        on_event="contact.created",
+        action_0="task",
+        delay_0="0",
+        person_0="owner",
+        subject_0="Retry task",
+    )
+    post(
+        client,
+        "/contacts",
+        first_name="Retry",
+        last_name="Test",
+        lawful_basis="Legitimate interests",
+        owner=ADMIN[0],
+    )
+    original = workflows.act
+
+    def fail(rule, ctx):
+        original(rule, ctx)
+        raise RuntimeError("Injected failure after task insert")
+
+    monkeypatch.setattr(workflows, "act", fail)
+    with app.test_request_context("/"):
+        g.user = None
+        automation.run_due()
+    job = query(app, "SELECT id,status FROM automation_jobs WHERE workspace_id=?", app.ws)[0]
+    assert job[1] == "failed"
+    assert query(app, "SELECT COUNT(*) FROM activities WHERE subject LIKE 'Retry task:%'")[0][0] == 0
+    monkeypatch.setattr(workflows, "act", original)
+    assert post(client, f"/automation/jobs/{job[0]}/retry").status_code == 302
+    with app.test_request_context("/"):
+        g.user = None
+        automation.run_due()
+        automation.run_due()
+    assert query(app, "SELECT COUNT(*) FROM activities WHERE subject LIKE 'Retry task:%'")[0][0] == 1
+
+
+def test_scoped_staff_cannot_change_identity_or_department_to_gain_access(app, client):
+    uid = query(app, "SELECT id FROM users WHERE email=?", MEMBER[1])[0][0]
+    execute(app, "UPDATE users SET department='Sales' WHERE id=?", uid)
+    post(client, "/settings/access", user_id=uid, role="sales", record_scope="team")
+    c = login(app, MEMBER[1], MEMBER[2])
+    assert post(c, "/account/profile", name=ADMIN[0], department="Management").status_code == 422
+    assert tuple(query(app, "SELECT name,department FROM users WHERE id=?", uid)[0]) == (MEMBER[0], "Sales")
+
+
+def test_deleted_user_cannot_leave_access_granted_to_reused_identity(app):
+    cid = first_id(app, "contacts", app.ws)
+    uid = query(app, "SELECT id FROM users WHERE email=?", MEMBER[1])[0][0]
+    execute(app, "UPDATE contacts SET owner=? WHERE id=?", MEMBER[0], cid)
+    assert query(app, "SELECT owner_id FROM contacts WHERE id=?", cid)[0][0] == uid
+    execute(app, "DELETE FROM users WHERE id=?", uid)
+    assert query(app, "SELECT owner_id FROM contacts WHERE id=?", cid)[0][0] is None

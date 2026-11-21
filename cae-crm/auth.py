@@ -179,6 +179,13 @@ def read_profile(form):
 def save_profile(db, user, form, files):
     """Update a team member's profile and photo. Returns errors, or {} once saved."""
     data, errors = read_profile(form)
+    if g.get("user") and g.user["role"]!="admin":
+        # Departments are an access boundary once department visibility is enabled.
+        scoped=db.execute("SELECT record_scope FROM users WHERE id=?",(user["id"],)).fetchone()
+        if scoped and scoped[0] in ("own","team") and data["name"]!=user["name"]:
+            errors["name"]="An administrator must change the display name for a restricted account."
+        if scoped and scoped[0]=="team" and data["department"]!=(user["department"] or ""):
+            errors["department"]="An administrator must change your department because it controls record access."
     upload = files.get("photo")
     photo = None
     if upload and upload.filename:

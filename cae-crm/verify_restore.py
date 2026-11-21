@@ -54,10 +54,19 @@ def main():
             file=sys.stderr,
         )
         return 1
+    for target in (source_url, restored_url):
+        if not target.startswith(("postgres://", "postgresql://")) and not os.path.isfile(target):
+            print("Both SQLite database files must already exist.", file=sys.stderr)
+            return 1
     source = restored = None
     try:
         source = Database(source_url)
         restored = Database(restored_url)
+        for reader in (source, restored):
+            if reader.postgres:
+                reader.conn.read_only = True
+            else:
+                reader.conn.execute("PRAGMA query_only=ON")
         result = verify(source, restored)
         print(json.dumps(result, indent=2))
         return 0 if result["verified"] else 1

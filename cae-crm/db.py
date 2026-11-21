@@ -144,6 +144,7 @@ CREATE TABLE IF NOT EXISTS companies (
     region TEXT,
     website TEXT,
     phone TEXT,
+    owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     owner TEXT,
     created_at TEXT NOT NULL,
     custom TEXT,
@@ -165,6 +166,7 @@ CREATE TABLE IF NOT EXISTS contacts (
     consent_date TEXT,
     lifecycle_stage TEXT,
     lead_status TEXT,
+    owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     owner TEXT,
     created_at TEXT NOT NULL,
     unsubscribed_at TEXT,
@@ -180,6 +182,7 @@ CREATE TABLE IF NOT EXISTS deals (
     value BIGINT NOT NULL,
     stage TEXT NOT NULL,
     probability INTEGER NOT NULL,
+    owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     owner TEXT NOT NULL,
     source TEXT NOT NULL,
     close_date TEXT NOT NULL,
@@ -201,6 +204,7 @@ CREATE TABLE IF NOT EXISTS activities (
     ticket_id INTEGER,
     kind TEXT NOT NULL,
     subject TEXT NOT NULL,
+    owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     owner TEXT NOT NULL,
     due_at TEXT NOT NULL,
     done INTEGER NOT NULL DEFAULT 0
@@ -248,6 +252,7 @@ CREATE TABLE IF NOT EXISTS projects (
     company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     deal_id INTEGER REFERENCES deals(id) ON DELETE SET NULL,
     name TEXT NOT NULL,
+    owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     owner TEXT NOT NULL,
     status TEXT NOT NULL,
     progress INTEGER NOT NULL DEFAULT 0,
@@ -287,6 +292,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     priority TEXT NOT NULL,
     category TEXT NOT NULL,
     source TEXT NOT NULL,
+    owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     owner TEXT NOT NULL,
     created_at TEXT NOT NULL,
     first_response_due TEXT NOT NULL,
@@ -867,7 +873,7 @@ CREATE TABLE IF NOT EXISTS sequence_enrollments (
 );
 CREATE TABLE IF NOT EXISTS report_definitions (
  id {pk}, workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
- name TEXT NOT NULL, definition TEXT NOT NULL, created_by INTEGER NOT NULL REFERENCES users(id),
+ name TEXT NOT NULL, definition TEXT NOT NULL, created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
  recipient_id INTEGER REFERENCES users(id), schedule TEXT, next_send TEXT, last_error TEXT
 );
 CREATE TABLE IF NOT EXISTS forecast_reviews (
@@ -960,6 +966,9 @@ ADDED_COLUMNS = {
                  "late_charged_on TEXT", "recurring_id INTEGER"],
     "projects": ["workspace_id INTEGER"],
 }
+for _owned_table in ("companies","contacts","deals","tickets","activities","projects"):
+    ADDED_COLUMNS[_owned_table].append("owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL")
+
 # Run once, when a column is first added to an existing database.
 BACKFILL = {
     # People who signed up before email confirmation existed aren't asked to confirm now.
@@ -1031,7 +1040,8 @@ class Database:
                                     prepare_threshold=None, connect_timeout=10)
 
     def execute(self, sql, params=()):
-        from permissions import secure_sql
+        from permissions import secure_sql, prepare_ownership
+        sql, params = prepare_ownership(sql, params)
         sql = secure_sql(self, sql)
         if self.postgres:
             sql = sql.replace("%", "%%").replace("?", "%s")
@@ -1058,7 +1068,11 @@ class Database:
 
     def insert(self, table, **values):
         """INSERT a row and return its new id."""
-        from permissions import check_insert
+        from permissions import check_insert, OWNER_TABLES
+        if table in OWNER_TABLES and values.get("owner") is not None and "owner_id" not in values:
+            row=self.execute("SELECT MIN(id) FROM users WHERE workspace_id=? AND name=? HAVING COUNT(*)=1",
+                             (values.get("workspace_id"),values["owner"])).fetchone()
+            values["owner_id"]=row[0] if row else None
         check_insert(self, table, values)
         cols = ", ".join(values)
         marks = ", ".join("?" * len(values))
@@ -1155,6 +1169,10 @@ def migrate(db, today):
         db.execute("UPDATE contacts SET lifecycle_stage='Customer' WHERE lifecycle_stage IS NULL "
                    "AND company_id IN (SELECT company_id FROM deals WHERE stage='Won')")
         db.execute("UPDATE contacts SET lifecycle_stage='Lead' WHERE lifecycle_stage IS NULL")
+    # Resolve legacy text owners once, only when an account name identifies exactly one person.
+    for table in ("companies","contacts","deals","tickets","activities","projects"):
+        if "owner_id" in existing[table]:continue
+        db.execute(f"UPDATE {table} SET owner_id=(SELECT MIN(u.id) FROM users u WHERE u.workspace_id={table}.workspace_id AND u.name={table}.owner HAVING COUNT(*)=1) WHERE owner_id IS NULL")
     for sql in (
         "CREATE INDEX IF NOT EXISTS ix_pipeline_stages_ws ON pipeline_stages(workspace_id,pipeline_id,position)",
         "CREATE INDEX IF NOT EXISTS ix_bookings_user ON bookings(user_id,starts_at,ends_at)",

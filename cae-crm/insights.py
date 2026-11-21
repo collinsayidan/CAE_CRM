@@ -6,7 +6,7 @@ from flask import abort, flash, g, redirect, render_template, request, url_for
 import auth
 from core import get_or_404, log_event, now, one, rows, today, ws
 from db import get_db
-from permissions import can
+from permissions import can, staff_in_scope
 
 ENTITIES = {
     "deals": ("Deals", ["owner", "stage", "source"], "value", "sales"),
@@ -188,7 +188,11 @@ def register(app):
             total=sum(r["amount"] for r in current),
             entities={k: v for k, v in ENTITIES.items() if can(v[3])},
             metrics=METRICS,
-            saved=rows("SELECT * FROM report_definitions WHERE workspace_id=? ORDER BY name", ws()),
+            saved=[
+                r
+                for r in rows("SELECT * FROM report_definitions WHERE workspace_id=? ORDER BY name", ws())
+                if can(ENTITIES[json.loads(r["definition"])["object"]][3])
+            ],
         )
 
     @app.post("/reports/saved/<int:report_id>/delete")
@@ -241,10 +245,11 @@ def register(app):
             for category in CATEGORIES
         }
         targets = rows(
-            "SELECT t.*,u.name FROM sales_targets t JOIN users u ON u.id=t.user_id WHERE t.workspace_id=? AND t.month=?",
+            "SELECT t.*,u.name,u.department FROM sales_targets t JOIN users u ON u.id=t.user_id WHERE t.workspace_id=? AND t.month=?",
             ws(),
             month,
         )
+        targets = [t for t in targets if staff_in_scope(dict(id=t["user_id"], department=t["department"]))]
         return render_template(
             "forecast_page.html",
             month=month,
@@ -277,7 +282,8 @@ def register(app):
             abort(422)
         if amount is None or amount < 0:
             abort(422)
-        if not one("SELECT id FROM users WHERE workspace_id=? AND id=?", ws(), uid):
+        person = one("SELECT id,department FROM users WHERE workspace_id=? AND id=?", ws(), uid)
+        if not person or not staff_in_scope(person):
             abort(404)
         db = get_db()
         old = one("SELECT id FROM sales_targets WHERE user_id=? AND month=?", uid, month)

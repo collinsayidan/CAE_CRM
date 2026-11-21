@@ -55,6 +55,41 @@ RESERVED = {
 }
 
 
+OWNER_TABLES = {"companies", "contacts", "deals", "tickets", "activities", "projects"}
+
+
+def prepare_ownership(sql, params):
+    # Keep the immutable owner reference in sync with existing assignment handlers.
+    # Our owner-changing statements use bound values and a plain SET list.
+    match = re.match(r"\s*UPDATE\s+(\w+)\s+SET\b", sql, re.I)
+    if not match or match[1] not in OWNER_TABLES:
+        return sql, params
+    first_where = re.search(r"\s+WHERE\b", sql[match.end() :], re.I)
+    set_end = match.end() + first_where.start() if first_where else len(sql)
+    change = re.search(r"\bowner\s*=\s*\?", sql[:set_end], re.I)
+    if not change:
+        return sql, params
+    where = re.search(r"\s+WHERE\b", sql[change.end() :], re.I)
+    end = change.end() + where.start() if where else len(sql)
+    owner_index = sql[: change.end()].count("?") - 1
+    parameters = list(params)
+    insert_at = sql[:end].count("?")
+    parameters.insert(insert_at, params[owner_index])
+    table = match[1]
+    expression = f", owner_id=(SELECT MIN(u.id) FROM users u WHERE u.workspace_id={table}.workspace_id AND u.name=? HAVING COUNT(*)=1) "
+    return sql[:end] + expression + sql[end:], parameters
+
+
+def staff_in_scope(person):
+    if not active() or g.user["role"] == "admin" or g.user["record_scope"] == "workspace":
+        return True
+    if g.user["record_scope"] == "own":
+        return person["id"] == g.user["id"]
+    return person["id"] == g.user["id"] or bool(
+        g.user["department"] and person["department"] == g.user["department"]
+    )
+
+
 def active():
     return (
         has_request_context()
@@ -112,23 +147,21 @@ def policy(db, table):
     scope = user["record_scope"]
     if user["role"] == "admin" or scope == "workspace":
         return None
-    names = [user["name"]]
+    identifiers = [user["id"]]
     if scope == "team" and user["department"]:
-        # Direct connection query avoids recursively applying the record policy to identity records.
         marks = "%s" if db.postgres else "?"
-        names = [
+        identifiers = [
             r[0]
             for r in db.conn.execute(
-                f"SELECT name FROM users WHERE workspace_id={marks} AND department={marks}",
+                f"SELECT id FROM users WHERE workspace_id={marks} AND department={marks}",
                 (user["workspace_id"], user["department"]),
             )
         ]
-    field = "author" if table == "engagements" else "owner"
     if table in ("invoices", "quotes"):
         return "company_id IN (SELECT id FROM companies WHERE " + policy(db, "companies") + ")"
     if table in ("products", "email_campaigns"):
         return "1=0" if table == "email_campaigns" else None
-    return field + " IN (" + ",".join(literal(n) for n in names) + ")"
+    return "owner_id IN (" + ",".join(str(int(identifier)) for identifier in identifiers) + ")"
 
 
 def secure_sql(db, sql):

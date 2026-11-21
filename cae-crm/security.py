@@ -29,7 +29,7 @@ VERIFY_DAYS = 7
 INVITE_DAYS = 7
 RESEND_EVERY = timedelta(minutes=5)
 # Pages that send email to customers or colleagues: not until the person has confirmed their own email address.
-SENDS_EMAIL = {"email_invoice", "remind_invoice", "email_quote", "campaign_test", "campaign_start", "campaign_deliver",
+SENDS_EMAIL = {"mailbox", "sequence_enroll", "report_builder", "email_invoice", "remind_invoice", "email_quote", "campaign_test", "campaign_start", "campaign_deliver",
                "auth.team", "auth.resend_invite", "ticket_reply"}
 
 

@@ -4,6 +4,10 @@ A CRM for UK businesses, built in Python with **Flask**. Many businesses can use
 
 It uses SQLite locally and PostgreSQL in production, with plain JavaScript for the interactive parts. There's no front-end framework or build step.
 
+## Business upgrades
+
+The [business upgrade guide](../docs/BUSINESS_ROADMAP.md) covers custom pipelines, team permissions, connected mailbox conversations, calendars and booking, advanced workflows, follow-up sequences, reporting, forecasts, field configuration, customer portals, onboarding and operational checks. Read its activation steps before enabling provider permissions or scheduling the fast worker.
+
 ## Run it
 
 ```bash

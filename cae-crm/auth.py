@@ -23,7 +23,7 @@ bp = Blueprint("auth", __name__)
 MIN_PASSWORD = 10  # NCSC guidance favours length over complexity rules
 MAX_FAILED = 5
 LOCKOUT = timedelta(minutes=15)
-ROLES = ("admin", "member")
+ROLES = ("admin", "member", "manager", "sales", "support", "finance")
 PROFILE_FIELDS = ("job_title", "department", "phone", "location", "linkedin", "bio")
 MAX_BIO = 500
 MAX_PHOTO_BYTES = 5 * 1024 * 1024
@@ -98,7 +98,7 @@ def load_user():
     if user_id is None:
         return None
     user = get_db().execute("SELECT id, email, name, role, workspace_id, job_title, password_hash, totp_enabled_at, "
-                            "email_verified_at FROM users WHERE id=?",
+                            "email_verified_at, department, record_scope FROM users WHERE id=?",
                             (user_id,)).fetchone()
     if user is None:
         return None
@@ -179,6 +179,13 @@ def read_profile(form):
 def save_profile(db, user, form, files):
     """Update a team member's profile and photo. Returns errors, or {} once saved."""
     data, errors = read_profile(form)
+    if g.get("user") and g.user["role"]!="admin":
+        # Departments are an access boundary once department visibility is enabled.
+        scoped=db.execute("SELECT record_scope FROM users WHERE id=?",(user["id"],)).fetchone()
+        if scoped and scoped[0] in ("own","team") and data["name"]!=user["name"]:
+            errors["name"]="An administrator must change the display name for a restricted account."
+        if scoped and scoped[0]=="team" and data["department"]!=(user["department"] or ""):
+            errors["department"]="An administrator must change your department because it controls record access."
     upload = files.get("photo")
     photo = None
     if upload and upload.filename:

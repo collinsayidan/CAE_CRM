@@ -19,7 +19,7 @@
   </ul>
 {% endmacro %}
 
-{% block content %}
+{% block content %}<p><a class="btn" href="{{ url_for('report_builder') }}">Build a custom report</a> <a class="btn" href="{{ url_for('forecast_page') }}">Review sales forecast</a></p>
 <section class="stats report-stats" aria-label="Headline figures">
   <div class="stat"><div class="stat-head"><span class="stat-icon tile tone-blue">{{ icon('pound') }}</span><p class="stat-label">Average won deal</p></div><p class="stat-value">{{ avg_deal | money }}</p><p class="stat-note">Across every won deal</p></div>
   <div class="stat"><div class="stat-head"><span class="stat-icon tile tone-yellow">{{ icon('clock') }}</span><p class="stat-label">Average sales cycle</p></div><p class="stat-value">{{ cycle }} days</p><p class="stat-note">From deal created to won</p></div>

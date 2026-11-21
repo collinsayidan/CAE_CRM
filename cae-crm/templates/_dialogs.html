@@ -54,7 +54,7 @@
 </dialog>
 
 <dialog class="sheet" id="dlg-deal" aria-labelledby="dlg-deal-title">
-  <form method="post" action="{{ url_for('create_deal') }}">
+  <form method="post" action="{{ url_for('create_deal') }}"><input type="hidden" name="pipeline_id" value="{{ request.args.get('pipeline_id','') }}">
     <input type="hidden" name="csrf" value="{{ csrf_token }}">
     <input type="hidden" name="next" value="{{ request.full_path }}">
     <header><h2 id="dlg-deal-title">New deal</h2><button type="button" class="icon-btn" data-close aria-label="Close">{{ icon('x') }}</button></header>

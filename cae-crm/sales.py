@@ -1,5 +1,7 @@
 """Deals pipeline, products and line items, tasks, and delivery projects."""
 
+from pipelines import OPEN_STAGES, STAGE_PROBABILITY
+
 import calendar
 from collections import defaultdict
 from datetime import date, datetime, timedelta
@@ -11,7 +13,7 @@ from events import emit
 from core import (OPEN_SQL, advance_lifecycle, back, chosen_owner, get_or_404, log_event, one, owned, owner_names, rows,
                   scalar, today, wants_json, ws)
 from crm import line_totals, render_index, resolve_links
-from db import ACTIVITY_KINDS, BILLING_PERIODS, LOST_REASONS, OPEN_STAGES, SOURCES, STAGE_PROBABILITY, WON_REASONS, get_db
+from db import ACTIVITY_KINDS, BILLING_PERIODS, LOST_REASONS, SOURCES, WON_REASONS, get_db
 from ukfmt import add_months, money
 
 PROJECT_STATUSES = ["On track", "At risk", "Blocked", "Complete"]
@@ -113,6 +115,8 @@ def reason_choice(stage, form):
 def set_stage(deal, stage, detail=None, reason=None, note=None):
     """Move a deal to a stage, with what follows from it (a delivery project when won). Returns a message. No commit.
     reason and note say why a deal was won or lost; a lost deal without one is recorded as "Not given"."""
+    from pipelines import validate_stage
+    probability = validate_stage(deal, stage)
     db = get_db()
     closed = today().isoformat() if stage in ("Won", "Lost") else None
     if stage == "Lost":
@@ -121,7 +125,7 @@ def set_stage(deal, stage, detail=None, reason=None, note=None):
         reason = note = None
     db.execute("UPDATE deals SET stage=?, probability=?, closed_at=?, outcome_reason=?, outcome_note=?, quiet_since=NULL "
                "WHERE id=? AND workspace_id=?",
-               (stage, STAGE_PROBABILITY[stage], closed, reason, note, deal["id"], ws()))
+               (stage, probability, closed, reason, note, deal["id"], ws()))
     why = ". ".join(filter(None, [f"Reason: {reason}" if reason else None, note]))
     links = dict(deal_id=deal["id"], company_id=deal["company_id"], contact_id=deal["contact_id"])
     if stage != deal["stage"]:
@@ -156,11 +160,15 @@ def register(app):
         filters = {k: request.args.get(k, "") for k in ("q", "owner", "focus")}
         filters["open"] = "1"
         deals, _, _, active = list_records("deals", filters, paginate=False)
+        from pipelines import selected_id, stage_rows
+        pid=selected_id()
+        deals=[d for d in deals if d["pipeline_id"]==pid]
+        board_stages=[(r["name"],r["probability"]) for r in stage_rows(pid)] if pid else __import__("db").STAGES
         columns = defaultdict(list)
         for deal in deals:
             columns[deal["stage"]].append(deal)
         return render_template("pipeline.html", columns=columns, owner=active.get("owner", ""), active=active,
-                               quiet=quiet_ids(), deal_focus=DEAL_FOCUS,
+                               quiet=quiet_ids(), deal_focus=DEAL_FOCUS, stages=board_stages, selected_pipeline=pid,
                                board_total=sum(d["value"] for d in deals), board_count=len(deals),
                                board_forecast=sum(d["value"] * d["probability"] // 100 for d in deals))
 
@@ -168,7 +176,10 @@ def register(app):
     def create_deal():
         f = request.form
         value = ukfmt.parse_amount(f.get("value")) if f.get("value", "").strip() else 0
-        stage = f.get("stage") if f.get("stage") in OPEN_STAGES else "Lead"
+        from pipelines import selected_id, stage_rows
+        pid=selected_id()
+        options=dict((r["name"],r["probability"]) for r in stage_rows(pid)) if pid else dict(__import__("db").STAGES)
+        stage=f.get("stage") if f.get("stage") in options else next(iter(options))
         try:
             close_date = date.fromisoformat(f.get("close_date", ""))
         except ValueError:
@@ -179,8 +190,10 @@ def register(app):
             flash("Deal not added. It needs a name, a company, a value in £ and an expected close date.", "error")
             return back("pipeline")
         db = get_db()
+        from pipelines import validate_stage
+        validate_stage(dict(pipeline_id=pid,contact_id=contact_id,value=value,source=f.get("source") or SOURCES[0]),stage)
         deal_id = db.insert("deals", workspace_id=ws(), company_id=company_id, contact_id=contact_id,
-                            title=f["title"].strip(), value=value, stage=stage, probability=STAGE_PROBABILITY[stage],
+                            title=f["title"].strip(), value=value, stage=stage, probability=options[stage], pipeline_id=pid,
                             owner=chosen_owner(f.get("owner")), source=f.get("source") if f.get("source") in SOURCES else SOURCES[0],
                             close_date=close_date.isoformat(), created_at=today().isoformat())
         log_event("Deal created", f"{f['title'].strip()}, {money(value)}, in {stage}", deal_id=deal_id,
@@ -207,7 +220,7 @@ def register(app):
         message = set_stage(deal, stage, reason=reason, note=note)
         get_db().commit()
         if wants_json():
-            return jsonify(ok=True, stage=stage, probability=STAGE_PROBABILITY[stage], message=message)
+            return jsonify(ok=True, stage=stage, probability=one("SELECT probability FROM deals WHERE id=? AND workspace_id=?",deal_id,ws())[0], message=message)
         flash(message, "ok")
         return back("pipeline")
 

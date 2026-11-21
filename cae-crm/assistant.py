@@ -9,6 +9,8 @@ record contents reach the model inside tool results, as data it's told never to 
 Conversations belong to the person who had them, and are deleted after 30 days. Each person can ask a set number of
 questions a day (CAE_AI_DAILY_LIMIT). Tests set AI_BACKEND to a fake client with the SDK's messages.create signature."""
 
+from pipelines import STAGE_PROBABILITY
+
 import hashlib
 import json
 import re
@@ -22,7 +24,7 @@ from werkzeug.exceptions import HTTPException, MethodNotAllowed, NotFound
 import assistant_tools
 import auth
 from core import is_local_path, local_or_none, now, one, rows, today, wants_json, workspace, ws
-from db import ACTIVITY_KINDS, STAGE_PROBABILITY, get_db
+from db import ACTIVITY_KINDS, get_db
 
 KEEP_DAYS = 30
 MAX_STEPS = 8  # model calls per question, so a runaway loop can't run up a bill
@@ -244,7 +246,7 @@ def ask(conversation_id, question, context=None):
                 model=c.get("AI_MODEL") or "claude-opus-5-5",
                 max_tokens=8000,
                 system=system_prompt(),
-                tools=assistant_tools.TOOLS,
+                tools=assistant_tools.tools_for_workspace(),
                 messages=messages,
                 output_config={"effort": c.get("AI_EFFORT") or "medium"},
                 cache_control={"type": "ephemeral"},

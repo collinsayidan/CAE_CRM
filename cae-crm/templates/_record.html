@@ -179,7 +179,7 @@
 {# Custom fields a business has added, shown in a record's About panel. #}
 {% macro custom_props(obj, record) -%}
 {% set saved = custom_values(record) %}
-{% for f in custom_fields(obj) %}{{ prop(f.label, custom_display(f, saved.get(f.id | string))) }}{% endfor %}
+{% for f in custom_fields(obj) if custom_visible(f,saved) %}{{ prop(f.label, custom_display(f, saved.get(f.id | string))) }}{% endfor %}
 {%- endmacro %}
 
 {# Inputs for custom fields in a record's Edit window. #}
@@ -191,13 +191,16 @@
   {% set saved = custom_values(record) %}
   {% for f in defs %}
     {% set v = saved.get(f.id | string) %}
-    {% if f.field_type == 'yes_no' %}
+    {% if f.condition_field %}<p class="field-hint span-2">{{ f.label }} applies when {{ custom_field_label(obj,f.condition_field) }} equals {{ f.condition_value }}.</p>{% endif %}
+    {% if f.field_type == 'calculated' %}
+      <p>{{ f.label }}: {{ v if v is not none else 'Calculated after saving' }}</p>
+    {% elif f.field_type == 'yes_no' %}
       <label class="check span-2"><input type="checkbox" name="cf_{{ f.id }}" {{ 'checked' if v }}><span>{{ f.label }}</span></label>
     {% elif f.field_type == 'choice' %}
-      <label class="field"><span class="field-label">{{ f.label }} <span class="optional">(optional)</span></span>
+      <label class="field"><span class="field-label">{{ f.label }} <span class="optional">{{ '(required when applicable)' if f.required else '(optional)' }}</span></span>
         <select name="cf_{{ f.id }}"><option value="">Not set</option>{% for o in f.options %}<option {{ 'selected' if o == v }}>{{ o }}</option>{% endfor %}</select></label>
     {% else %}
-      <label class="field"><span class="field-label">{{ f.label }} <span class="optional">(optional)</span></span>
+      <label class="field"><span class="field-label">{{ f.label }} <span class="optional">{{ '(required when applicable)' if f.required else '(optional)' }}</span></span>
         <input name="cf_{{ f.id }}" value="{{ v if v is not none else '' }}" {% if f.field_type == 'number' %}inputmode="decimal"{% elif f.field_type == 'date' %}type="date"{% endif %} maxlength="500"></label>
     {% endif %}
   {% endfor %}

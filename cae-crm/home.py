@@ -1,5 +1,7 @@
 """Landing page, Overview dashboard, global search and Reports."""
 
+from pipelines import OPEN_STAGES, STAGES
+
 import json
 from datetime import timedelta
 
@@ -8,8 +10,7 @@ from flask import current_app, g, jsonify, redirect, render_template, request, u
 import charts
 import ukfmt
 from core import OPEN_SQL, company_options, contact_options, owner_names, plain, rows, scalar, sla_state, today, workspace, ws
-from db import (ACTIVITY_KINDS, BILLING_PERIODS, LAWFUL_BASES, LIFECYCLE_STAGES, OPEN_STAGES, SOURCES, STAGES,
-                TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_SOURCES, get_db)
+from db import ACTIVITY_KINDS, BILLING_PERIODS, LAWFUL_BASES, LIFECYCLE_STAGES, SOURCES, TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_SOURCES, get_db
 from ukfmt import add_months, fy_quarter, money, working_days
 
 # Stages are ordinal, so they share one sequential ramp (defined per theme in style.css).
@@ -27,7 +28,7 @@ def quick_create_choices():
                 vat_labels=[{20: "20% standard", 5: "5% reduced", 0: "0% zero-rated"}[r] for r in vat_rates],
                 regions=REGIONS, lawful_bases=LAWFUL_BASES, lifecycle_stages=LIFECYCLE_STAGES,
                 ticket_priorities=TICKET_PRIORITIES, ticket_categories=TICKET_CATEGORIES, ticket_sources=TICKET_SOURCES,
-                billing_periods=BILLING_PERIODS, stage_colours=STAGE_COLOURS)
+                billing_periods=BILLING_PERIODS, stage_colours={s: f"var(--stage-{min(i+1,5)})" for i,(s,_) in enumerate(__import__("pipelines").all_choices())})
 
 
 # The ways each home chart can be shown. The first is the default.
@@ -189,10 +190,10 @@ def register(app):
             spark_won=charts.sparkline([s["value"] for s in series]),
             spark_created=charts.sparkline([created.get(m.strftime("%Y-%m"), 0) for m in months]),
             spark_forecast=charts.sparkline(forecast_trend),
-            mix_bar=charts.stacked_bar([(m["total"], STAGE_COLOURS[m["stage"]],
+            mix_bar=charts.stacked_bar([(m["total"], f"var(--stage-{min(list(OPEN_STAGES).index(m['stage'])+1,5)})",
                                          f'{m["stage"]}: {money(m["total"])} across {m["n"]} deals') for m in mix],
                                        label="Open pipeline value by stage"),
-            mix_donut=charts.donut([(m["total"], STAGE_COLOURS[m["stage"]]) for m in mix], str(open_count),
+            mix_donut=charts.donut([(m["total"], f"var(--stage-{min(list(OPEN_STAGES).index(m['stage'])+1,5)})") for m in mix], str(open_count),
                                    f"open {'deal' if open_count == 1 else 'deals'}",
                                    label="Open pipeline value by stage, as a ring"),
             views=chart_views(g.user),

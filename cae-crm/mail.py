@@ -48,10 +48,10 @@ def message(to, subject, html, text, from_name, reply_to=None, headers=None, tag
     return msg
 
 
-def _post(path, payload):
+def _post(path, payload, idempotency_key=None):
     req = urllib.request.Request(API + path, data=json.dumps(payload).encode(), method="POST", headers={
         "Authorization": f"Bearer {current_app.config['RESEND_API_KEY']}", "Content-Type": "application/json",
-        "User-Agent": "CAE-CRM/1.0"})
+        "User-Agent": "CAE-CRM/1.0", **({"Idempotency-Key": idempotency_key} if idempotency_key else {})})
     try:
         with urllib.request.urlopen(req, timeout=20) as resp:
             return json.loads(resp.read() or b"{}")

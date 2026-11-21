@@ -1,0 +1,1 @@
+{% extends "public_base.html" %}{% block title %}Email preferences{% endblock %}{% block content %}<section class="panel"><h1>{{ 'You are unsubscribed' if done else 'Stop marketing emails' }}</h1>{% if not done %}<form method="post"><button class="btn primary">Unsubscribe</button></form>{% endif %}</section>{% endblock %}

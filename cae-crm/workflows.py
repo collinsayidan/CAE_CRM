@@ -6,6 +6,8 @@ task, notify someone, assign an owner (a named person, the record's owner, or ta
 contact's lifecycle stage. Each run is noted on the record's timeline. Actions never set off further rules, so rules
 can't loop."""
 
+from pipelines import STAGE_PROBABILITY, OPEN_STAGES
+
 import json
 from datetime import datetime, time, timedelta
 
@@ -13,7 +15,7 @@ from flask import abort, current_app, flash, g, redirect, render_template, reque
 
 import auth
 from core import log_event, now, one, rows, scalar, today, ws
-from db import ACTIVITY_KINDS, LIFECYCLE_STAGES, STAGE_PROBABILITY, TICKET_PRIORITIES, get_db
+from db import ACTIVITY_KINDS, LIFECYCLE_STAGES, TICKET_PRIORITIES, get_db
 
 # Trigger -> (description, what it can be narrowed by).
 TRIGGERS = {
@@ -233,7 +235,7 @@ def register(app):
                 db.commit()
                 flash(f"Rule added: {data['name']}. It runs from now on.", "ok")
             return redirect(url_for("workflows"))
-        from db import OPEN_STAGES
+
         return render_template("workflows.html", rules=rows("SELECT * FROM workflow_rules WHERE workspace_id=? ORDER BY id", ws()),
                                triggers=TRIGGERS, actions=ACTIONS, people=team_names(),
                                stages=OPEN_STAGES + ["Won", "Lost"], priorities=TICKET_PRIORITIES,

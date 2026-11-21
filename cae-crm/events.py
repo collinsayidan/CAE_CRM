@@ -54,9 +54,14 @@ def register(app):
             return response  # the change didn't go through
         import webhooks
         import workflows
+        import automation
+        import sequences
         for evt in pending:
             try:
                 workflows.run(evt)
+                automation.enqueue(evt)
+                if evt["event"]=="deal.won":
+                    sequences.stop_for_deal(evt["record_id"])
             except Exception:  # a broken rule must never break the page that set it off
                 current_app.logger.exception("Workflow rules failed for %s", evt["event"])
         try:

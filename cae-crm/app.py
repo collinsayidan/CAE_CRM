@@ -12,6 +12,12 @@ from urllib.parse import urlencode
 from flask import Flask, abort, g, jsonify, redirect, render_template, request, session, url_for
 
 import api
+import access
+import automation
+import insights
+import portal
+import operations
+import sequences
 import assistant
 import audit
 import auth
@@ -19,6 +25,9 @@ import seo
 import billing
 import campaigns
 import chat
+import pipelines
+import connected_mail
+import calendar_tools
 import payments
 import recurring
 import companies_house
@@ -61,17 +70,17 @@ from ukfmt import money
 
 # Sidebar sections, HubSpot-style: (heading, [(endpoint, label, icon)]).
 NAV = [
-    (None, [("overview", "Home", "home"), ("tasks", "Tasks", "calendar"), ("reports", "Reports", "trend")]),
+    (None, [("overview", "Home", "home"), ("report_builder", "Report builder", "trend"), ("forecast_page", "Forecast", "trend"), ("tasks", "Tasks", "calendar"), ("reports", "Reports", "trend")]),
     ("CRM", [("contacts", "Contacts", "users"), ("companies", "Companies", "building"),
              ("pipeline", "Deals", "pipeline")]),
     ("Support", [("tickets", "Tickets", "lifebuoy"), ("knowledge_base", "Knowledge base", "book")]),
     ("Sales and finance", [("quotes", "Quotes", "note"), ("invoices", "Invoices", "pound"),
                            ("products", "Products", "box"), ("projects", "Projects", "flag")]),
-    ("Marketing", [("campaigns", "Email", "mail"), ("forms", "Forms", "list")]),
-    ("Business", [("documents_page", "Documents", "folder")]),
+    ("Marketing", [("sequences_page", "Sequences", "list"), ("campaigns", "Email", "mail"), ("forms", "Forms", "list")]),
+    ("Business", [("documents_page", "Documents", "folder"), ("mailbox", "Mailbox", "mail"), ("calendar_page", "Calendar", "calendar")]),
 ]
 # Everything about running the workspace sits behind one Settings link: (endpoint, label, admins only).
-SETTINGS_TABS = [("settings", "Business details", True), ("payment_settings", "Payments", True), ("auth.team", "Team", False),
+SETTINGS_TABS = [("onboarding_page", "Getting started", True), ("reliability_page", "System health", True), ("portal_settings", "Customer portal", True), ("automation_page", "Advanced workflows", True), ("access_settings", "Team access", True), ("pipeline_settings", "Sales pipelines", True), ("settings", "Business details", True), ("payment_settings", "Payments", True), ("auth.team", "Team", False),
                  ("assistant_settings", "AI assistant", True),
                  ("integrations", "Integrations", False), ("imports", "Import", True), ("billing", "Billing", True),
                  ("custom_fields_page", "Custom fields", True), ("tags_settings", "Tags", True),
@@ -90,7 +99,7 @@ NAV_PARENT = {"contact": "contacts", "company": "companies", "deal": "pipeline",
 SETTINGS_PARENT = {"auth.member": "auth.team", "auth.edit_member": "auth.team", "import_map": "imports",
                    "vat_return": "vat"}
 # Pages anyone can reach without signing in.
-PUBLIC_ENDPOINTS = {"landing", "favicon", "healthz", "auth.login", "auth.signup", "auth.setup", "auth.forgot", "auth.reset",
+PUBLIC_ENDPOINTS = {"readiness", "cron_fast", "public_portal_login", "public_portal_access", "public_portal_home", "public_portal_logout", "sequence_unsubscribe", "public_booking", "landing", "favicon", "healthz", "auth.login", "auth.signup", "auth.setup", "auth.forgot", "auth.reset",
                     "auth.two_factor_check", "static", "auth.verify_email", "auth.accept_invite", "survey", "summary_off", "help_index", "help_article", "chat_widget",
                     "chat_page", "chat_message", "chat_handover", "pay_invoice", "pay_invoice_pdf", "pay_by_card",
                     "stripe_connect_webhook",
@@ -104,7 +113,7 @@ TWO_FACTOR_SETUP_ALLOWED = {"auth.two_factor_setup", "auth.logout", "static", "f
 # The website chat runs in a frame on businesses' own sites, without cookies; each chat has its own secret token.
 # An invoice's payment page is opened from an email, so its Pay by card button has no session either; it only starts
 # a Stripe Checkout for what's owed.
-CSRF_EXEMPT = {"public_form", "unsubscribe", "resend_webhook", "stripe_webhook", "summary_off", "chat_message",
+CSRF_EXEMPT = {"sequence_unsubscribe", "public_form", "unsubscribe", "resend_webhook", "stripe_webhook", "summary_off", "chat_message",
                "chat_handover", "pay_by_card", "stripe_connect_webhook"}
 # Pages other websites may show in a frame. Everything else may only be framed by this site (see security_headers).
 FRAMEABLE_ENDPOINTS = {"public_form"}
@@ -185,6 +194,8 @@ def create_app(config=None):
         # Integrations: OAuth apps for Gmail, Outlook, Xero and HMRC. Each appears once its id and secret are set.
         **{f"{p}_{k}": os.environ.get(f"{p}_{k}", "") for p in ("GOOGLE", "MICROSOFT", "XERO", "HMRC")
            for k in ("CLIENT_ID", "CLIENT_SECRET")},
+        MAIL_SEND_ENABLED=os.environ.get("CAE_MAIL_SEND_ENABLED") == "1",
+        CALENDAR_ENABLED=os.environ.get("CAE_CALENDAR_ENABLED") == "1",
         XERO_SCOPES=os.environ.get("XERO_SCOPES", ""),
         XERO_SALES_ACCOUNT=os.environ.get("XERO_SALES_ACCOUNT", "200"),
         HMRC_ENV=os.environ.get("HMRC_ENV", "sandbox"),
@@ -233,7 +244,7 @@ def create_app(config=None):
         hour = now().hour
         return base | dict(
             billing=billing.state(w),
-            nav=assistant_nav() if assistant.enabled(w) else NAV,
+            nav=__import__("permissions").navigation(assistant_nav() if assistant.enabled(w) else NAV),
             nav_active=NAV_PARENT.get(request.endpoint, request.endpoint), workspace=w,
             settings_tabs=[t for t in SETTINGS_TABS if (not t[2] or g.user["role"] == "admin")
                            and (t[0] != "billing" or billing.state(w)["enabled"])
@@ -313,7 +324,7 @@ def create_app(config=None):
 
     app.register_blueprint(auth.bp)
     events.register(app)  # first, so its after_request hook runs last, once everything else is saved
-    for module in (home, crm, sales, service, finance, quotes, webforms, campaigns, billing, integrations, xero, mtd,
+    for module in (operations, portal, insights, sequences, automation, calendar_tools, connected_mail, access, pipelines, home, crm, sales, service, finance, quotes, webforms, campaigns, billing, integrations, xero, mtd,
                    documents, notifications, files, fields, workflows, webhooks, api, legal, dataio, settings, audit,
                    assistant, tags, duplicates, companies_house, recycle, support, digest, helpers,
                    inbound, helpcentre, chat, payments, recurring, demo, idlelock, seo):

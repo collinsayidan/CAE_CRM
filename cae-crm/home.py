@@ -28,7 +28,7 @@ def quick_create_choices():
                 vat_labels=[{20: "20% standard", 5: "5% reduced", 0: "0% zero-rated"}[r] for r in vat_rates],
                 regions=REGIONS, lawful_bases=LAWFUL_BASES, lifecycle_stages=LIFECYCLE_STAGES,
                 ticket_priorities=TICKET_PRIORITIES, ticket_categories=TICKET_CATEGORIES, ticket_sources=TICKET_SOURCES,
-                billing_periods=BILLING_PERIODS, stage_colours={s: f"var(--stage-{min(i+1,5)})" for i,(s,_) in enumerate(STAGES)})
+                billing_periods=BILLING_PERIODS, stage_colours={s: f"var(--stage-{min(i+1,5)})" for i,(s,_) in enumerate(__import__("pipelines").all_choices())})
 
 
 # The ways each home chart can be shown. The first is the default.

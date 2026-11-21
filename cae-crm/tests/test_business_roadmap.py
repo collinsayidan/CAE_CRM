@@ -55,7 +55,7 @@ def test_pipeline_gates_isolation_and_overview(app, client, rival):
     assert b"Custom process deal" in client.get(f"/pipeline?pipeline_id={pid}").data
     assert b"Custom process deal" not in client.get("/pipeline").data
     assert post(client, f"/deals/{did}/stage", stage="Review").status_code == 422
-    assert post(client, f"/deals/{did}/stage", stage="Qualified").status_code == 400
+    assert post(client, f"/deals/{did}/stage", stage="Qualified").status_code == 422
     assert rival.get(f"/pipeline?pipeline_id={pid}").status_code == 404
     assert client.get("/").status_code == 200
 
@@ -601,3 +601,18 @@ def test_deleted_user_cannot_leave_access_granted_to_reused_identity(app):
     assert query(app, "SELECT owner_id FROM contacts WHERE id=?", cid)[0][0] == uid
     execute(app, "DELETE FROM users WHERE id=?", uid)
     assert query(app, "SELECT owner_id FROM contacts WHERE id=?", cid)[0][0] is None
+
+
+def test_equal_stage_names_keep_pipeline_specific_probabilities(app, client):
+    r = post(client, "/settings/pipelines", name="Different probability", stages="Lead | 45\nClosing | 65")
+    pid = int(r.location.split("pipeline_id=")[1])
+    did = first_id(app, "deals", app.ws, "stage NOT IN ('Won','Lost')")
+    assert post(client, f"/deals/{did}/pipeline", pipeline_id=pid).status_code == 302
+    r = client.post(
+        f"/deals/{did}/stage",
+        data={"csrf": client.csrf, "stage": "Closing"},
+        headers={"X-Requested-With": "fetch"},
+    )
+    assert r.status_code == 200 and r.get_json()["probability"] == 65
+    assert query(app, "SELECT probability FROM deals WHERE id=?", did)[0][0] == 65
+    assert client.get("/").status_code == 200

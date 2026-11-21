@@ -143,6 +143,8 @@ def restore(entry):
         for row in snap["rows"].get(t, []):
             columns.setdefault(t, db.columns(t))
             values = {k: v for k, v in row.items() if k in columns[t] and k != "id"}
+            if values.get("owner_id") and not one("SELECT id FROM users WHERE id=? AND workspace_id=?",values["owner_id"],ws()):
+                values["owner_id"]=None
             skip = False
             for column, (target, required) in FOREIGN.items():
                 if column not in values or values[column] is None:

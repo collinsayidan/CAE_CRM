@@ -220,7 +220,7 @@ def register(app):
         message = set_stage(deal, stage, reason=reason, note=note)
         get_db().commit()
         if wants_json():
-            return jsonify(ok=True, stage=stage, probability=STAGE_PROBABILITY[stage], message=message)
+            return jsonify(ok=True, stage=stage, probability=one("SELECT probability FROM deals WHERE id=? AND workspace_id=?",deal_id,ws())[0], message=message)
         flash(message, "ok")
         return back("pipeline")
 

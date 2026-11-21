@@ -874,7 +874,7 @@ CREATE TABLE IF NOT EXISTS sequence_enrollments (
 CREATE TABLE IF NOT EXISTS report_definitions (
  id {pk}, workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
  name TEXT NOT NULL, definition TEXT NOT NULL, created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
- recipient_id INTEGER REFERENCES users(id), schedule TEXT, next_send TEXT, last_error TEXT
+ recipient_id INTEGER REFERENCES users(id) ON DELETE SET NULL, schedule TEXT, next_send TEXT, last_error TEXT
 );
 CREATE TABLE IF NOT EXISTS forecast_reviews (
  id {pk}, workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -1173,6 +1173,8 @@ def migrate(db, today):
     for table in ("companies","contacts","deals","tickets","activities","projects"):
         if "owner_id" in existing[table]:continue
         db.execute(f"UPDATE {table} SET owner_id=(SELECT MIN(u.id) FROM users u WHERE u.workspace_id={table}.workspace_id AND u.name={table}.owner HAVING COUNT(*)=1) WHERE owner_id IS NULL")
+    for table in ("companies","contacts","deals","tickets","activities","projects"):
+        db.execute(f"CREATE INDEX IF NOT EXISTS ix_{table}_owner ON {table}(workspace_id,owner_id)")
     for sql in (
         "CREATE INDEX IF NOT EXISTS ix_pipeline_stages_ws ON pipeline_stages(workspace_id,pipeline_id,position)",
         "CREATE INDEX IF NOT EXISTS ix_bookings_user ON bookings(user_id,starts_at,ends_at)",

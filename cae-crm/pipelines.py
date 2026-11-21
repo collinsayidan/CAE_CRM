@@ -53,7 +53,12 @@ def choices():
     pid = selected_id(strict=False)
     if pid:
         return [(r["name"], r["probability"]) for r in stage_rows(pid)]
-    # Legacy/default pipeline keeps its existing labels. Reports and filters also recognise custom stages.
+    return list(DEFAULT_STAGES)
+
+
+def all_choices():
+    if not has_request_context() or not (g.get("user") or g.get("public_workspace")):
+        return list(DEFAULT_STAGES)
     extra = rows(
         "SELECT name,probability FROM pipeline_stages WHERE workspace_id=? ORDER BY position,id", ws()
     )
@@ -61,8 +66,8 @@ def choices():
 
 
 STAGES = LocalProxy(choices)
-OPEN_STAGES = LocalProxy(lambda: [s for s, _ in choices()])
-STAGE_PROBABILITY = LocalProxy(lambda: dict(choices()) | {"Won": 100, "Lost": 0})
+OPEN_STAGES = LocalProxy(lambda: [s for s, _ in all_choices()])
+STAGE_PROBABILITY = LocalProxy(lambda: dict(all_choices()) | {"Won": 100, "Lost": 0})
 
 
 def validate_stage(deal, stage):
@@ -73,7 +78,15 @@ def validate_stage(deal, stage):
     if stage not in options:
         abort(422, "Choose a stage in this deal's pipeline.")
     row = next((r for r in stages if r["name"] == stage), None)
-    missing = [REQUIRED[k] for k in json.loads(row["required_fields"]) if not deal[k]] if row else []
+    missing = (
+        [
+            REQUIRED[k]
+            for k in json.loads(row["required_fields"])
+            if not deal[k] or (k == "value" and deal[k] <= 0)
+        ]
+        if row
+        else []
+    )
     if missing:
         abort(422, "Before moving this deal, complete: " + ", ".join(missing))
     return options[stage]

@@ -465,7 +465,7 @@ def register(app):
             company_contacts=rows("SELECT id, first_name, last_name FROM contacts WHERE workspace_id=? AND company_id=?"
                                   " ORDER BY first_name", ws(), d["company_id"]),
             record=dict(deal_id=deal_id, company_id=d["company_id"], contact_id=d["contact_id"]),
-            call_outcomes=CALL_OUTCOMES, all_stages=OPEN_STAGES + ["Won", "Lost"],
+            call_outcomes=CALL_OUTCOMES, all_stages=[s for s,_ in __import__("pipelines").choices()] + ["Won", "Lost"],
             quiet=quiet_reason(d) if d["id"] in quiet_ids() else None,
             lost_reasons=LOST_REASONS, won_reasons=WON_REASONS)
 
